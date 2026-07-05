@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Knee | Vanko Training",
-  description: "Specializovany projekt pro guidance rehabilitace kolene.",
+  title: "Knee Data | Vanko Training",
+  description: "Interni databaze knee extension mereni.",
 };
 
 export default function RootLayout({
