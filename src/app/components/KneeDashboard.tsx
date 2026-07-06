@@ -303,44 +303,44 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
   }
 
   const width = 560;
-  const height = 280;
-  const paddingX = 38;
-  const strengthTop = 30;
-  const strengthHeight = 128;
-  const asymmetryTop = 190;
-  const asymmetryHeight = 46;
-  const chartWidth = width - paddingX * 2;
-  const maxValue = Math.max(
+  const height = 250;
+  const leftPadding = 44;
+  const rightPadding = 46;
+  const plotTop = 30;
+  const plotHeight = 160;
+  const plotBottom = plotTop + plotHeight;
+  const chartWidth = width - leftPadding - rightPadding;
+  const maxStrength = Math.max(
     NORM_NM_PER_KG,
     ...points.flatMap((test) => [test.left_nm_per_kg ?? 0, test.right_nm_per_kg ?? 0]),
   );
-  const chartMax = Math.max(3, Math.ceil(maxValue * 10) / 10);
-  const asymmetryMax = Math.max(
-    25,
-    Math.ceil(
-      Math.max(...points.map((test) => getAsymmetryValue(test.asymmetry_pct) ?? 0)) / 5,
-    ) * 5,
+  const strengthMax = Math.max(3.5, Math.ceil((maxStrength + 0.2) * 10) / 10);
+  const maxAsymmetry = Math.max(
+    ...points.map((test) => getAsymmetryValue(test.asymmetry_pct) ?? 0),
   );
+  const asymmetryMax = Math.max(25, Math.ceil((maxAsymmetry + 5) / 5) * 5);
   const xForIndex = (index: number) =>
     points.length === 1
-      ? width / 2
-      : paddingX + (index / (points.length - 1)) * chartWidth;
+      ? leftPadding + chartWidth / 2
+      : leftPadding + (index / (points.length - 1)) * chartWidth;
   const yForStrength = (value: number) =>
-    strengthTop + (1 - value / chartMax) * strengthHeight;
+    plotTop + (1 - value / strengthMax) * plotHeight;
   const yForAsymmetry = (value: number) =>
-    asymmetryTop + (1 - value / asymmetryMax) * asymmetryHeight;
+    plotTop + (1 - value / asymmetryMax) * plotHeight;
   const pathForStrength = (side: "left" | "right") =>
     points
       .map((test, index) => {
         const value = side === "left" ? test.left_nm_per_kg : test.right_nm_per_kg;
-        return `${xForIndex(index)},${yForStrength(value ?? 0)}`;
+        return value === null ? null : `${xForIndex(index)},${yForStrength(value)}`;
       })
+      .filter(Boolean)
       .join(" ");
   const asymmetryPath = points
     .map((test, index) => {
-      const value = getAsymmetryValue(test.asymmetry_pct) ?? 0;
-      return `${xForIndex(index)},${yForAsymmetry(value)}`;
+      const value = getAsymmetryValue(test.asymmetry_pct);
+      return value === null ? null : `${xForIndex(index)},${yForAsymmetry(value)}`;
     })
+    .filter(Boolean)
     .join(" ");
 
   return (
@@ -352,83 +352,112 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
         <span className="legend-item asymmetry">Asymetrie</span>
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Vyvoj knee extension testu a asymetrie">
+        {[0, NORM_NM_PER_KG, strengthMax].map((value) => (
+          <line
+            className="chart-grid-line"
+            key={value}
+            x1={leftPadding}
+            x2={width - rightPadding}
+            y1={yForStrength(value)}
+            y2={yForStrength(value)}
+          />
+        ))}
         <line
-          className="chart-grid-line"
-          x1={paddingX}
-          x2={width - paddingX}
-          y1={yForStrength(0)}
-          y2={yForStrength(0)}
+          className="chart-axis"
+          x1={leftPadding}
+          x2={leftPadding}
+          y1={plotTop}
+          y2={plotBottom}
         />
         <line
+          className="chart-axis"
+          x1={width - rightPadding}
+          x2={width - rightPadding}
+          y1={plotTop}
+          y2={plotBottom}
+        />
+        <text className="chart-axis-title left" x={leftPadding} y="15">
+          Nm/kg
+        </text>
+        <text className="chart-axis-title right" x={width - rightPadding} y="15">
+          Asym %
+        </text>
+        <text className="chart-axis-label left" x={leftPadding - 8} y={plotBottom + 4}>
+          0
+        </text>
+        <text className="chart-axis-label left" x={leftPadding - 8} y={yForStrength(strengthMax) + 4}>
+          {formatNumber(strengthMax, 1)}
+        </text>
+        <text className="chart-axis-label right" x={width - rightPadding + 8} y={plotBottom + 4}>
+          0%
+        </text>
+        <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(asymmetryMax) + 4}>
+          {formatNumber(asymmetryMax, 0, "%")}
+        </text>
+        <line
           className="chart-target"
-          x1={paddingX}
-          x2={width - paddingX}
+          x1={leftPadding}
+          x2={width - rightPadding}
           y1={yForStrength(NORM_NM_PER_KG)}
           y2={yForStrength(NORM_NM_PER_KG)}
         />
-        <text x={paddingX} y={yForStrength(NORM_NM_PER_KG) - 7}>
+        <text x={leftPadding + 6} y={yForStrength(NORM_NM_PER_KG) - 7}>
           {formatNumber(NORM_NM_PER_KG, 1)} Nm/kg
         </text>
-        <polyline
-          className="chart-line left"
-          fill="none"
-          points={pathForStrength("left")}
-        />
-        <polyline
-          className="chart-line right"
-          fill="none"
-          points={pathForStrength("right")}
-        />
-
-        <line
-          className="chart-grid-line"
-          x1={paddingX}
-          x2={width - paddingX}
-          y1={yForAsymmetry(0)}
-          y2={yForAsymmetry(0)}
-        />
         <line
           className="chart-asymmetry-threshold warning"
-          x1={paddingX}
-          x2={width - paddingX}
+          x1={leftPadding}
+          x2={width - rightPadding}
           y1={yForAsymmetry(10)}
           y2={yForAsymmetry(10)}
         />
         <line
           className="chart-asymmetry-threshold problem"
-          x1={paddingX}
-          x2={width - paddingX}
+          x1={leftPadding}
+          x2={width - rightPadding}
           y1={yForAsymmetry(20)}
           y2={yForAsymmetry(20)}
         />
-        <text x={paddingX} y={asymmetryTop - 10}>Asymetrie %</text>
-        <text className="chart-axis-label" x={width - paddingX} y={yForAsymmetry(10) - 4}>10</text>
-        <text className="chart-axis-label" x={width - paddingX} y={yForAsymmetry(20) - 4}>20</text>
-        <polyline className="chart-line asymmetry" fill="none" points={asymmetryPath} />
+        <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(10) + 4}>
+          10%
+        </text>
+        <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(20) + 4}>
+          20%
+        </text>
+        <polyline className="chart-line left" points={pathForStrength("left")} />
+        <polyline className="chart-line right" points={pathForStrength("right")} />
+        <polyline className="chart-line asymmetry" points={asymmetryPath} />
 
         {points.map((test, index) => {
-          const asymmetryValue = getAsymmetryValue(test.asymmetry_pct) ?? 0;
+          const asymmetryValue = getAsymmetryValue(test.asymmetry_pct);
+
           return (
             <g key={test.id}>
-              <circle
-                className="chart-dot left"
-                cx={xForIndex(index)}
-                cy={yForStrength(test.left_nm_per_kg ?? 0)}
-                r="4"
-              />
-              <circle
-                className="chart-dot right"
-                cx={xForIndex(index)}
-                cy={yForStrength(test.right_nm_per_kg ?? 0)}
-                r="4"
-              />
-              <circle
-                className={`chart-dot asymmetry ${getAsymmetryTone(test.asymmetry_pct)}`}
-                cx={xForIndex(index)}
-                cy={yForAsymmetry(asymmetryValue)}
-                r="4"
-              />
-              <text className="chart-date" x={xForIndex(index)} y={height - 10}>
+              {test.left_nm_per_kg !== null ? (
+                <circle
+                  className="chart-dot left"
+                  cx={xForIndex(index)}
+                  cy={yForStrength(test.left_nm_per_kg)}
+                  r="4"
+                />
+              ) : null}
+              {test.right_nm_per_kg !== null ? (
+                <circle
+                  className="chart-dot right"
+                  cx={xForIndex(index)}
+                  cy={yForStrength(test.right_nm_per_kg)}
+                  r="4"
+                />
+              ) : null}
+              {asymmetryValue !== null ? (
+                <circle
+                  className={`chart-dot asymmetry ${getAsymmetryTone(test.asymmetry_pct)}`}
+                  cx={xForIndex(index)}
+                  cy={yForAsymmetry(asymmetryValue)}
+                  r="4"
+                />
+              ) : null}
+              <text className="chart-date" x={xForIndex(index)} y={height - 12}>
                 {new Date(`${test.test_date}T00:00:00`).toLocaleDateString("cs-CZ", {
                   day: "numeric",
                   month: "numeric",
