@@ -24,6 +24,13 @@ function readSelectedClient(): SelectedClient {
   };
 }
 
+function isMissingRpcSignature(error: { code?: string; message?: string } | null) {
+  return (
+    error?.code === "PGRST202" ||
+    Boolean(error?.message?.toLowerCase().includes("could not find the function"))
+  );
+}
+
 export default function ClientDeletion() {
   const [selectedClient, setSelectedClient] = useState<SelectedClient>(null);
   const [message, setMessage] = useState("");
@@ -59,9 +66,17 @@ export default function ClientDeletion() {
     setIsDeleting(true);
     setMessage("");
 
-    const { error } = await supabase.rpc("soft_delete_athlete", {
-      p_id: selectedClient.id,
+    let { error } = await supabase.rpc("soft_delete_athlete", {
+      p_athlete_id: selectedClient.id,
+      p_reason: "Archived from knee app",
     });
+
+    if (isMissingRpcSignature(error)) {
+      const fallback = await supabase.rpc("soft_delete_athlete", {
+        p_id: selectedClient.id,
+      });
+      error = fallback.error;
+    }
 
     setIsDeleting(false);
 
