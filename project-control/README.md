@@ -8,9 +8,9 @@ Projekt je ve fazi funkcniho interniho MVP. Aplikace je nasazena na produkcni do
 
 Odhad dokonceni:
 
-- Interni pracovni nastroj: 90 %
-- Dlouhodobe udrzovatelny produkt: 78 %
-- Celkove MVP: 88 %
+- Interni pracovni nastroj: 92 %
+- Dlouhodobe udrzovatelny produkt: 80 %
+- Celkove MVP: 91-92 %
 
 ## Aktualni rozhodnuti
 
@@ -20,6 +20,7 @@ Odhad dokonceni:
 - Stack je Next.js + Supabase.
 - Data klientu mohou byt ve sdilene Supabase databazi, ale kod aplikaci se nemicha.
 - Mazani mereni a klientu je resene jako archivace/soft delete, ne fyzicke smazani.
+- Vypocetni logika knee metrik je presunuta do `src/lib/knee-metrics.ts` a kryta prvnim smoke-testem.
 
 ## Hotovo
 
@@ -36,16 +37,18 @@ Odhad dokonceni:
 - Obnova archivovaneho klienta funguje.
 - Panel `Archiv klientu` je na webu a prakticky overen.
 - Mobilni pouzitelnost je vyrazne lepsi nez prvni verze.
+- Mobilni detail mereni ma bezpecne spodni odsazeni proti fixed tlacitku `+ Pridat mereni`.
 - Graf ukazuje levou, pravou a asymetrii s moznosti skryt jednotlive serie.
+- Smoke-test overuje hodnoty pro 82 kg, 33 cm, levou silu 35 kg a pravou silu 42 kg.
 
 ## Aktualni technicky dluh
 
 - Cast archivace a obnovy je napojena pres samostatne pomocne komponenty kolem hlavniho dashboardu.
-- `ArchivedMeasurements`, `ClientDeletion` a `ButtonGuards` pouzivaji DOM pozorovani misto sdileneho React stavu.
+- `ArchivedMeasurements`, `ClientDeletion` a `ButtonGuards` pouzivaji DOM pozorovani nebo oddeleny stav misto jednotne hlavni React logiky.
 - Migrace jsou historicky spoustene casto rucne pres Supabase SQL editor.
 - Chybi jednoduchy export/zaloha dat.
 - Chybi kratka provozni dokumentace pro obnovu, migrace a kontrolu produkce.
-- Chybi automaticke testy.
+- Automaticke testy jsou zatim jen zakladni smoke-test vypoctu, ne UI/regresni testy cele aplikace.
 
 ## Hranice projektu
 
@@ -70,11 +73,11 @@ flowchart TD
 
 ## Nejblizsi priorita
 
-1. Stabilizovat architekturu archivace a obnovy.
-2. Presunout logiku archivace klientu/mereni z pomocnych DOM komponent do hlavni React logiky.
-3. Zachovat stavajici funkcnost beze zmen chovani pro uzivatele.
+1. Overit po deployi mobilni detail mereni bez prekryti spodnim tlacitkem.
+2. Rucne projit hlavni workflow: pridani, editace, archivace a obnova mereni i klienta.
+3. Stabilizovat architekturu archivace a obnovy bez zmeny chovani pro uzivatele.
 4. Po stabilizaci pridat jednoduchy export/zaloha dat.
 
 ## Pravidlo pro dalsi vyvoj
 
-Nepridavat dalsi funkce, dokud nebude archivace a obnova technicky uklizena. Aplikace uz funkcne staci na praci; dalsi hodnota ted lezi ve spolehlivosti a udrzitelnosti.
+Nepridavat dalsi vetsi funkce, dokud nebude archivace a obnova technicky uklizena. Aplikace uz funkcne staci na praci; dalsi hodnota ted lezi ve spolehlivosti a udrzitelnosti.
