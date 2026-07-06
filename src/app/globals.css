@@ -450,22 +450,24 @@ dd {
 
 .chart-line.asymmetry {
   stroke: var(--warning);
-  stroke-width: 2.5;
+  stroke-width: 1.8;
 }
 
 .chart-dot.asymmetry {
+  r: 3px;
   stroke: var(--warning);
-  fill: var(--warning);
+  stroke-width: 1.8;
+  fill: #fbfcfa;
 }
 
 .chart-dot.asymmetry.ok {
   stroke: var(--accent);
-  fill: var(--accent);
+  fill: #fbfcfa;
 }
 
 .chart-dot.asymmetry.problem {
   stroke: var(--danger);
-  fill: var(--danger);
+  fill: #fbfcfa;
 }
 
 .chart-target {
