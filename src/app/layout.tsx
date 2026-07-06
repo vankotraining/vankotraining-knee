@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./mobile-safe-area.css";
 
 export const metadata: Metadata = {
   title: "Knee Data | Vanko Training",
