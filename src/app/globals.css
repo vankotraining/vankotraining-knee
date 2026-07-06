@@ -418,7 +418,7 @@ dd {
 
 table {
   width: 100%;
-  min-width: 780px;
+  min-width: 880px;
   border-collapse: collapse;
 }
 
@@ -436,6 +436,101 @@ th {
   text-transform: uppercase;
 }
 
+.detail-button {
+  min-height: auto;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.detail-button:hover {
+  background: var(--surface-subtle);
+}
+
+.expanded-row td {
+  background: #fbfcfa;
+  padding: 12px;
+  white-space: normal;
+}
+
+.test-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.test-detail-header p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.test-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.leg-detail-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
+}
+
+.leg-detail-card.deficit {
+  border-color: rgba(155, 44, 44, 0.32);
+  background: #fff8f7;
+}
+
+.leg-detail-card.ok {
+  border-color: rgba(35, 96, 74, 0.26);
+  background: #f6fbf8;
+}
+
+.leg-detail-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.leg-detail-title span {
+  border-radius: 999px;
+  background: var(--surface-subtle);
+  color: var(--muted);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.leg-detail-card.deficit .leg-detail-title span {
+  background: #f4dedd;
+  color: var(--danger);
+}
+
+.leg-detail-card.ok .leg-detail-title span {
+  background: #dfeee5;
+  color: var(--accent-strong);
+}
+
+.leg-detail-card dl {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.test-note {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 @media (max-width: 860px) {
   .topbar,
   .login-row {
@@ -450,7 +545,14 @@ th {
   .dashboard-layout,
   .profile-grid,
   .norm-grid,
-  .form-row {
+  .form-row,
+  .test-detail-grid,
+  .leg-detail-card dl {
     grid-template-columns: 1fr;
+  }
+
+  .test-detail-header,
+  .leg-detail-title {
+    display: grid;
   }
 }
