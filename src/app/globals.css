@@ -8,6 +8,7 @@
   --accent: #23604a;
   --accent-strong: #173f31;
   --danger: #9b2c2c;
+  --blue: #2d6cdf;
 }
 
 html {
@@ -36,12 +37,18 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
 button {
   cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .shell {
@@ -85,13 +92,32 @@ p {
   line-height: 1.55;
 }
 
-input {
+label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+input,
+textarea {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
   color: var(--foreground);
   padding: 11px 12px;
+}
+
+input[readonly] {
+  background: var(--surface-subtle);
+  color: var(--muted);
+}
+
+textarea {
+  min-height: 76px;
+  resize: vertical;
 }
 
 button {
@@ -140,6 +166,10 @@ button {
   color: var(--danger);
 }
 
+.footer-status {
+  margin-top: 12px;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -186,6 +216,10 @@ dt {
   margin-bottom: 14px;
 }
 
+.spaced-header {
+  margin-top: 20px;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -197,6 +231,23 @@ dt {
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.stack-form {
+  display: grid;
+  gap: 12px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.test-form {
+  border-top: 1px solid var(--border);
+  margin-top: 14px;
+  padding-top: 14px;
 }
 
 .athlete-list {
@@ -243,11 +294,19 @@ dd {
   font-weight: 800;
 }
 
-.profile-grid {
+.profile-grid,
+.norm-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 16px;
+}
+
+.profile-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.norm-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .profile-metric {
@@ -257,10 +316,100 @@ dd {
   padding: 13px;
 }
 
+.profile-metric.highlight {
+  background: #fff;
+}
+
 .profile-metric strong {
   display: block;
   margin-top: 6px;
   font-size: 20px;
+}
+
+.profile-metric small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.chart-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  margin-bottom: 14px;
+  overflow: hidden;
+  padding: 10px;
+}
+
+.chart-card svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.legend-item {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.legend-item::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.legend-item.right::before {
+  background: var(--blue);
+}
+
+.legend-item.target::before {
+  background: var(--danger);
+}
+
+.chart-line {
+  fill: none;
+  stroke-width: 3;
+}
+
+.chart-line.left,
+.chart-dot.left {
+  stroke: var(--accent);
+  fill: var(--accent);
+}
+
+.chart-line.right,
+.chart-dot.right {
+  stroke: var(--blue);
+  fill: var(--blue);
+}
+
+.chart-target {
+  stroke: var(--danger);
+  stroke-dasharray: 6 6;
+  stroke-width: 2;
+}
+
+.chart-card text {
+  fill: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chart-date {
+  text-anchor: middle;
 }
 
 .table-wrap {
@@ -299,7 +448,9 @@ th {
 
   .stats-grid,
   .dashboard-layout,
-  .profile-grid {
+  .profile-grid,
+  .norm-grid,
+  .form-row {
     grid-template-columns: 1fr;
   }
 }
