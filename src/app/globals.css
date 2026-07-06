@@ -56,15 +56,15 @@ button:disabled {
 .shell {
   width: min(1280px, calc(100% - 28px));
   margin: 0 auto;
-  padding: 24px 0 48px;
+  padding: 14px 0 48px;
 }
 
 .topbar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 0 20px;
+  padding: 10px 0 12px;
 }
 
 .eyebrow {
@@ -76,9 +76,9 @@ button:disabled {
 }
 
 h1 {
-  margin-top: 4px;
-  font-size: clamp(34px, 6vw, 64px);
-  line-height: 0.98;
+  margin-top: 2px;
+  font-size: clamp(24px, 3vw, 38px);
+  line-height: 1.05;
 }
 
 h2 {
@@ -173,11 +173,10 @@ button {
   margin-top: 12px;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 8px 0 14px;
+.stats-grid,
+.desktop-control,
+.detail-panel > .panel-header {
+  display: none;
 }
 
 .metric {
@@ -201,22 +200,17 @@ dt {
 }
 
 .dashboard-layout {
-  display: grid;
-  grid-template-columns: minmax(280px, 390px) minmax(320px, 1fr);
-  gap: 14px;
-  align-items: start;
+  display: block;
 }
 
 .panel {
   padding: 16px;
 }
 
-.control-panel {
-  min-height: 100%;
-}
-
 .detail-panel {
-  grid-column: 1 / -1;
+  border: 0;
+  background: transparent;
+  padding: 14px 0 0;
 }
 
 .panel-header {
@@ -225,10 +219,6 @@ dt {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
-}
-
-.spaced-header {
-  margin-top: 20px;
 }
 
 .pill {
@@ -284,7 +274,8 @@ dt {
   gap: 12px;
 }
 
-.compact-form {
+.compact-form,
+.test-form {
   border-top: 1px solid var(--border);
   margin-top: 14px;
   padding-top: 14px;
@@ -304,55 +295,132 @@ dt {
   gap: 8px;
 }
 
-.test-form {
-  border-top: 1px solid var(--border);
-  margin-top: 14px;
-  padding-top: 14px;
-}
-
-.athlete-picker,
-.quick-actions {
+.mobile-workbench {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(251, 252, 250, 0.96);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 24px rgba(22, 26, 21, 0.08);
+}
+
+.mobile-client-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1fr) auto auto;
   gap: 10px;
+  align-items: end;
 }
 
-.quick-actions {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.mobile-search {
+  order: 1;
 }
 
-.compact-hint {
-  margin-top: 14px;
+.mobile-client-select {
+  order: 2;
 }
 
-.selected-athlete-meta {
+.mobile-primary-action {
+  order: 3;
+  min-height: 43px;
+  white-space: nowrap;
+}
+
+.mobile-small-action {
+  order: 4;
+  min-height: 43px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  white-space: nowrap;
+}
+
+.mobile-client-summary {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.mobile-client-summary div {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
+}
+
+.mobile-client-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mobile-client-summary strong {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 18px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-client-summary .asymmetry-badge {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.mobile-tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  border-top: 1px solid var(--border);
-  margin-top: 14px;
-  padding-top: 14px;
 }
 
-.selected-athlete-meta div {
-  min-width: 0;
+.mobile-tab {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  padding: 10px;
 }
 
-dd {
-  margin-top: 3px;
-  font-weight: 800;
+.mobile-tab.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.mobile-form-panel {
+  max-height: min(58vh, 620px);
+  overflow-y: auto;
+  box-shadow: 0 12px 28px rgba(22, 26, 21, 0.12);
+}
+
+.mobile-form-panel .panel-header {
+  margin-bottom: 0;
+}
+
+.mobile-tab-page {
+  display: none;
+}
+
+.mobile-tab-page.is-active {
+  display: block;
 }
 
 .profile-grid,
 .norm-grid {
   display: grid;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
-.profile-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
+.profile-grid,
 .norm-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -519,28 +587,68 @@ dd {
   text-anchor: middle;
 }
 
-.table-wrap {
-  overflow-x: auto;
+.mobile-test-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
 }
 
-table {
-  width: 100%;
-  min-width: 880px;
-  border-collapse: collapse;
+.measurement-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
 }
 
-th,
-td {
-  border-bottom: 1px solid var(--border);
-  padding: 10px 8px;
-  text-align: left;
-  white-space: nowrap;
+.measurement-card.editing {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(35, 96, 74, 0.12);
 }
 
-th {
+.measurement-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.measurement-card-header span:first-child {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 800;
   text-transform: uppercase;
+}
+
+.measurement-card-header strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 18px;
+}
+
+.measurement-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.measurement-values div {
+  min-width: 0;
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  padding: 9px;
+}
+
+dd {
+  margin-top: 3px;
+  font-weight: 800;
+}
+
+.measurement-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
 }
 
 .detail-button {
@@ -561,10 +669,9 @@ th {
   color: var(--danger);
 }
 
-.expanded-row td {
-  background: #fbfcfa;
-  padding: 12px;
-  white-space: normal;
+.measurement-detail {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
 }
 
 .test-detail-header {
@@ -643,44 +750,66 @@ th {
   font-size: 13px;
 }
 
-.mobile-workbench,
-.mobile-test-list,
+.table-wrap {
+  overflow-x: auto;
+}
+
+.desktop-table {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+table {
+  width: 100%;
+  min-width: 880px;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.expanded-row td {
+  background: #fbfcfa;
+  padding: 12px;
+  white-space: normal;
+}
+
 .mobile-add-test {
   display: none;
 }
 
-.mobile-tab-page {
-  display: block;
-}
-
-.measurements-page {
-  margin-top: 2px;
-}
-
 @media (max-width: 860px) {
-  .topbar,
-  .login-row {
-    grid-template-columns: 1fr;
-  }
-
-  .topbar {
-    display: grid;
-  }
-
-  .stats-grid,
-  .dashboard-layout,
+  .login-row,
+  .form-row,
   .profile-grid,
   .norm-grid,
-  .form-row,
-  .selected-athlete-meta,
-  .quick-actions,
   .test-detail-grid,
   .leg-detail-card dl {
     grid-template-columns: 1fr;
   }
 
-  .detail-panel {
-    grid-column: auto;
+  .mobile-client-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .mobile-client-select {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-client-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .test-detail-header,
@@ -703,8 +832,6 @@ th {
     position: sticky;
     top: 0;
     z-index: 30;
-    display: flex;
-    align-items: center;
     padding: 10px 12px;
     border-bottom: 1px solid var(--border);
     background: rgba(251, 252, 250, 0.96);
@@ -718,7 +845,6 @@ th {
   .topbar h1 {
     margin: 0;
     font-size: 20px;
-    line-height: 1.1;
   }
 
   .topbar .ghost-button {
@@ -726,30 +852,19 @@ th {
     font-size: 13px;
   }
 
-  .stats-grid,
-  .desktop-control,
-  .desktop-table,
-  .detail-panel > .panel-header {
-    display: none;
-  }
-
   .mobile-workbench {
-    position: sticky;
     top: 45px;
-    z-index: 20;
-    display: grid;
     gap: 10px;
     padding: 10px 10px 8px;
-    border-bottom: 1px solid var(--border);
-    background: rgba(251, 252, 250, 0.96);
-    backdrop-filter: blur(10px);
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .mobile-client-toolbar {
-    display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
-    align-items: end;
   }
 
   .mobile-client-toolbar label {
@@ -762,6 +877,10 @@ th {
     padding: 10px;
   }
 
+  .mobile-primary-action {
+    display: none;
+  }
+
   .mobile-client-select {
     grid-column: 1 / -1;
   }
@@ -769,103 +888,51 @@ th {
   .mobile-small-action {
     min-height: 41px;
     padding: 10px 12px;
-    white-space: nowrap;
   }
 
   .mobile-client-summary {
-    display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
-    padding: 9px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
   }
 
   .mobile-client-summary div {
-    min-width: 0;
+    padding: 9px;
   }
 
   .mobile-client-summary span {
-    display: block;
-    color: var(--muted);
     font-size: 10px;
-    font-weight: 800;
-    text-transform: uppercase;
   }
 
   .mobile-client-summary strong {
-    display: block;
-    margin-top: 3px;
-    overflow: hidden;
     font-size: 13px;
-    line-height: 1.15;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .mobile-client-summary .asymmetry-badge {
-    max-width: 100%;
     overflow: hidden;
     padding: 3px 6px;
     text-overflow: ellipsis;
   }
 
   .mobile-tabs {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
 
   .mobile-tab {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--foreground);
     padding: 9px 6px;
     font-size: 13px;
   }
 
-  .mobile-tab.active {
-    border-color: var(--accent);
-    background: var(--accent);
-    color: #fff;
-  }
-
   .mobile-form-panel {
     max-height: min(68vh, 620px);
-    overflow-y: auto;
     padding: 12px;
-    box-shadow: 0 12px 28px rgba(22, 26, 21, 0.12);
-  }
-
-  .mobile-form-panel .panel-header {
-    margin-bottom: 0;
   }
 
   .dashboard-layout {
-    display: block;
     padding: 10px;
   }
 
   .detail-panel {
-    border: 0;
-    border-radius: 0;
-    background: transparent;
     padding: 0;
-  }
-
-  .mobile-tab-page {
-    display: none;
-  }
-
-  .mobile-tab-page.is-active {
-    display: block;
-  }
-
-  .client-page,
-  .compare-page,
-  .measurements-page {
-    padding-bottom: 10px;
   }
 
   .profile-grid,
@@ -897,80 +964,21 @@ th {
   }
 
   .mobile-test-list {
-    display: grid;
+    grid-template-columns: 1fr;
     gap: 10px;
   }
 
   .measurement-card {
-    display: grid;
-    gap: 10px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
     padding: 12px;
   }
 
-  .measurement-card.editing {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(35, 96, 74, 0.12);
-  }
-
-  .measurement-card-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .measurement-card-header span:first-child {
-    color: var(--muted);
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-  }
-
-  .measurement-card-header strong {
-    display: block;
-    margin-top: 3px;
-    font-size: 18px;
-  }
-
-  .measurement-values {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .measurement-values div {
-    min-width: 0;
-    border-radius: 8px;
-    background: var(--surface-subtle);
-    padding: 9px;
-  }
-
   .measurement-actions {
-    display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 7px;
   }
 
   .measurement-actions .detail-button {
     width: 100%;
     padding: 9px 6px;
-  }
-
-  .measurement-detail {
-    border-top: 1px solid var(--border);
-    padding-top: 10px;
-  }
-
-  .test-detail-grid,
-  .leg-detail-card dl {
-    grid-template-columns: 1fr;
-  }
-
-  .leg-detail-card {
-    padding: 10px;
   }
 
   .form-actions {
@@ -980,6 +988,10 @@ th {
 
   .form-actions button {
     width: 100%;
+  }
+
+  .desktop-table {
+    display: none;
   }
 
   .mobile-add-test {
