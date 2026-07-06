@@ -5,11 +5,7 @@ import {
   createBrowserSupabaseClient,
   hasSupabaseConfig,
 } from "@/lib/supabase-browser";
-
-type SelectedClient = {
-  id: string;
-  name: string;
-} | null;
+import type { SelectedClient } from "./selected-client";
 
 type ArchivedMeasurement = {
   id: string;
@@ -23,13 +19,6 @@ type ArchivedMeasurement = {
   delete_reason: string | null;
   deleted_context: string | null;
 };
-
-const SELECTED_CLIENT_CHANGE = "knee:selected-client-change";
-const SELECTED_CLIENT_REQUEST = "knee:selected-client-request";
-
-function selectedClientFromEvent(event: Event): SelectedClient {
-  return (event as CustomEvent<SelectedClient>).detail ?? null;
-}
 
 function isMissingRpcSignature(error: { code?: string; message?: string } | null) {
   return (
@@ -56,8 +45,7 @@ function formatNumber(value: string | null | undefined, suffix = "") {
   return `${number.toFixed(1)}${suffix}`;
 }
 
-export default function ArchivedMeasurements() {
-  const [selectedClient, setSelectedClient] = useState<SelectedClient>(null);
+export default function ArchivedMeasurements({ selectedClient }: { selectedClient: SelectedClient }) {
   const [archivedMeasurements, setArchivedMeasurements] = useState<ArchivedMeasurement[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -92,19 +80,6 @@ export default function ArchivedMeasurements() {
 
     setArchivedMeasurements((data ?? []) as ArchivedMeasurement[]);
   }, [supabase]);
-
-  useEffect(() => {
-    const handleSelectedClientChange = (event: Event) => {
-      setSelectedClient(selectedClientFromEvent(event));
-    };
-
-    window.addEventListener(SELECTED_CLIENT_CHANGE, handleSelectedClientChange);
-    window.dispatchEvent(new Event(SELECTED_CLIENT_REQUEST));
-
-    return () => {
-      window.removeEventListener(SELECTED_CLIENT_CHANGE, handleSelectedClientChange);
-    };
-  }, []);
 
   useEffect(() => {
     if (!selectedClient?.id) {
