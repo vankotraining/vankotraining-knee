@@ -3,6 +3,7 @@
 -- 1. Allow the knee app to list archived measurements through a controlled RPC.
 -- 2. Keep normal table SELECT policies hiding archived records.
 -- 3. Reuse restore_knee_extension_test(uuid) for the actual restore action.
+-- 4. Reload the Supabase API schema cache after creating the RPC.
 --
 -- Run this after supabase/migrations/20260706_knee_rls_policies.sql.
 
@@ -57,5 +58,7 @@ end;
 $$;
 
 grant execute on function public.list_archived_knee_extension_tests(uuid) to authenticated;
+
+notify pgrst, 'reload schema';
 
 commit;
