@@ -2,15 +2,17 @@
 
 Ridici slozka pro projekt `knee.vankotraining.cz`.
 
-## Aktualni stav k 2026-07-06
+## Aktualni faze k 2026-07-06
 
-Projekt je ve fazi overeneho interniho MVP. Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci knee extension mereni.
+Faze: overene interni MVP -> provozni stabilizace.
 
-Odhad dokonceni:
+Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci knee extension mereni. Hlavni uzivatelske workflow je funkcni a prakticky overene. Dalsi prace uz nema byt stavba zakladnich funkci, ale stabilizace, zaloha dat, dokumentace a ochrana proti regresim.
 
-- Interni pracovni nastroj: 93 %
-- Dlouhodobe udrzovatelny produkt: 80 %
-- Celkove MVP: 92-93 %
+## Odhad dokonceni
+
+- Interni pracovni nastroj: 94 %
+- Dlouhodobe udrzovatelny produkt: 84 %
+- Celkove MVP: 92 %
 
 ## Aktualni rozhodnuti
 
@@ -20,6 +22,7 @@ Odhad dokonceni:
 - Stack je Next.js + Supabase.
 - Data klientu mohou byt ve sdilene Supabase databazi, ale kod aplikaci se nemicha.
 - Mazani mereni a klientu je resene jako archivace/soft delete, ne fyzicke smazani.
+- Archivace a obnova jsou stabilizovane pres React stav, ne pres DOM/select.
 - Vypocetni logika knee metrik je presunuta do `src/lib/knee-metrics.ts` a kryta prvnim smoke-testem.
 
 ## Hotovo
@@ -50,17 +53,19 @@ Odhad dokonceni:
 - Obnova mereni funguje.
 - Archivace klienta funguje.
 - Obnova klienta funguje.
+- Archivovany klient se neukazuje v aktivnim seznamu.
 - Mobilni zobrazeni detailu mereni uz neni prekryte spodnim tlacitkem.
 - Vypocty na testovacich hodnotach sedi: 82 kg, 33 cm, L 35 kg, P 42 kg, L 1.38 Nm/kg, P 1.66 Nm/kg, asymetrie 16.7 %, cilova sila 76.0 kg.
 
-## Aktualni technicky dluh
+## Co jeste chybi do hotoveho projektu
 
-- Cast archivace a obnovy je napojena pres samostatne pomocne komponenty kolem hlavniho dashboardu.
-- `ArchivedMeasurements`, `ClientDeletion` a `ButtonGuards` pouzivaji DOM pozorovani nebo oddeleny stav misto jednotne hlavni React logiky.
-- Migrace jsou historicky spoustene casto rucne pres Supabase SQL editor.
-- Chybi jednoduchy export/zaloha dat.
-- Chybi kratka provozni dokumentace pro obnovu, migrace a kontrolu produkce.
-- Automaticke testy jsou zatim jen zakladni smoke-test vypoctu, ne UI/regresni testy cele aplikace.
+1. Export/zaloha dat.
+2. Provozni dokumentace: migrace, obnova, kontrola produkce, env promenne.
+3. Uklid nepouzivaneho souboru `ButtonGuards`, pokud se potvrdi, ze uz neni potreba.
+4. Odstraneni legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
+5. Lepsi stavove hlasky po archivaci/obnove bez reloadu stranky.
+6. Rozsireni smoke-testu z vypoctu na zakladni UI/regresni toky.
+7. Volitelne: interpretacni karta klienta - norma, deficit kg, asymetrie, prakticke doporuceni.
 
 ## Hranice projektu
 
@@ -85,11 +90,10 @@ flowchart TD
 
 ## Nejblizsi priorita
 
-1. Stabilizovat architekturu archivace a obnovy bez zmeny chovani pro uzivatele.
-2. Presunout archivaci/obnovu z pomocnych komponent do jednotnejsi React logiky.
-3. Pridat jednoduchy export/zaloha dat.
-4. Pridat kratkou provozni dokumentaci pro migrace, obnovu a kontrolu produkce.
+1. Pridat jednoduchy export/zaloha dat.
+2. Dopsat provozni dokumentaci.
+3. Rozsirit smoke-testy tak, aby hlidaly hlavni regresni rizika.
 
 ## Pravidlo pro dalsi vyvoj
 
-Nepridavat dalsi vetsi funkce, dokud nebude archivace a obnova technicky uklizena. Aplikace uz funkcne staci na praci; dalsi hodnota ted lezi ve spolehlivosti a udrzitelnosti.
+Nepridavat dalsi velke produktove funkce, dokud nebude vyresena zaloha dat a provozni dokumentace. Aplikace uz funkcne staci na praci; dalsi hodnota ted lezi ve spolehlivosti a udrzitelnosti.
