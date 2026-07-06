@@ -90,13 +90,31 @@ as $$
 declare
   changed_row_id uuid;
   changed_athlete_id uuid;
+  old_payload jsonb := null;
+  new_payload jsonb := null;
 begin
-  changed_row_id := coalesce(new.id, old.id);
+  if tg_op = 'DELETE' then
+    changed_row_id := old.id;
+    old_payload := to_jsonb(old);
 
-  if tg_table_name = 'athletes' then
-    changed_athlete_id := coalesce(new.id, old.id);
+    if tg_table_name = 'athletes' then
+      changed_athlete_id := old.id;
+    else
+      changed_athlete_id := old.athlete_id;
+    end if;
   else
-    changed_athlete_id := coalesce(new.athlete_id, old.athlete_id);
+    changed_row_id := new.id;
+    new_payload := to_jsonb(new);
+
+    if tg_op = 'UPDATE' then
+      old_payload := to_jsonb(old);
+    end if;
+
+    if tg_table_name = 'athletes' then
+      changed_athlete_id := new.id;
+    else
+      changed_athlete_id := new.athlete_id;
+    end if;
   end if;
 
   insert into public.knee_audit_log (
@@ -112,12 +130,16 @@ begin
     tg_table_name,
     changed_row_id,
     changed_athlete_id,
-    case when tg_op in ('UPDATE', 'DELETE') then to_jsonb(old) else null end,
-    case when tg_op in ('INSERT', 'UPDATE') then to_jsonb(new) else null end,
+    old_payload,
+    new_payload,
     auth.uid()
   );
 
-  return coalesce(new, old);
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+
+  return new;
 end;
 $$;
 
