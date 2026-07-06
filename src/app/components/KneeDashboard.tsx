@@ -69,6 +69,17 @@ type TestForm = {
   note: string;
 };
 
+type LegNormGap = {
+  key: "left" | "right";
+  label: string;
+  forceKg: number | null;
+  nmPerKg: number | null;
+  targetForceKg: number | null;
+  missingKg: number | null;
+  missingPct: number | null;
+  isDeficit: boolean;
+};
+
 const GRAVITY = 9.80665;
 const NORM_NM_PER_KG = 3;
 
@@ -209,6 +220,43 @@ function getNormGap(test: KneeExtensionTest | null | undefined) {
   };
 }
 
+function getLegNormGaps(test: KneeExtensionTest): LegNormGap[] {
+  const targetKg = targetForceKg(test.shin_length_cm, test.body_weight_kg);
+  const legs = [
+    {
+      key: "left" as const,
+      label: "Leva noha",
+      forceKg: test.left_force_kg,
+      nmPerKg: test.left_nm_per_kg,
+    },
+    {
+      key: "right" as const,
+      label: "Prava noha",
+      forceKg: test.right_force_kg,
+      nmPerKg: test.right_nm_per_kg,
+    },
+  ];
+
+  return legs.map((leg) => {
+    const missingKg =
+      targetKg === null || leg.forceKg === null
+        ? null
+        : Math.max(0, targetKg - leg.forceKg);
+    const missingPct =
+      leg.nmPerKg === null
+        ? null
+        : Math.max(0, ((NORM_NM_PER_KG - leg.nmPerKg) / NORM_NM_PER_KG) * 100);
+
+    return {
+      ...leg,
+      targetForceKg: targetKg,
+      missingKg,
+      missingPct,
+      isDeficit: (missingKg ?? 0) > 0 || (missingPct ?? 0) > 0,
+    };
+  });
+}
+
 function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
   const points = tests
     .slice()
@@ -299,6 +347,7 @@ export default function KneeDashboard() {
   const [athleteProfiles, setAthleteProfiles] = useState<AthleteProfile[]>([]);
   const [kneeTests, setKneeTests] = useState<KneeExtensionTest[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState<string | null>(null);
+  const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [athleteForm, setAthleteForm] = useState<AthleteForm>({
     display_name: "",
@@ -451,6 +500,7 @@ export default function KneeDashboard() {
       return;
     }
 
+    setExpandedTestId(null);
     setTestForm((current) => ({
       ...current,
       body_weight_kg:
@@ -641,6 +691,7 @@ export default function KneeDashboard() {
     }
 
     setKneeTests((current) => [data as KneeExtensionTest, ...current]);
+    setExpandedTestId((data as KneeExtensionTest).id);
     setTestForm((current) => ({
       ...current,
       test_date: todayIsoDate(),
@@ -965,21 +1016,103 @@ export default function KneeDashboard() {
                           <th>Asym</th>
                           <th>Slabsi</th>
                           <th>Vek</th>
+                          <th>Detail</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedAthlete.tests.map((test) => (
-                          <tr key={test.id}>
-                            <td>{formatDate(test.test_date)}</td>
-                            <td>{formatNumber(test.right_force_kg, 1)}</td>
-                            <td>{formatNumber(test.left_force_kg, 1)}</td>
-                            <td>{formatNumber(test.right_nm_per_kg, 2)}</td>
-                            <td>{formatNumber(test.left_nm_per_kg, 2)}</td>
-                            <td>{formatPercent(test.asymmetry_pct)}</td>
-                            <td>{formatSide(test.weaker_side)}</td>
-                            <td>{formatNumber(test.age_at_test_years, 1)}</td>
-                          </tr>
-                        ))}
+                        {selectedAthlete.tests.map((test) => {
+                          const legGaps = getLegNormGaps(test);
+                          const deficitLegs = legGaps.filter((leg) => leg.isDeficit);
+                          const isExpanded = expandedTestId === test.id;
+
+                          return (
+                            <>
+                              <tr key={test.id}>
+                                <td>{formatDate(test.test_date)}</td>
+                                <td>{formatNumber(test.right_force_kg, 1)}</td>
+                                <td>{formatNumber(test.left_force_kg, 1)}</td>
+                                <td>{formatNumber(test.right_nm_per_kg, 2)}</td>
+                                <td>{formatNumber(test.left_nm_per_kg, 2)}</td>
+                                <td>{formatPercent(test.asymmetry_pct)}</td>
+                                <td>{formatSide(test.weaker_side)}</td>
+                                <td>{formatNumber(test.age_at_test_years, 1)}</td>
+                                <td>
+                                  <button
+                                    className="detail-button"
+                                    type="button"
+                                    onClick={() =>
+                                      setExpandedTestId(isExpanded ? null : test.id)
+                                    }
+                                  >
+                                    {isExpanded ? "Zavrit" : "Detail"}
+                                  </button>
+                                </td>
+                              </tr>
+                              {isExpanded ? (
+                                <tr className="expanded-row" key={`${test.id}-detail`}>
+                                  <td colSpan={9}>
+                                    <div className="test-detail-header">
+                                      <div>
+                                        <strong>Detail testu {formatDate(test.test_date)}</strong>
+                                        <p>
+                                          Norma {formatNumber(NORM_NM_PER_KG, 1)} Nm/kg
+                                          {deficitLegs.length > 0
+                                            ? ` - deficit: ${deficitLegs.map((leg) => leg.label.toLowerCase()).join(", ")}`
+                                            : " - obe nohy splnuji normu"}
+                                        </p>
+                                      </div>
+                                      <span className="pill">
+                                        cil {formatNumber(legGaps[0]?.targetForceKg, 1, " kg")}
+                                      </span>
+                                    </div>
+                                    <div className="test-detail-grid">
+                                      {legGaps.map((leg) => (
+                                        <article
+                                          className={
+                                            leg.isDeficit
+                                              ? "leg-detail-card deficit"
+                                              : "leg-detail-card ok"
+                                          }
+                                          key={leg.key}
+                                        >
+                                          <div className="leg-detail-title">
+                                            <h3>{leg.label}</h3>
+                                            <span>{leg.isDeficit ? "Pod normou" : "Norma splnena"}</span>
+                                          </div>
+                                          <dl>
+                                            <div>
+                                              <dt>Aktualne</dt>
+                                              <dd>{formatNumber(leg.forceKg, 1, " kg")}</dd>
+                                            </div>
+                                            <div>
+                                              <dt>Nm/kg</dt>
+                                              <dd>{formatNumber(leg.nmPerKg, 2)}</dd>
+                                            </div>
+                                            <div>
+                                              <dt>Cilova sila</dt>
+                                              <dd>{formatNumber(leg.targetForceKg, 1, " kg")}</dd>
+                                            </div>
+                                            <div>
+                                              <dt>Chybi kg</dt>
+                                              <dd>{formatNumber(leg.missingKg, 1, " kg")}</dd>
+                                            </div>
+                                            <div>
+                                              <dt>Chybi %</dt>
+                                              <dd>{formatPercent(leg.missingPct)}</dd>
+                                            </div>
+                                          </dl>
+                                        </article>
+                                      ))}
+                                    </div>
+                                    {test.note ? (
+                                      <p className="test-note">Poznamka: {test.note}</p>
+                                    ) : null}
+                                  </td>
+                                </tr>
+                              ) : null}
+                            </>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
