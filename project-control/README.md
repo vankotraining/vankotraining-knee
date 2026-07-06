@@ -4,13 +4,13 @@ Ridici slozka pro projekt `knee.vankotraining.cz`.
 
 ## Aktualni stav k 2026-07-06
 
-Projekt je ve fazi funkcniho interniho MVP. Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci knee extension mereni.
+Projekt je ve fazi overeneho interniho MVP. Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci knee extension mereni.
 
 Odhad dokonceni:
 
-- Interni pracovni nastroj: 92 %
+- Interni pracovni nastroj: 93 %
 - Dlouhodobe udrzovatelny produkt: 80 %
-- Celkove MVP: 91-92 %
+- Celkove MVP: 92-93 %
 
 ## Aktualni rozhodnuti
 
@@ -35,11 +35,23 @@ Odhad dokonceni:
 - Obnova archivovaneho mereni funguje.
 - Archivace celeho klienta funguje.
 - Obnova archivovaneho klienta funguje.
+- Archivovany klient neni v aktivnim seznamu.
 - Panel `Archiv klientu` je na webu a prakticky overen.
 - Mobilni pouzitelnost je vyrazne lepsi nez prvni verze.
 - Mobilni detail mereni ma bezpecne spodni odsazeni proti fixed tlacitku `+ Pridat mereni`.
 - Graf ukazuje levou, pravou a asymetrii s moznosti skryt jednotlive serie.
 - Smoke-test overuje hodnoty pro 82 kg, 33 cm, levou silu 35 kg a pravou silu 42 kg.
+
+## Prakticky overeno
+
+- Pridani mereni funguje.
+- Editace mereni funguje.
+- Archivace mereni funguje.
+- Obnova mereni funguje.
+- Archivace klienta funguje.
+- Obnova klienta funguje.
+- Mobilni zobrazeni detailu mereni uz neni prekryte spodnim tlacitkem.
+- Vypocty na testovacich hodnotach sedi: 82 kg, 33 cm, L 35 kg, P 42 kg, L 1.38 Nm/kg, P 1.66 Nm/kg, asymetrie 16.7 %, cilova sila 76.0 kg.
 
 ## Aktualni technicky dluh
 
@@ -73,10 +85,10 @@ flowchart TD
 
 ## Nejblizsi priorita
 
-1. Overit po deployi mobilni detail mereni bez prekryti spodnim tlacitkem.
-2. Rucne projit hlavni workflow: pridani, editace, archivace a obnova mereni i klienta.
-3. Stabilizovat architekturu archivace a obnovy bez zmeny chovani pro uzivatele.
-4. Po stabilizaci pridat jednoduchy export/zaloha dat.
+1. Stabilizovat architekturu archivace a obnovy bez zmeny chovani pro uzivatele.
+2. Presunout archivaci/obnovu z pomocnych komponent do jednotnejsi React logiky.
+3. Pridat jednoduchy export/zaloha dat.
+4. Pridat kratkou provozni dokumentaci pro migrace, obnovu a kontrolu produkce.
 
 ## Pravidlo pro dalsi vyvoj
 
