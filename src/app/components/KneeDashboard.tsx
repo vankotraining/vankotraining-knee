@@ -121,24 +121,18 @@ function nameKey(value: string) {
 }
 
 function calculateAge(birthDate: string | null | undefined, testDate: string) {
-  if (!birthDate) {
-    return null;
-  }
+  if (!birthDate) return null;
 
   const birth = new Date(`${birthDate}T00:00:00`);
   const test = new Date(`${testDate}T00:00:00`);
 
-  if (Number.isNaN(birth.getTime()) || Number.isNaN(test.getTime())) {
-    return null;
-  }
+  if (Number.isNaN(birth.getTime()) || Number.isNaN(test.getTime())) return null;
 
   return (test.getTime() - birth.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
 }
 
 function forceKgToNmPerKg(forceKg: number, shinLengthCm: number, bodyWeightKg: number) {
-  if (forceKg <= 0 || shinLengthCm <= 0 || bodyWeightKg <= 0) {
-    return null;
-  }
+  if (forceKg <= 0 || shinLengthCm <= 0 || bodyWeightKg <= 0) return null;
 
   return (forceKg * GRAVITY * (shinLengthCm / 100)) / bodyWeightKg;
 }
@@ -152,60 +146,38 @@ function targetForceKg(shinLengthCm: number | null, bodyWeightKg: number | null)
 }
 
 function formatDate(value: string | null | undefined) {
-  if (!value) {
-    return "-";
-  }
+  if (!value) return "-";
 
   const date = new Date(`${value}T00:00:00`);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
+  if (Number.isNaN(date.getTime())) return value;
 
   return new Intl.DateTimeFormat("cs-CZ").format(date);
 }
 
 function formatNumber(value: number | null | undefined, decimals = 1, suffix = "") {
-  if (value === null || value === undefined || Number.isNaN(value)) {
-    return "-";
-  }
+  if (value === null || value === undefined || Number.isNaN(value)) return "-";
 
   return `${value.toFixed(decimals)}${suffix}`;
 }
 
 function getAsymmetryValue(value: number | null | undefined) {
-  if (value === null || value === undefined || Number.isNaN(value)) {
-    return null;
-  }
+  if (value === null || value === undefined || Number.isNaN(value)) return null;
 
   return Math.abs(value) <= 1 ? Math.abs(value) * 100 : Math.abs(value);
 }
 
 function formatPercent(value: number | null | undefined) {
   const normalized = getAsymmetryValue(value);
-
-  if (normalized === null) {
-    return "-";
-  }
+  if (normalized === null) return "-";
 
   return `${normalized.toFixed(1)} %`;
 }
 
 function getAsymmetryTone(value: number | null | undefined) {
   const normalized = getAsymmetryValue(value);
-
-  if (normalized === null) {
-    return "unknown";
-  }
-
-  if (normalized < 10) {
-    return "ok";
-  }
-
-  if (normalized <= 20) {
-    return "warning";
-  }
-
+  if (normalized === null) return "unknown";
+  if (normalized < 10) return "ok";
+  if (normalized <= 20) return "warning";
   return "problem";
 }
 
@@ -214,18 +186,9 @@ function getAsymmetryClass(value: number | null | undefined) {
 }
 
 function formatSide(value: string | null | undefined) {
-  if (value === "right") {
-    return "Prava";
-  }
-
-  if (value === "left") {
-    return "Leva";
-  }
-
-  if (value === "none") {
-    return "Bez rozdilu";
-  }
-
+  if (value === "right") return "Prava";
+  if (value === "left") return "Leva";
+  if (value === "none") return "Bez rozdilu";
   return "-";
 }
 
@@ -241,9 +204,7 @@ function testToForm(test: KneeExtensionTest): TestForm {
 }
 
 function getNormGap(test: KneeExtensionTest | null | undefined) {
-  if (!test) {
-    return null;
-  }
+  if (!test) return null;
 
   const leftNm = test.left_nm_per_kg ?? null;
   const rightNm = test.right_nm_per_kg ?? null;
@@ -384,9 +345,7 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
         test.asymmetry_pct !== null,
     );
 
-  if (points.length === 0) {
-    return <p className="status">Zatim tu neni zadny test pro graf.</p>;
-  }
+  if (points.length === 0) return <p className="status">Zatim tu neni zadny test pro graf.</p>;
 
   const width = 560;
   const height = 250;
@@ -624,12 +583,16 @@ export default function KneeDashboard() {
   }, [athleteOverviews, query]);
 
   const selectedAthlete = useMemo(
-    () => filteredAthletes.find((athlete) => athlete.id === selectedAthleteId) ?? filteredAthletes[0] ?? athleteOverviews[0] ?? null,
-    [athleteOverviews, filteredAthletes, selectedAthleteId],
+    () => filteredAthletes.find((athlete) => athlete.id === selectedAthleteId) ?? filteredAthletes[0] ?? null,
+    [filteredAthletes, selectedAthleteId],
   );
 
   useEffect(() => {
-    if (!selectedAthlete) return;
+    if (!selectedAthlete) {
+      setExpandedTestId(null);
+      setEditingTestId(null);
+      return;
+    }
 
     setExpandedTestId(null);
     setEditingTestId(null);
@@ -675,6 +638,7 @@ export default function KneeDashboard() {
   }
 
   function openCreateTest() {
+    if (!selectedAthlete) return;
     setActivePanel(activePanel === "test" ? null : "test");
     setMobileTab("measurements");
   }
@@ -908,12 +872,7 @@ export default function KneeDashboard() {
     );
   }
 
-  function renderMeasurementDetail(
-    test: KneeExtensionTest,
-    legGaps: LegNormGap[],
-    deficitLegs: LegNormGap[],
-    isEditing: boolean,
-  ) {
+  function renderMeasurementDetail(test: KneeExtensionTest, legGaps: LegNormGap[], deficitLegs: LegNormGap[], isEditing: boolean) {
     if (isEditing) {
       return (
         <div>
@@ -965,6 +924,16 @@ export default function KneeDashboard() {
           ))}
         </div>
         {test.note ? <p className="test-note">Poznamka: {test.note}</p> : null}
+      </>
+    );
+  }
+
+  function renderMeasurementActions(test: KneeExtensionTest, isExpanded: boolean, isEditing: boolean, isDeleting: boolean) {
+    return (
+      <>
+        <button className="detail-button" type="button" onClick={() => setExpandedTestId(isExpanded && !isEditing ? null : test.id)}>{isExpanded && !isEditing ? "Zavrit" : "Detail"}</button>
+        <button className="detail-button" disabled={isEditing} type="button" onClick={() => openEditTest(test)}>{isEditing ? "Odemceno" : "Upravit"}</button>
+        <button className="detail-button danger-button" disabled={isDeleting} type="button" onClick={() => handleDeleteTest(test)}>{isDeleting ? "Mazu..." : "Smazat"}</button>
       </>
     );
   }
@@ -1180,9 +1149,7 @@ export default function KneeDashboard() {
                               <div><dt>Prava Nm/kg</dt><dd>{formatNumber(test.right_nm_per_kg, 2)}</dd></div>
                             </dl>
                             <div className="measurement-actions">
-                              <button className="detail-button" type="button" onClick={() => setExpandedTestId(isExpanded && !isEditing ? null : test.id)}>{isExpanded && !isEditing ? "Zavrit" : "Detail"}</button>
-                              <button className="detail-button" type="button" onClick={() => openEditTest(test)}>{isEditing ? "Odemceno" : "Upravit"}</button>
-                              <button className="detail-button danger-button" disabled={isDeleting} type="button" onClick={() => handleDeleteTest(test)}>{isDeleting ? "Mazu..." : "Smazat"}</button>
+                              {renderMeasurementActions(test, isExpanded, isEditing, isDeleting)}
                             </div>
                             {isExpanded || isEditing ? (
                               <div className="measurement-detail">
@@ -1220,9 +1187,7 @@ export default function KneeDashboard() {
                                   <td>{formatNumber(test.age_at_test_years, 1)}</td>
                                   <td>
                                     <div className="table-actions">
-                                      <button className="detail-button" type="button" onClick={() => setExpandedTestId(isExpanded && !isEditing ? null : test.id)}>{isExpanded && !isEditing ? "Zavrit" : "Detail"}</button>
-                                      <button className="detail-button" type="button" onClick={() => openEditTest(test)}>{isEditing ? "Odemceno" : "Upravit"}</button>
-                                      <button className="detail-button danger-button" disabled={isDeleting} type="button" onClick={() => handleDeleteTest(test)}>{isDeleting ? "Mazu..." : "Smazat"}</button>
+                                      {renderMeasurementActions(test, isExpanded, isEditing, isDeleting)}
                                     </div>
                                   </td>
                                 </tr>
