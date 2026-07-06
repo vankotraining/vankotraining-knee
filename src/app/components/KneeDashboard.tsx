@@ -10,6 +10,7 @@ import {
 
 type LoadState = "idle" | "ready" | "error";
 type ActivePanel = "athlete" | "test" | null;
+type MobileTab = "measurements" | "compare" | "client";
 
 type Athlete = {
   id: string;
@@ -134,11 +135,7 @@ function calculateAge(birthDate: string | null | undefined, testDate: string) {
   return (test.getTime() - birth.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
 }
 
-function forceKgToNmPerKg(
-  forceKg: number,
-  shinLengthCm: number,
-  bodyWeightKg: number,
-) {
+function forceKgToNmPerKg(forceKg: number, shinLengthCm: number, bodyWeightKg: number) {
   if (forceKg <= 0 || shinLengthCm <= 0 || bodyWeightKg <= 0) {
     return null;
   }
@@ -545,6 +542,7 @@ export default function KneeDashboard() {
   const [selectedAthleteId, setSelectedAthleteId] = useState<string | null>(null);
   const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
+  const [mobileTab, setMobileTab] = useState<MobileTab>("measurements");
   const [editingTestId, setEditingTestId] = useState<string | null>(null);
   const [deletingTestId, setDeletingTestId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -663,11 +661,22 @@ export default function KneeDashboard() {
     setEditTestForm(testToForm(test));
     setExpandedTestId(test.id);
     setActivePanel(null);
+    setMobileTab("measurements");
     setMessage("");
   }
 
   function closeEditTest() {
     setEditingTestId(null);
+  }
+
+  function openCreateAthlete() {
+    setActivePanel(activePanel === "athlete" ? null : "athlete");
+    setMobileTab("client");
+  }
+
+  function openCreateTest() {
+    setActivePanel(activePanel === "test" ? null : "test");
+    setMobileTab("measurements");
   }
 
   async function handleMagicLink() {
@@ -725,6 +734,7 @@ export default function KneeDashboard() {
     setSelectedAthleteId((athlete as Athlete).id);
     setAthleteForm({ display_name: "", birth_date: "", body_weight_kg: "", shin_length_cm: "33", note: "" });
     setActivePanel(null);
+    setMobileTab("measurements");
     setMessage("Klient je zalozeny.");
   }
 
@@ -758,6 +768,7 @@ export default function KneeDashboard() {
     setExpandedTestId((data as KneeExtensionTest).id);
     setTestForm((current) => ({ ...current, test_date: todayIsoDate(), right_force_kg: "", left_force_kg: "", note: "" }));
     setActivePanel(null);
+    setMobileTab("measurements");
     setMessage("Knee extension test je ulozeny.");
   }
 
@@ -791,6 +802,7 @@ export default function KneeDashboard() {
     setKneeTests((current) => current.map((test) => test.id === editingTestId ? (data as KneeExtensionTest) : test));
     setExpandedTestId(editingTestId);
     setEditingTestId(null);
+    setMobileTab("measurements");
     setMessage("Knee extension test je upraveny.");
   }
 
@@ -815,6 +827,24 @@ export default function KneeDashboard() {
     if (expandedTestId === test.id) setExpandedTestId(null);
     if (editingTestId === test.id) setEditingTestId(null);
     setMessage("Knee extension test je smazany.");
+  }
+
+  function renderAthleteForm() {
+    return (
+      <form className="stack-form compact-form" onSubmit={handleCreateAthlete}>
+        <label>Jmeno<input value={athleteForm.display_name} onChange={(event) => updateAthleteForm("display_name", event.target.value)} placeholder="Milos Merta" required /></label>
+        <label>Datum narozeni<input type="date" value={athleteForm.birth_date} onChange={(event) => updateAthleteForm("birth_date", event.target.value)} /></label>
+        <div className="form-row">
+          <label>Vaha kg<input inputMode="decimal" value={athleteForm.body_weight_kg} onChange={(event) => updateAthleteForm("body_weight_kg", event.target.value)} placeholder="82" /></label>
+          <label>Bercova paka cm<input inputMode="decimal" value={athleteForm.shin_length_cm} onChange={(event) => updateAthleteForm("shin_length_cm", event.target.value)} placeholder="33" /></label>
+        </div>
+        <label>Poznamka<textarea value={athleteForm.note} onChange={(event) => updateAthleteForm("note", event.target.value)} placeholder="Interni poznamka" /></label>
+        <div className="form-actions">
+          <button disabled={isSavingAthlete}>{isSavingAthlete ? "Ukladam..." : "Zalozit klienta"}</button>
+          <button className="ghost-button" type="button" onClick={() => setActivePanel(null)}>Zrusit</button>
+        </div>
+      </form>
+    );
   }
 
   function renderTestForm({
@@ -870,11 +900,72 @@ export default function KneeDashboard() {
           Poznamka k testu
           <textarea value={form.note} onChange={(event) => onChange("note", event.target.value)} placeholder="Bolest, setup, poznamka k mereni..." />
         </label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+        <div className="form-actions">
           <button disabled={isSaving}>{isSaving ? savingLabel : submitLabel}</button>
           {onCancel ? <button className="ghost-button" type="button" onClick={onCancel}>Zrusit</button> : null}
         </div>
       </form>
+    );
+  }
+
+  function renderMeasurementDetail(
+    test: KneeExtensionTest,
+    legGaps: LegNormGap[],
+    deficitLegs: LegNormGap[],
+    isEditing: boolean,
+  ) {
+    if (isEditing) {
+      return (
+        <div>
+          <div className="test-detail-header">
+            <div>
+              <strong>Upravit mereni {formatDate(test.test_date)}</strong>
+              <p>Odemceno: datum, vaha pri mereni, bercova paka a namerena sila leve/prave nohy.</p>
+            </div>
+            <span className="pill">editace</span>
+          </div>
+          {renderTestForm({
+            form: editTestForm,
+            onChange: updateEditTestForm,
+            onSubmit: handleUpdateTest,
+            isSaving: isUpdatingTest,
+            submitLabel: "Ulozit zmeny",
+            savingLabel: "Ukladam zmeny...",
+            onCancel: closeEditTest,
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <div className="test-detail-header">
+          <div>
+            <strong>Detail testu {formatDate(test.test_date)}</strong>
+            <p>
+              Norma {formatNumber(NORM_NM_PER_KG, 1)} Nm/kg{" · asymetrie "}
+              <span className={getAsymmetryClass(test.asymmetry_pct)}>{formatPercent(test.asymmetry_pct)}</span>
+              {deficitLegs.length > 0 ? ` · deficit: ${deficitLegs.map((leg) => leg.label.toLowerCase()).join(", ")}` : " · obe nohy splnuji normu"}
+            </p>
+          </div>
+          <span className="pill">cil {formatNumber(legGaps[0]?.targetForceKg, 1, " kg")}</span>
+        </div>
+        <div className="test-detail-grid">
+          {legGaps.map((leg) => (
+            <article className={leg.isDeficit ? "leg-detail-card deficit" : "leg-detail-card ok"} key={leg.key}>
+              <div className="leg-detail-title"><h3>{leg.label}</h3><span>{leg.isDeficit ? "Pod normou" : "Norma splnena"}</span></div>
+              <dl>
+                <div><dt>Aktualne</dt><dd>{formatNumber(leg.forceKg, 1, " kg")}</dd></div>
+                <div><dt>Nm/kg</dt><dd>{formatNumber(leg.nmPerKg, 2)}</dd></div>
+                <div><dt>Cilova sila</dt><dd>{formatNumber(leg.targetForceKg, 1, " kg")}</dd></div>
+                <div><dt>Chybi kg</dt><dd>{formatNumber(leg.missingKg, 1, " kg")}</dd></div>
+                <div><dt>Chybi %</dt><dd>{formatPercent(leg.missingPct)}</dd></div>
+              </dl>
+            </article>
+          ))}
+        </div>
+        {test.note ? <p className="test-note">Poznamka: {test.note}</p> : null}
+      </>
     );
   }
 
@@ -895,7 +986,7 @@ export default function KneeDashboard() {
       <header className="topbar">
         <div>
           <p className="eyebrow">knee.vankotraining.cz</p>
-          <h1>Knee extension dashboard</h1>
+          <h1>Knee extension</h1>
         </div>
         {session ? <button className="ghost-button" onClick={handleSignOut}>Odhlasit</button> : null}
       </header>
@@ -921,11 +1012,70 @@ export default function KneeDashboard() {
             <div className="metric"><span>Posledni test</span><strong>{formatDate(latestTestDate)}</strong></div>
           </section>
 
+          <section className="mobile-workbench">
+            <div className="mobile-client-toolbar">
+              <label className="mobile-search">Hledat<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Jmeno klienta" /></label>
+              <button className="mobile-small-action" type="button" onClick={openCreateAthlete}>+ Klient</button>
+              <label className="mobile-client-select">
+                Klient
+                <select value={selectedAthlete?.id ?? ""} onChange={(event) => setSelectedAthleteId(event.target.value)}>
+                  {filteredAthletes.length === 0 ? <option value="">Zadny vysledek</option> : null}
+                  {filteredAthletes.map((athlete) => <option key={athlete.id} value={athlete.id}>{athlete.display_name}</option>)}
+                </select>
+              </label>
+            </div>
+
+            {selectedAthlete ? (
+              <div className="mobile-client-summary">
+                <div>
+                  <span>Klient</span>
+                  <strong>{selectedAthlete.display_name}</strong>
+                </div>
+                <div>
+                  <span>Posledni</span>
+                  <strong>{formatDate(selectedAthlete.latestTest?.test_date)}</strong>
+                </div>
+                <div>
+                  <span>Asym</span>
+                  <strong><span className={getAsymmetryClass(selectedAthlete.latestTest?.asymmetry_pct)}>{formatPercent(selectedAthlete.latestTest?.asymmetry_pct)}</span></strong>
+                </div>
+                <div>
+                  <span>Chybi</span>
+                  <strong>{formatPercent(latestNormGap?.missingPct)}</strong>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mobile-tabs" role="tablist" aria-label="Mobilni zobrazeni">
+              <button className={mobileTab === "measurements" ? "mobile-tab active" : "mobile-tab"} type="button" onClick={() => setMobileTab("measurements")}>Mereni</button>
+              <button className={mobileTab === "compare" ? "mobile-tab active" : "mobile-tab"} type="button" onClick={() => setMobileTab("compare")}>Porovnani</button>
+              <button className={mobileTab === "client" ? "mobile-tab active" : "mobile-tab"} type="button" onClick={() => setMobileTab("client")}>Klient</button>
+            </div>
+
+            {loadState === "idle" ? <p className="status">Nacitam knee data...</p> : null}
+            {loadState === "error" ? <p className="status error">{message}</p> : null}
+            {loadState === "ready" && filteredAthletes.length === 0 ? <p className="status">Zatim tu neni zadny sportovec pro tento filtr.</p> : null}
+
+            {activePanel === "athlete" ? (
+              <section className="panel mobile-form-panel">
+                <div className="panel-header"><div><p className="eyebrow">Novy klient</p><h2>Zalozit klienta</h2></div></div>
+                {renderAthleteForm()}
+              </section>
+            ) : null}
+
+            {activePanel === "test" && selectedAthlete ? (
+              <section className="panel mobile-form-panel">
+                <div className="panel-header"><div><p className="eyebrow">Nove mereni</p><h2>{selectedAthlete.display_name}</h2></div></div>
+                {renderTestForm({ form: testForm, onChange: updateTestForm, onSubmit: handleCreateTest, isSaving: isSavingTest, submitLabel: "Ulozit test", savingLabel: "Ukladam...", onCancel: () => setActivePanel(null) })}
+              </section>
+            ) : null}
+          </section>
+
           <section className="dashboard-layout">
-            <section className="panel control-panel athlete-picker-panel">
+            <section className="panel control-panel athlete-picker-panel desktop-control">
               <div className="panel-header">
                 <div>
-                  <p className="eyebrow">Sportovec</p>
+                  <p className="eyebrow">Klient</p>
                   <h2>Vyber klienta</h2>
                 </div>
                 <span className="pill">{filteredAthletes.length}</span>
@@ -955,159 +1105,147 @@ export default function KneeDashboard() {
               ) : null}
             </section>
 
-            <section className="panel control-panel action-panel">
+            <section className="panel control-panel action-panel desktop-control">
               <div className="panel-header">
-                <div><p className="eyebrow">Rychle akce</p><h2>Zadat data</h2></div>
+                <div><p className="eyebrow">Pracovni akce</p><h2>Mereni a klienti</h2></div>
               </div>
               <div className="quick-actions">
-                <button className={activePanel === "athlete" ? "" : "ghost-button"} type="button" onClick={() => setActivePanel(activePanel === "athlete" ? null : "athlete")}>+ Novy klient</button>
-                <button className={activePanel === "test" ? "" : "ghost-button"} disabled={!selectedAthlete} type="button" onClick={() => setActivePanel(activePanel === "test" ? null : "test")}>+ Nove mereni</button>
+                <button className={activePanel === "test" ? "" : "ghost-button"} disabled={!selectedAthlete} type="button" onClick={openCreateTest}>+ Nove mereni</button>
+                <button className={activePanel === "athlete" ? "" : "ghost-button"} type="button" onClick={openCreateAthlete}>+ Novy klient</button>
               </div>
 
-              {activePanel === "athlete" ? (
-                <form className="stack-form compact-form" onSubmit={handleCreateAthlete}>
-                  <label>Jmeno<input value={athleteForm.display_name} onChange={(event) => updateAthleteForm("display_name", event.target.value)} placeholder="Milos Merta" required /></label>
-                  <label>Datum narozeni<input type="date" value={athleteForm.birth_date} onChange={(event) => updateAthleteForm("birth_date", event.target.value)} /></label>
-                  <div className="form-row">
-                    <label>Vaha kg<input inputMode="decimal" value={athleteForm.body_weight_kg} onChange={(event) => updateAthleteForm("body_weight_kg", event.target.value)} placeholder="82" /></label>
-                    <label>Bercova paka cm<input inputMode="decimal" value={athleteForm.shin_length_cm} onChange={(event) => updateAthleteForm("shin_length_cm", event.target.value)} placeholder="33" /></label>
-                  </div>
-                  <label>Poznamka<textarea value={athleteForm.note} onChange={(event) => updateAthleteForm("note", event.target.value)} placeholder="Interni poznamka" /></label>
-                  <button disabled={isSavingAthlete}>{isSavingAthlete ? "Ukladam..." : "Zalozit klienta"}</button>
-                </form>
-              ) : null}
+              {activePanel === "athlete" ? renderAthleteForm() : null}
 
               {activePanel === "test" && selectedAthlete
-                ? renderTestForm({ form: testForm, onChange: updateTestForm, onSubmit: handleCreateTest, isSaving: isSavingTest, submitLabel: "Ulozit test", savingLabel: "Ukladam..." })
+                ? renderTestForm({ form: testForm, onChange: updateTestForm, onSubmit: handleCreateTest, isSaving: isSavingTest, submitLabel: "Ulozit test", savingLabel: "Ukladam...", onCancel: () => setActivePanel(null) })
                 : null}
 
-              {!activePanel ? <p className="status compact-hint">Vyber sportovce vlevo. Nove mereni zadas tady. Hotove mereni upravis primo u daneho radku v tabulce.</p> : null}
+              {!activePanel ? <p className="status compact-hint">Vyber klienta, pridej mereni a hotova mereni uprav primo v historii.</p> : null}
             </section>
 
             <section className="panel detail-panel">
               <div className="panel-header">
-                <div><p className="eyebrow">Knee extension</p><h2>{selectedAthlete ? selectedAthlete.display_name : "Vyber sportovce"}</h2></div>
+                <div><p className="eyebrow">Knee extension</p><h2>{selectedAthlete ? selectedAthlete.display_name : "Vyber klienta"}</h2></div>
                 <span className="pill">{selectedAthlete?.tests.length ?? 0} testu</span>
               </div>
 
               {selectedAthlete ? (
                 <>
-                  <div className="profile-grid">
-                    <div className="profile-metric"><span>Datum narozeni</span><strong>{formatDate(selectedAthlete.latestProfile?.birth_date)}</strong></div>
-                    <div className="profile-metric"><span>Vaha</span><strong>{formatNumber(selectedAthlete.latestProfile?.body_weight_kg, 1, " kg")}</strong></div>
-                    <div className="profile-metric"><span>Delka berce</span><strong>{formatNumber(selectedAthlete.latestProfile?.shin_length_cm, 1, " cm")}</strong></div>
-                    <div className="profile-metric"><span>Vek v profilu</span><strong>{formatNumber(selectedAthlete.latestProfile?.age, 0)}</strong></div>
-                  </div>
-
-                  {selectedAthlete.latestTest ? (
-                    <div className="norm-grid">
-                      <div className="profile-metric highlight"><span>Leva</span><strong>{formatNumber(selectedAthlete.latestTest.left_nm_per_kg, 2)}</strong><small>Nm/kg</small></div>
-                      <div className="profile-metric highlight"><span>Prava</span><strong>{formatNumber(selectedAthlete.latestTest.right_nm_per_kg, 2)}</strong><small>Nm/kg</small></div>
-                      <div className="profile-metric highlight"><span>Asymetrie</span><strong>{formatPercent(selectedAthlete.latestTest.asymmetry_pct)}</strong><small>{formatSide(selectedAthlete.latestTest.weaker_side)} slabsi</small></div>
-                      <div className="profile-metric highlight"><span>Chybi do normy</span><strong>{formatPercent(latestNormGap?.missingPct)}</strong><small>{formatNumber(latestNormGap?.missingKg, 1, " kg")} na slabsi strane</small></div>
+                  <section className={mobileTab === "client" ? "mobile-tab-page client-page is-active" : "mobile-tab-page client-page"}>
+                    <div className="profile-grid">
+                      <div className="profile-metric"><span>Datum narozeni</span><strong>{formatDate(selectedAthlete.latestProfile?.birth_date)}</strong></div>
+                      <div className="profile-metric"><span>Vaha</span><strong>{formatNumber(selectedAthlete.latestProfile?.body_weight_kg, 1, " kg")}</strong></div>
+                      <div className="profile-metric"><span>Delka berce</span><strong>{formatNumber(selectedAthlete.latestProfile?.shin_length_cm, 1, " cm")}</strong></div>
+                      <div className="profile-metric"><span>Vek v profilu</span><strong>{formatNumber(selectedAthlete.latestProfile?.age, 0)}</strong></div>
                     </div>
-                  ) : null}
+                  </section>
 
-                  <KneeProgressChart tests={selectedAthlete.tests} />
+                  <section className={mobileTab === "compare" ? "mobile-tab-page compare-page is-active" : "mobile-tab-page compare-page"}>
+                    {selectedAthlete.latestTest ? (
+                      <div className="norm-grid">
+                        <div className="profile-metric highlight"><span>Leva</span><strong>{formatNumber(selectedAthlete.latestTest.left_nm_per_kg, 2)}</strong><small>Nm/kg</small></div>
+                        <div className="profile-metric highlight"><span>Prava</span><strong>{formatNumber(selectedAthlete.latestTest.right_nm_per_kg, 2)}</strong><small>Nm/kg</small></div>
+                        <div className="profile-metric highlight"><span>Asymetrie</span><strong>{formatPercent(selectedAthlete.latestTest.asymmetry_pct)}</strong><small>{formatSide(selectedAthlete.latestTest.weaker_side)} slabsi</small></div>
+                        <div className="profile-metric highlight"><span>Chybi do normy</span><strong>{formatPercent(latestNormGap?.missingPct)}</strong><small>{formatNumber(latestNormGap?.missingKg, 1, " kg")} na slabsi strane</small></div>
+                      </div>
+                    ) : null}
 
-                  <div className="table-wrap">
-                    <table>
-                      <thead>
-                        <tr><th>Datum</th><th>Prava kg</th><th>Leva kg</th><th>Prava Nm/kg</th><th>Leva Nm/kg</th><th>Asym</th><th>Slabsi</th><th>Vek</th><th>Akce</th></tr>
-                      </thead>
-                      <tbody>
-                        {selectedAthlete.tests.map((test) => {
-                          const legGaps = getLegNormGaps(test);
-                          const deficitLegs = legGaps.filter((leg) => leg.isDeficit);
-                          const isExpanded = expandedTestId === test.id;
-                          const isEditing = editingTestId === test.id;
-                          const isDeleting = deletingTestId === test.id;
+                    <KneeProgressChart tests={selectedAthlete.tests} />
+                  </section>
 
-                          return (
-                            <Fragment key={test.id}>
-                              <tr>
-                                <td>{formatDate(test.test_date)}</td>
-                                <td>{formatNumber(test.right_force_kg, 1)}</td>
-                                <td>{formatNumber(test.left_force_kg, 1)}</td>
-                                <td>{formatNumber(test.right_nm_per_kg, 2)}</td>
-                                <td>{formatNumber(test.left_nm_per_kg, 2)}</td>
-                                <td><span className={getAsymmetryClass(test.asymmetry_pct)}>{formatPercent(test.asymmetry_pct)}</span></td>
-                                <td>{formatSide(test.weaker_side)}</td>
-                                <td>{formatNumber(test.age_at_test_years, 1)}</td>
-                                <td>
-                                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                    <button className="detail-button" type="button" onClick={() => setExpandedTestId(isExpanded && !isEditing ? null : test.id)}>{isExpanded && !isEditing ? "Zavrit" : "Detail"}</button>
-                                    <button className="detail-button" type="button" onClick={() => openEditTest(test)}>{isEditing ? "Odemceno" : "Upravit"}</button>
-                                    <button className="detail-button" disabled={isDeleting} type="button" onClick={() => handleDeleteTest(test)}>{isDeleting ? "Mazu..." : "Smazat"}</button>
-                                  </div>
-                                </td>
-                              </tr>
-                              {isExpanded ? (
-                                <tr className="expanded-row">
-                                  <td colSpan={9}>
-                                    {isEditing ? (
-                                      <div>
-                                        <div className="test-detail-header">
-                                          <div>
-                                            <strong>Upravit mereni {formatDate(test.test_date)}</strong>
-                                            <p>Odemceno: datum, vaha pri mereni, bercova paka a namerena sila leve/prave nohy.</p>
-                                          </div>
-                                          <span className="pill">editace</span>
-                                        </div>
-                                        {renderTestForm({
-                                          form: editTestForm,
-                                          onChange: updateEditTestForm,
-                                          onSubmit: handleUpdateTest,
-                                          isSaving: isUpdatingTest,
-                                          submitLabel: "Ulozit zmeny",
-                                          savingLabel: "Ukladam zmeny...",
-                                          onCancel: closeEditTest,
-                                        })}
-                                      </div>
-                                    ) : (
-                                      <>
-                                        <div className="test-detail-header">
-                                          <div>
-                                            <strong>Detail testu {formatDate(test.test_date)}</strong>
-                                            <p>
-                                              Norma {formatNumber(NORM_NM_PER_KG, 1)} Nm/kg{" · asymetrie "}
-                                              <span className={getAsymmetryClass(test.asymmetry_pct)}>{formatPercent(test.asymmetry_pct)}</span>
-                                              {deficitLegs.length > 0 ? ` · deficit: ${deficitLegs.map((leg) => leg.label.toLowerCase()).join(", ")}` : " · obe nohy splnuji normu"}
-                                            </p>
-                                          </div>
-                                          <span className="pill">cil {formatNumber(legGaps[0]?.targetForceKg, 1, " kg")}</span>
-                                        </div>
-                                        <div className="test-detail-grid">
-                                          {legGaps.map((leg) => (
-                                            <article className={leg.isDeficit ? "leg-detail-card deficit" : "leg-detail-card ok"} key={leg.key}>
-                                              <div className="leg-detail-title"><h3>{leg.label}</h3><span>{leg.isDeficit ? "Pod normou" : "Norma splnena"}</span></div>
-                                              <dl>
-                                                <div><dt>Aktualne</dt><dd>{formatNumber(leg.forceKg, 1, " kg")}</dd></div>
-                                                <div><dt>Nm/kg</dt><dd>{formatNumber(leg.nmPerKg, 2)}</dd></div>
-                                                <div><dt>Cilova sila</dt><dd>{formatNumber(leg.targetForceKg, 1, " kg")}</dd></div>
-                                                <div><dt>Chybi kg</dt><dd>{formatNumber(leg.missingKg, 1, " kg")}</dd></div>
-                                                <div><dt>Chybi %</dt><dd>{formatPercent(leg.missingPct)}</dd></div>
-                                              </dl>
-                                            </article>
-                                          ))}
-                                        </div>
-                                        {test.note ? <p className="test-note">Poznamka: {test.note}</p> : null}
-                                      </>
-                                    )}
+                  <section className={mobileTab === "measurements" ? "mobile-tab-page measurements-page is-active" : "mobile-tab-page measurements-page"}>
+                    <div className="mobile-test-list">
+                      {selectedAthlete.tests.length === 0 ? <p className="status">Zatim tu neni zadne mereni.</p> : null}
+                      {selectedAthlete.tests.map((test) => {
+                        const legGaps = getLegNormGaps(test);
+                        const deficitLegs = legGaps.filter((leg) => leg.isDeficit);
+                        const isExpanded = expandedTestId === test.id;
+                        const isEditing = editingTestId === test.id;
+                        const isDeleting = deletingTestId === test.id;
+
+                        return (
+                          <article className={isEditing ? "measurement-card editing" : "measurement-card"} key={test.id}>
+                            <div className="measurement-card-header">
+                              <div>
+                                <span>Mereni</span>
+                                <strong>{formatDate(test.test_date)}</strong>
+                              </div>
+                              <span className={getAsymmetryClass(test.asymmetry_pct)}>{formatPercent(test.asymmetry_pct)}</span>
+                            </div>
+                            <dl className="measurement-values">
+                              <div><dt>Leva kg</dt><dd>{formatNumber(test.left_force_kg, 1)}</dd></div>
+                              <div><dt>Prava kg</dt><dd>{formatNumber(test.right_force_kg, 1)}</dd></div>
+                              <div><dt>Leva Nm/kg</dt><dd>{formatNumber(test.left_nm_per_kg, 2)}</dd></div>
+                              <div><dt>Prava Nm/kg</dt><dd>{formatNumber(test.right_nm_per_kg, 2)}</dd></div>
+                            </dl>
+                            <div className="measurement-actions">
+                              <button className="detail-button" type="button" onClick={() => setExpandedTestId(isExpanded && !isEditing ? null : test.id)}>{isExpanded && !isEditing ? "Zavrit" : "Detail"}</button>
+                              <button className="detail-button" type="button" onClick={() => openEditTest(test)}>{isEditing ? "Odemceno" : "Upravit"}</button>
+                              <button className="detail-button danger-button" disabled={isDeleting} type="button" onClick={() => handleDeleteTest(test)}>{isDeleting ? "Mazu..." : "Smazat"}</button>
+                            </div>
+                            {isExpanded || isEditing ? (
+                              <div className="measurement-detail">
+                                {renderMeasurementDetail(test, legGaps, deficitLegs, isEditing)}
+                              </div>
+                            ) : null}
+                          </article>
+                        );
+                      })}
+                    </div>
+
+                    <div className="table-wrap desktop-table">
+                      <table>
+                        <thead>
+                          <tr><th>Datum</th><th>Prava kg</th><th>Leva kg</th><th>Prava Nm/kg</th><th>Leva Nm/kg</th><th>Asym</th><th>Slabsi</th><th>Vek</th><th>Akce</th></tr>
+                        </thead>
+                        <tbody>
+                          {selectedAthlete.tests.map((test) => {
+                            const legGaps = getLegNormGaps(test);
+                            const deficitLegs = legGaps.filter((leg) => leg.isDeficit);
+                            const isExpanded = expandedTestId === test.id;
+                            const isEditing = editingTestId === test.id;
+                            const isDeleting = deletingTestId === test.id;
+
+                            return (
+                              <Fragment key={test.id}>
+                                <tr>
+                                  <td>{formatDate(test.test_date)}</td>
+                                  <td>{formatNumber(test.right_force_kg, 1)}</td>
+                                  <td>{formatNumber(test.left_force_kg, 1)}</td>
+                                  <td>{formatNumber(test.right_nm_per_kg, 2)}</td>
+                                  <td>{formatNumber(test.left_nm_per_kg, 2)}</td>
+                                  <td><span className={getAsymmetryClass(test.asymmetry_pct)}>{formatPercent(test.asymmetry_pct)}</span></td>
+                                  <td>{formatSide(test.weaker_side)}</td>
+                                  <td>{formatNumber(test.age_at_test_years, 1)}</td>
+                                  <td>
+                                    <div className="table-actions">
+                                      <button className="detail-button" type="button" onClick={() => setExpandedTestId(isExpanded && !isEditing ? null : test.id)}>{isExpanded && !isEditing ? "Zavrit" : "Detail"}</button>
+                                      <button className="detail-button" type="button" onClick={() => openEditTest(test)}>{isEditing ? "Odemceno" : "Upravit"}</button>
+                                      <button className="detail-button danger-button" disabled={isDeleting} type="button" onClick={() => handleDeleteTest(test)}>{isDeleting ? "Mazu..." : "Smazat"}</button>
+                                    </div>
                                   </td>
                                 </tr>
-                              ) : null}
-                            </Fragment>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                                {isExpanded ? (
+                                  <tr className="expanded-row">
+                                    <td colSpan={9}>{renderMeasurementDetail(test, legGaps, deficitLegs, isEditing)}</td>
+                                  </tr>
+                                ) : null}
+                              </Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
                 </>
-              ) : <p className="status">Zatim neni vybran zadny sportovec.</p>}
+              ) : <p className="status">Zatim neni vybran zadny klient.</p>}
               {message ? <p className="status footer-status">{message}</p> : null}
             </section>
           </section>
+
+          {selectedAthlete && activePanel !== "test" ? (
+            <button className="mobile-add-test" type="button" onClick={openCreateTest}>+ Pridat mereni</button>
+          ) : null}
         </>
       )}
     </main>
