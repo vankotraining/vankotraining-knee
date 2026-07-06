@@ -543,6 +543,7 @@ export default function KneeDashboard() {
   const [kneeTests, setKneeTests] = useState<KneeExtensionTest[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState<string | null>(null);
   const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
+  const [activePanel, setActivePanel] = useState<"athlete" | "test" | null>(null);
   const [query, setQuery] = useState("");
   const [athleteForm, setAthleteForm] = useState<AthleteForm>({
     display_name: "",
@@ -810,6 +811,7 @@ export default function KneeDashboard() {
       shin_length_cm: "33",
       note: "",
     });
+    setActivePanel(null);
     setMessage("Klient je zalozeny.");
   }
 
@@ -894,6 +896,7 @@ export default function KneeDashboard() {
       left_force_kg: "",
       note: "",
     }));
+    setActivePanel(null);
     setMessage("Knee extension test je ulozeny.");
   }
 
@@ -965,121 +968,226 @@ export default function KneeDashboard() {
           </section>
 
           <section className="dashboard-layout">
-            <section className="panel list-panel">
+            <section className="panel control-panel athlete-picker-panel">
               <div className="panel-header">
                 <div>
-                  <p className="eyebrow">Novy klient</p>
-                  <h2>Pridat klienta</h2>
-                </div>
-              </div>
-
-              <form className="stack-form" onSubmit={handleCreateAthlete}>
-                <label>
-                  Jmeno
-                  <input
-                    value={athleteForm.display_name}
-                    onChange={(event) => updateAthleteForm("display_name", event.target.value)}
-                    placeholder="Milos Merta"
-                    required
-                  />
-                </label>
-                <label>
-                  Datum narozeni
-                  <input
-                    type="date"
-                    value={athleteForm.birth_date}
-                    onChange={(event) => updateAthleteForm("birth_date", event.target.value)}
-                  />
-                </label>
-                <div className="form-row">
-                  <label>
-                    Vaha kg
-                    <input
-                      inputMode="decimal"
-                      value={athleteForm.body_weight_kg}
-                      onChange={(event) => updateAthleteForm("body_weight_kg", event.target.value)}
-                      placeholder="82"
-                    />
-                  </label>
-                  <label>
-                    Bercova paka cm
-                    <input
-                      inputMode="decimal"
-                      value={athleteForm.shin_length_cm}
-                      onChange={(event) => updateAthleteForm("shin_length_cm", event.target.value)}
-                      placeholder="33"
-                    />
-                  </label>
-                </div>
-                <label>
-                  Poznamka
-                  <textarea
-                    value={athleteForm.note}
-                    onChange={(event) => updateAthleteForm("note", event.target.value)}
-                    placeholder="Interni poznamka"
-                  />
-                </label>
-                <button disabled={isSavingAthlete}>
-                  {isSavingAthlete ? "Ukladam..." : "Zalozit klienta"}
-                </button>
-              </form>
-
-              <div className="panel-header spaced-header">
-                <div>
-                  <p className="eyebrow">Sportovci</p>
-                  <h2>Prehled mereni</h2>
+                  <p className="eyebrow">Sportovec</p>
+                  <h2>Vyber klienta</h2>
                 </div>
                 <span className="pill">{filteredAthletes.length}</span>
               </div>
 
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Hledat sportovce"
-              />
+              <div className="athlete-picker">
+                <label>
+                  Hledat
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Jmeno, poznamka nebo datum"
+                  />
+                </label>
+                <label>
+                  Vybrany klient
+                  <select
+                    value={selectedAthlete?.id ?? ""}
+                    onChange={(event) => setSelectedAthleteId(event.target.value)}
+                  >
+                    {filteredAthletes.length === 0 ? (
+                      <option value="">Zadny vysledek</option>
+                    ) : null}
+                    {filteredAthletes.map((athlete) => (
+                      <option key={athlete.id} value={athlete.id}>
+                        {athlete.display_name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
               {loadState === "idle" ? <p className="status">Nacitam knee data...</p> : null}
               {loadState === "error" ? <p className="status error">{message}</p> : null}
+              {loadState === "ready" && filteredAthletes.length === 0 ? (
+                <p className="status">Zatim tu neni zadny sportovec pro tento filtr.</p>
+              ) : null}
 
-              <div className="athlete-list">
-                {loadState === "ready" && filteredAthletes.length === 0 ? (
-                  <p className="status">Zatim tu neni zadny sportovec pro tento filtr.</p>
-                ) : null}
-                {filteredAthletes.map((athlete) => (
-                  <button
-                    className={selectedAthlete?.id === athlete.id ? "athlete-card selected" : "athlete-card"}
-                    key={athlete.id}
-                    type="button"
-                    onClick={() => setSelectedAthleteId(athlete.id)}
-                  >
-                    <div className="athlete-card-header">
-                      <div>
-                        <h3>{athlete.display_name}</h3>
-                        <p>{athlete.tests.length} testu</p>
-                      </div>
-                      <span className="pill">{formatDate(athlete.latestTest?.test_date)}</span>
-                    </div>
-                    <dl>
-                      <div>
-                        <dt>Prava</dt>
-                        <dd>{formatNumber(athlete.latestTest?.right_nm_per_kg, 2)}</dd>
-                      </div>
-                      <div>
-                        <dt>Leva</dt>
-                        <dd>{formatNumber(athlete.latestTest?.left_nm_per_kg, 2)}</dd>
-                      </div>
-                      <div>
-                        <dt>Asym</dt>
-                        <dd>
-                          <span className={getAsymmetryClass(athlete.latestTest?.asymmetry_pct)}>
-                            {formatPercent(athlete.latestTest?.asymmetry_pct)}
-                          </span>
-                        </dd>
-                      </div>
-                    </dl>
-                  </button>
-                ))}
+              {selectedAthlete ? (
+                <dl className="selected-athlete-meta">
+                  <div>
+                    <dt>Testy</dt>
+                    <dd>{selectedAthlete.tests.length}</dd>
+                  </div>
+                  <div>
+                    <dt>Posledni</dt>
+                    <dd>{formatDate(selectedAthlete.latestTest?.test_date)}</dd>
+                  </div>
+                  <div>
+                    <dt>Asym</dt>
+                    <dd>
+                      <span className={getAsymmetryClass(selectedAthlete.latestTest?.asymmetry_pct)}>
+                        {formatPercent(selectedAthlete.latestTest?.asymmetry_pct)}
+                      </span>
+                    </dd>
+                  </div>
+                </dl>
+              ) : null}
+            </section>
+
+            <section className="panel control-panel action-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Rychle akce</p>
+                  <h2>Zadat data</h2>
+                </div>
               </div>
+
+              <div className="quick-actions">
+                <button
+                  className={activePanel === "athlete" ? "" : "ghost-button"}
+                  type="button"
+                  onClick={() => setActivePanel(activePanel === "athlete" ? null : "athlete")}
+                >
+                  + Novy klient
+                </button>
+                <button
+                  className={activePanel === "test" ? "" : "ghost-button"}
+                  disabled={!selectedAthlete}
+                  type="button"
+                  onClick={() => setActivePanel(activePanel === "test" ? null : "test")}
+                >
+                  + Nove mereni
+                </button>
+              </div>
+
+              {activePanel === "athlete" ? (
+                <form className="stack-form compact-form" onSubmit={handleCreateAthlete}>
+                  <label>
+                    Jmeno
+                    <input
+                      value={athleteForm.display_name}
+                      onChange={(event) => updateAthleteForm("display_name", event.target.value)}
+                      placeholder="Milos Merta"
+                      required
+                    />
+                  </label>
+                  <label>
+                    Datum narozeni
+                    <input
+                      type="date"
+                      value={athleteForm.birth_date}
+                      onChange={(event) => updateAthleteForm("birth_date", event.target.value)}
+                    />
+                  </label>
+                  <div className="form-row">
+                    <label>
+                      Vaha kg
+                      <input
+                        inputMode="decimal"
+                        value={athleteForm.body_weight_kg}
+                        onChange={(event) => updateAthleteForm("body_weight_kg", event.target.value)}
+                        placeholder="82"
+                      />
+                    </label>
+                    <label>
+                      Bercova paka cm
+                      <input
+                        inputMode="decimal"
+                        value={athleteForm.shin_length_cm}
+                        onChange={(event) => updateAthleteForm("shin_length_cm", event.target.value)}
+                        placeholder="33"
+                      />
+                    </label>
+                  </div>
+                  <label>
+                    Poznamka
+                    <textarea
+                      value={athleteForm.note}
+                      onChange={(event) => updateAthleteForm("note", event.target.value)}
+                      placeholder="Interni poznamka"
+                    />
+                  </label>
+                  <button disabled={isSavingAthlete}>
+                    {isSavingAthlete ? "Ukladam..." : "Zalozit klienta"}
+                  </button>
+                </form>
+              ) : null}
+
+              {activePanel === "test" && selectedAthlete ? (
+                <form className="stack-form compact-form test-form" onSubmit={handleCreateTest}>
+                  <div className="form-row">
+                    <label>
+                      Datum testu
+                      <input
+                        type="date"
+                        value={testForm.test_date}
+                        onChange={(event) => updateTestForm("test_date", event.target.value)}
+                        required
+                      />
+                    </label>
+                    <label>
+                      Norma
+                      <input value={`${NORM_NM_PER_KG.toFixed(1)} Nm/kg`} readOnly />
+                    </label>
+                  </div>
+                  <div className="form-row">
+                    <label>
+                      Vaha kg
+                      <input
+                        inputMode="decimal"
+                        value={testForm.body_weight_kg}
+                        onChange={(event) => updateTestForm("body_weight_kg", event.target.value)}
+                        required
+                      />
+                    </label>
+                    <label>
+                      Bercova paka cm
+                      <input
+                        inputMode="decimal"
+                        value={testForm.shin_length_cm}
+                        onChange={(event) => updateTestForm("shin_length_cm", event.target.value)}
+                        required
+                      />
+                    </label>
+                  </div>
+                  <div className="form-row">
+                    <label>
+                      Leva kg
+                      <input
+                        inputMode="decimal"
+                        value={testForm.left_force_kg}
+                        onChange={(event) => updateTestForm("left_force_kg", event.target.value)}
+                        placeholder="35"
+                        required
+                      />
+                    </label>
+                    <label>
+                      Prava kg
+                      <input
+                        inputMode="decimal"
+                        value={testForm.right_force_kg}
+                        onChange={(event) => updateTestForm("right_force_kg", event.target.value)}
+                        placeholder="42"
+                        required
+                      />
+                    </label>
+                  </div>
+                  <label>
+                    Poznamka k testu
+                    <textarea
+                      value={testForm.note}
+                      onChange={(event) => updateTestForm("note", event.target.value)}
+                      placeholder="Bolest, setup, poznamka k mereni..."
+                    />
+                  </label>
+                  <button disabled={isSavingTest}>{isSavingTest ? "Ukladam..." : "Ulozit test"}</button>
+                </form>
+              ) : null}
+
+              {!activePanel ? (
+                <p className="status compact-hint">
+                  Vyber sportovce vlevo. Noveho klienta nebo mereni otevres jen
+                  kdyz je potrebujes.
+                </p>
+              ) : null}
             </section>
 
             <section className="panel detail-panel">
@@ -1125,6 +1233,11 @@ export default function KneeDashboard() {
                         <small>Nm/kg</small>
                       </div>
                       <div className="profile-metric highlight">
+                        <span>Asymetrie</span>
+                        <strong>{formatPercent(selectedAthlete.latestTest.asymmetry_pct)}</strong>
+                        <small>{formatSide(selectedAthlete.latestTest.weaker_side)} slabsi</small>
+                      </div>
+                      <div className="profile-metric highlight">
                         <span>Chybi do normy</span>
                         <strong>{formatPercent(latestNormGap?.missingPct)}</strong>
                         <small>{formatNumber(latestNormGap?.missingKg, 1, " kg")} na slabsi strane</small>
@@ -1133,75 +1246,6 @@ export default function KneeDashboard() {
                   ) : null}
 
                   <KneeProgressChart tests={selectedAthlete.tests} />
-
-                  <form className="stack-form test-form" onSubmit={handleCreateTest}>
-                    <div className="form-row">
-                      <label>
-                        Datum testu
-                        <input
-                          type="date"
-                          value={testForm.test_date}
-                          onChange={(event) => updateTestForm("test_date", event.target.value)}
-                          required
-                        />
-                      </label>
-                      <label>
-                        Norma
-                        <input value={`${NORM_NM_PER_KG.toFixed(1)} Nm/kg`} readOnly />
-                      </label>
-                    </div>
-                    <div className="form-row">
-                      <label>
-                        Vaha kg
-                        <input
-                          inputMode="decimal"
-                          value={testForm.body_weight_kg}
-                          onChange={(event) => updateTestForm("body_weight_kg", event.target.value)}
-                          required
-                        />
-                      </label>
-                      <label>
-                        Bercova paka cm
-                        <input
-                          inputMode="decimal"
-                          value={testForm.shin_length_cm}
-                          onChange={(event) => updateTestForm("shin_length_cm", event.target.value)}
-                          required
-                        />
-                      </label>
-                    </div>
-                    <div className="form-row">
-                      <label>
-                        Leva kg
-                        <input
-                          inputMode="decimal"
-                          value={testForm.left_force_kg}
-                          onChange={(event) => updateTestForm("left_force_kg", event.target.value)}
-                          placeholder="35"
-                          required
-                        />
-                      </label>
-                      <label>
-                        Prava kg
-                        <input
-                          inputMode="decimal"
-                          value={testForm.right_force_kg}
-                          onChange={(event) => updateTestForm("right_force_kg", event.target.value)}
-                          placeholder="42"
-                          required
-                        />
-                      </label>
-                    </div>
-                    <label>
-                      Poznamka k testu
-                      <textarea
-                        value={testForm.note}
-                        onChange={(event) => updateTestForm("note", event.target.value)}
-                        placeholder="Bolest, setup, poznamka k mereni..."
-                      />
-                    </label>
-                    <button disabled={isSavingTest}>{isSavingTest ? "Ukladam..." : "Ulozit test"}</button>
-                  </form>
 
                   <div className="table-wrap">
                     <table>
