@@ -2,52 +2,52 @@
 
 ## Priorita
 
-Stabilizovat archivaci a obnovu dat.
-
-## Cil
-
-Archivace a obnova klientu i mereni musi zustat funkcne stejne, ale technicky se maji presunout z pomocnych DOM komponent do cistejsi React logiky.
+Pridat jednoduchy export/zaloha dat a provozni dokumentaci.
 
 ## Proc ted
 
-Aplikace uz funkcne splnuje hlavni pracovni workflow. Nejvetsi riziko neni chybejici funkce, ale krehkost soucasne implementace archivace:
+Hlavni aplikacni workflow uz funguje a je prakticky overeny:
 
-- `ClientDeletion` cte vybraneho klienta z DOM.
-- `ArchivedMeasurements` cte vybraneho klienta z DOM.
-- `ButtonGuards` meni texty a blokuje tlacitka pres DOM observer.
+- klienti,
+- mereni,
+- editace,
+- archivace mereni,
+- obnova mereni,
+- archivace klienta,
+- obnova klienta,
+- mobilni pouziti.
 
-To je pouzitelne jako rychla stabilizacni vrstva, ale neni to vhodny dlouhodoby zaklad.
+Projekt se posunul ze stavby funkcniho MVP do faze provozni stabilizace. Nejvetsi zbyvajici riziko neni chybejici obrazovka, ale ztrata nebo obtizna obnova dat, nejasne migrace a regresni chyby pri dalsich upravach.
 
-## Pozadovana zmena
+## Cil nejblizsiho kroku
 
-1. Vytvorit sdileny stav vybraneho klienta primo v hlavnim dashboardu.
-2. Archivaci klienta presunout do hlavniho toku aplikace.
-3. Archivovana mereni napojit pres stejne `selectedAthlete` data, ne pres DOM select.
-4. Zachovat panel `Archiv klientu`.
-5. Zachovat RPC volani:
-   - `soft_delete_athlete`
-   - `restore_athlete`
-   - `list_archived_athletes`
-   - `restore_knee_extension_test`
-   - `list_archived_knee_extension_tests`
-6. Odstranit nebo minimalizovat potrebu `ButtonGuards`.
-7. Po zmene otestovat:
-   - pridani mereni
-   - editace mereni
-   - archivace mereni
-   - obnova mereni
-   - archivace klienta
-   - obnova klienta
-   - mobilni zobrazeni
+Vytvorit minimalni, prakticky pouzitelnou datovou zalohu/export.
+
+Preferovana varianta pro prvni verzi:
+
+1. Pridat v aplikaci nebo v Supabase SQL jednoduchy export aktivnich dat:
+   - klienti,
+   - profily klientu,
+   - knee extension testy,
+   - informace o archivaci.
+2. Pripravit SQL view nebo dokumentovany SQL dotaz pro export.
+3. Zapsat postup do `project-control`.
+4. Nezavadet slozitou automatizaci, dokud neni jasne, co presne budeme zalohovat.
 
 ## Definice hotovo
 
-- Uzivatel nepozna zmenu chovani UI k horsimu.
-- Akce pro mereni nemuze omylem archivovat klienta.
-- Akce pro klienta je vizualne a technicky oddelena od akci mereni.
-- Kod je mene zavisly na DOM observerech.
-- Build a lint projdou.
+- Je jasne, jak ziskat zalohu dat.
+- Export obsahuje aktivni i archivovane relevantni zaznamy.
+- Postup je popsany tak, aby ho slo zopakovat rucne.
+- Nezasahuje se do stavajicich funkcnich workflow.
+- Aplikace po zmene dal buildi/lintuje.
 
-## Nasledujici krok po stabilizaci
+## Nasledujici krok po exportu
 
-Pridat jednoduchy export/zaloha dat z aplikace nebo pres Supabase view.
+1. Dopsat kratkou provozni dokumentaci:
+   - env promenne,
+   - Supabase migrace/RPC,
+   - co zkontrolovat po deployi,
+   - jak obnovit data.
+2. Rozsirit smoke-testy z vypocetni logiky na nejdulezitejsi UI/regresni toky.
+3. Odstranit legacy fallback anon key a nepouzivany `ButtonGuards`, pokud uz nebudou potreba.
