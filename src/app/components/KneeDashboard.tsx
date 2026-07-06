@@ -288,6 +288,13 @@ function getLegNormGaps(test: KneeExtensionTest): LegNormGap[] {
 }
 
 function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
+  const [visibleSeries, setVisibleSeries] = useState<
+    Record<"left" | "right" | "asymmetry", boolean>
+  >({
+    left: true,
+    right: true,
+    asymmetry: true,
+  });
   const points = tests
     .slice()
     .reverse()
@@ -342,14 +349,59 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
     })
     .filter(Boolean)
     .join(" ");
+  const toggleSeries = (key: "left" | "right" | "asymmetry") => {
+    setVisibleSeries((current) => ({ ...current, [key]: !current[key] }));
+  };
+  const seriesToggles = [
+    { key: "left" as const, label: "Leva", color: "var(--accent)" },
+    { key: "right" as const, label: "Prava", color: "var(--blue)" },
+    { key: "asymmetry" as const, label: "Asymetrie", color: "var(--warning)" },
+  ];
 
   return (
     <div className="chart-card clean-chart">
-      <div className="chart-legend">
-        <span className="legend-item left">Leva</span>
-        <span className="legend-item right">Prava</span>
+      <div className="chart-legend" aria-label="Zobrazeni grafu">
+        {seriesToggles.map((item) => {
+          const isActive = visibleSeries[item.key];
+
+          return (
+            <button
+              aria-pressed={isActive}
+              key={item.key}
+              onClick={() => toggleSeries(item.key)}
+              style={{
+                alignItems: "center",
+                background: isActive ? "var(--surface)" : "var(--surface-subtle)",
+                border: "1px solid",
+                borderColor: isActive ? item.color : "var(--border)",
+                borderRadius: "999px",
+                color: isActive ? "var(--foreground)" : "var(--muted)",
+                display: "inline-flex",
+                fontSize: "12px",
+                fontWeight: 800,
+                gap: "5px",
+                lineHeight: 1,
+                opacity: isActive ? 1 : 0.55,
+                padding: "5px 8px",
+              }}
+              type="button"
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  background: item.key === "asymmetry" ? "transparent" : item.color,
+                  border: `2px solid ${item.color}`,
+                  borderRadius: "999px",
+                  display: "inline-block",
+                  height: "10px",
+                  width: "10px",
+                }}
+              />
+              {item.label}
+            </button>
+          );
+        })}
         <span className="legend-item target">Norma</span>
-        <span className="legend-item asymmetry">Asymetrie</span>
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Vyvoj knee extension testu a asymetrie">
         {[0, NORM_NM_PER_KG, strengthMax].map((value) => (
@@ -369,30 +421,54 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
           y1={plotTop}
           y2={plotBottom}
         />
-        <line
-          className="chart-axis"
-          x1={width - rightPadding}
-          x2={width - rightPadding}
-          y1={plotTop}
-          y2={plotBottom}
-        />
+        {visibleSeries.asymmetry ? (
+          <>
+            <line
+              className="chart-axis"
+              x1={width - rightPadding}
+              x2={width - rightPadding}
+              y1={plotTop}
+              y2={plotBottom}
+            />
+            <text className="chart-axis-title right" x={width - rightPadding} y="15">
+              Asym %
+            </text>
+            <text className="chart-axis-label right" x={width - rightPadding + 8} y={plotBottom + 4}>
+              0%
+            </text>
+            <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(asymmetryMax) + 4}>
+              {formatNumber(asymmetryMax, 0, "%")}
+            </text>
+            <line
+              className="chart-asymmetry-threshold warning"
+              x1={leftPadding}
+              x2={width - rightPadding}
+              y1={yForAsymmetry(10)}
+              y2={yForAsymmetry(10)}
+            />
+            <line
+              className="chart-asymmetry-threshold problem"
+              x1={leftPadding}
+              x2={width - rightPadding}
+              y1={yForAsymmetry(20)}
+              y2={yForAsymmetry(20)}
+            />
+            <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(10) + 4}>
+              10%
+            </text>
+            <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(20) + 4}>
+              20%
+            </text>
+          </>
+        ) : null}
         <text className="chart-axis-title left" x={leftPadding} y="15">
           Nm/kg
-        </text>
-        <text className="chart-axis-title right" x={width - rightPadding} y="15">
-          Asym %
         </text>
         <text className="chart-axis-label left" x={leftPadding - 8} y={plotBottom + 4}>
           0
         </text>
         <text className="chart-axis-label left" x={leftPadding - 8} y={yForStrength(strengthMax) + 4}>
           {formatNumber(strengthMax, 1)}
-        </text>
-        <text className="chart-axis-label right" x={width - rightPadding + 8} y={plotBottom + 4}>
-          0%
-        </text>
-        <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(asymmetryMax) + 4}>
-          {formatNumber(asymmetryMax, 0, "%")}
         </text>
         <line
           className="chart-target"
@@ -404,36 +480,22 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
         <text x={leftPadding + 6} y={yForStrength(NORM_NM_PER_KG) - 7}>
           {formatNumber(NORM_NM_PER_KG, 1)} Nm/kg
         </text>
-        <line
-          className="chart-asymmetry-threshold warning"
-          x1={leftPadding}
-          x2={width - rightPadding}
-          y1={yForAsymmetry(10)}
-          y2={yForAsymmetry(10)}
-        />
-        <line
-          className="chart-asymmetry-threshold problem"
-          x1={leftPadding}
-          x2={width - rightPadding}
-          y1={yForAsymmetry(20)}
-          y2={yForAsymmetry(20)}
-        />
-        <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(10) + 4}>
-          10%
-        </text>
-        <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(20) + 4}>
-          20%
-        </text>
-        <polyline className="chart-line left" points={pathForStrength("left")} />
-        <polyline className="chart-line right" points={pathForStrength("right")} />
-        <polyline className="chart-line asymmetry" points={asymmetryPath} />
+        {visibleSeries.left ? (
+          <polyline className="chart-line left" points={pathForStrength("left")} />
+        ) : null}
+        {visibleSeries.right ? (
+          <polyline className="chart-line right" points={pathForStrength("right")} />
+        ) : null}
+        {visibleSeries.asymmetry ? (
+          <polyline className="chart-line asymmetry" points={asymmetryPath} />
+        ) : null}
 
         {points.map((test, index) => {
           const asymmetryValue = getAsymmetryValue(test.asymmetry_pct);
 
           return (
             <g key={test.id}>
-              {test.left_nm_per_kg !== null ? (
+              {visibleSeries.left && test.left_nm_per_kg !== null ? (
                 <circle
                   className="chart-dot left"
                   cx={xForIndex(index)}
@@ -441,7 +503,7 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
                   r="4"
                 />
               ) : null}
-              {test.right_nm_per_kg !== null ? (
+              {visibleSeries.right && test.right_nm_per_kg !== null ? (
                 <circle
                   className="chart-dot right"
                   cx={xForIndex(index)}
@@ -449,7 +511,7 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
                   r="4"
                 />
               ) : null}
-              {asymmetryValue !== null ? (
+              {visibleSeries.asymmetry && asymmetryValue !== null ? (
                 <circle
                   className={`chart-dot asymmetry ${getAsymmetryTone(test.asymmetry_pct)}`}
                   cx={xForIndex(index)}
