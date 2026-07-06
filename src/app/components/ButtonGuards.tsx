@@ -16,8 +16,12 @@ function isNoClientResult() {
   });
 }
 
+function buttonLabel(button: HTMLButtonElement) {
+  return button.textContent?.trim().toLowerCase() ?? "";
+}
+
 function isMeasurementAction(button: HTMLButtonElement) {
-  const label = button.textContent?.trim().toLowerCase() ?? "";
+  const label = buttonLabel(button);
 
   return (
     label.includes("+ mereni") ||
@@ -28,7 +32,24 @@ function isMeasurementAction(button: HTMLButtonElement) {
 }
 
 function isLockedEditButton(button: HTMLButtonElement) {
-  return button.textContent?.trim().toLowerCase() === "odemceno";
+  return buttonLabel(button) === "odemceno";
+}
+
+function relabelArchiveButtons(button: HTMLButtonElement) {
+  const label = buttonLabel(button);
+
+  if (!button.classList.contains("danger-button")) {
+    return;
+  }
+
+  if (label === "smazat") {
+    button.textContent = "Archivovat";
+    button.title = "Mereni se pouze archivuje a zustane obnovitelne v databazi.";
+  }
+
+  if (label === "mazu...") {
+    button.textContent = "Archivuji...";
+  }
 }
 
 function syncButtonState() {
@@ -39,6 +60,8 @@ function syncButtonState() {
     if (!(button instanceof HTMLButtonElement)) {
       return;
     }
+
+    relabelArchiveButtons(button);
 
     if (isLockedEditButton(button)) {
       button.disabled = true;
@@ -57,6 +80,17 @@ function syncButtonState() {
 
 export default function ButtonGuards() {
   useEffect(() => {
+    const originalConfirm = window.confirm;
+
+    window.confirm = (message?: string) => {
+      const text = String(message ?? "").replace(
+        "Opravdu smazat mereni",
+        "Opravdu archivovat mereni",
+      );
+
+      return originalConfirm(text);
+    };
+
     const handleClick = (event: MouseEvent) => {
       const button = (event.target as Element | null)?.closest("button");
 
@@ -78,6 +112,7 @@ export default function ButtonGuards() {
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
     return () => {
+      window.confirm = originalConfirm;
       document.removeEventListener("click", handleClick, true);
       observer.disconnect();
     };
