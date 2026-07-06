@@ -378,6 +378,10 @@ dd {
   padding: 10px;
 }
 
+.chart-card.clean-chart {
+  background: #fbfcfa;
+}
+
 .chart-card svg {
   display: block;
   width: 100%;
@@ -415,9 +419,15 @@ dd {
   background: var(--danger);
 }
 
+.legend-item.asymmetry::before {
+  background: var(--warning);
+}
+
 .chart-line {
   fill: none;
   stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .chart-line.left,
@@ -432,16 +442,58 @@ dd {
   fill: var(--blue);
 }
 
+.chart-line.asymmetry {
+  stroke: var(--warning);
+  stroke-width: 2.5;
+}
+
+.chart-dot.asymmetry {
+  stroke: var(--warning);
+  fill: var(--warning);
+}
+
+.chart-dot.asymmetry.ok {
+  stroke: var(--accent);
+  fill: var(--accent);
+}
+
+.chart-dot.asymmetry.problem {
+  stroke: var(--danger);
+  fill: var(--danger);
+}
+
 .chart-target {
   stroke: var(--danger);
   stroke-dasharray: 6 6;
   stroke-width: 2;
 }
 
+.chart-grid-line {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.chart-asymmetry-threshold {
+  stroke-dasharray: 4 7;
+  stroke-width: 1.5;
+}
+
+.chart-asymmetry-threshold.warning {
+  stroke: rgba(167, 91, 18, 0.45);
+}
+
+.chart-asymmetry-threshold.problem {
+  stroke: rgba(155, 44, 44, 0.45);
+}
+
 .chart-card text {
   fill: var(--muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+.chart-axis-label {
+  text-anchor: end;
 }
 
 .chart-date {
