@@ -51,11 +51,15 @@ export default function ClientDeletion() {
   async function handleDeleteClient() {
     if (!supabase || !selectedClient || isDeleting) return;
 
-    const confirmed = window.confirm(
-      `Opravdu archivovat klienta ${selectedClient.name}?\n\nKlient a jeho knee mereni se skryji z aplikace, ale zustanou bezpecne ulozene v databazi.`,
+    const typedName = window.prompt(
+      `Archivovat celeho klienta ${selectedClient.name}?\n\nToto skryje klienta i jeho knee mereni z aktivniho seznamu. Pro potvrzeni opis presne jmeno klienta:`,
+      "",
     );
 
-    if (!confirmed) return;
+    if (typedName?.trim() !== selectedClient.name) {
+      setMessage("Archivace klienta zrusena. Jmeno nebylo opsane presne.");
+      return;
+    }
 
     setIsDeleting(true);
     setMessage("");
@@ -126,7 +130,7 @@ export default function ClientDeletion() {
             whiteSpace: "nowrap",
           }}
         >
-          {isDeleting ? "Archivuji..." : "Archivovat"}
+          {isDeleting ? "Archivuji klienta..." : "Archivovat klienta"}
         </button>
       </div>
       {message ? <p className="status error" style={{ marginTop: "8px" }}>{message}</p> : null}
