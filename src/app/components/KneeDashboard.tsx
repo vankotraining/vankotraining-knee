@@ -1015,6 +1015,7 @@ export default function KneeDashboard() {
           <section className="mobile-workbench">
             <div className="mobile-client-toolbar">
               <label className="mobile-search">Hledat<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Jmeno klienta" /></label>
+              <button className="mobile-primary-action" disabled={!selectedAthlete} type="button" onClick={openCreateTest}>+ Mereni</button>
               <button className="mobile-small-action" type="button" onClick={openCreateAthlete}>+ Klient</button>
               <label className="mobile-client-select">
                 Klient
