@@ -19,13 +19,31 @@ select
   tablename,
   policyname,
   roles,
-  cmd
+  cmd,
+  qual,
+  with_check
 from pg_policies
 where schemaname = 'public'
   and tablename in ('athletes', 'athlete_profiles', 'knee_extension_tests', 'knee_audit_log')
 order by tablename, policyname;
 
--- 3. Quick red flag check: this should return zero rows.
+-- 3. Admin helper and protected RPC functions must exist.
+select
+  proname as function_name,
+  pg_get_function_arguments(p.oid) as arguments
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and proname in (
+    'is_knee_admin',
+    'soft_delete_athlete',
+    'restore_athlete',
+    'soft_delete_knee_extension_test',
+    'restore_knee_extension_test'
+  )
+order by proname, arguments;
+
+-- 4. Quick red flag check: this should return zero rows.
 select
   schemaname,
   tablename,
