@@ -95,42 +95,47 @@ export default function ClientDeletion() {
     <section
       aria-label="Archivace klienta"
       style={{
-        alignItems: "center",
-        background: "#fff8f7",
-        border: "1px solid rgba(155, 44, 44, 0.28)",
-        borderRadius: "8px",
-        bottom: "calc(74px + env(safe-area-inset-bottom))",
-        boxShadow: "0 12px 28px rgba(22, 26, 21, 0.12)",
-        display: "grid",
-        gap: "10px",
-        gridTemplateColumns: "minmax(0, 1fr) auto",
-        left: "max(12px, calc((100vw - 1280px) / 2 + 14px))",
-        maxWidth: "520px",
-        padding: "10px 12px",
-        position: "fixed",
-        right: "12px",
-        zIndex: 34,
+        margin: "0 auto 56px",
+        maxWidth: "1280px",
+        padding: "0 14px",
       }}
     >
-      <div style={{ minWidth: 0 }}>
-        <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedClient.name}</strong>
-        <span style={{ color: "#687063", display: "block", fontSize: "12px", marginTop: "2px" }}>Skryje klienta vcetne jeho mereni. Data zustanou obnovitelna.</span>
-      </div>
-      <button
-        disabled={isDeleting}
-        type="button"
-        onClick={handleDeleteClient}
+      <div
         style={{
-          background: "#9b2c2c",
-          color: "#fff",
-          minHeight: "40px",
-          padding: "9px 12px",
-          whiteSpace: "nowrap",
+          alignItems: "center",
+          background: "#fff8f7",
+          border: "1px solid rgba(155, 44, 44, 0.22)",
+          borderRadius: "8px",
+          display: "flex",
+          gap: "10px",
+          justifyContent: "space-between",
+          padding: "10px 12px",
         }}
       >
-        {isDeleting ? "Archivuji..." : "Archivovat klienta"}
-      </button>
-      {message ? <p className="status error" style={{ gridColumn: "1 / -1" }}>{message}</p> : null}
+        <div style={{ minWidth: 0 }}>
+          <span style={{ color: "#687063", display: "block", fontSize: "12px", fontWeight: 800, textTransform: "uppercase" }}>
+            Archivace klienta
+          </span>
+          <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {selectedClient.name}
+          </strong>
+        </div>
+        <button
+          disabled={isDeleting}
+          type="button"
+          onClick={handleDeleteClient}
+          style={{
+            background: "#9b2c2c",
+            color: "#fff",
+            minHeight: "38px",
+            padding: "8px 11px",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {isDeleting ? "Archivuji..." : "Archivovat"}
+        </button>
+      </div>
+      {message ? <p className="status error" style={{ marginTop: "8px" }}>{message}</p> : null}
     </section>
   );
 }
