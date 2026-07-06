@@ -51,7 +51,7 @@ export default function ClientDeletion() {
     if (!supabase || !selectedClient || isDeleting) return;
 
     const confirmed = window.confirm(
-      `Opravdu smazat klienta ${selectedClient.name}?\n\nSmazou se i vsechna jeho knee mereni a profilove udaje. Tuto akci nejde vratit zpet.`,
+      `Opravdu archivovat klienta ${selectedClient.name}?\n\nKlient a jeho knee mereni se skryji z aplikace, ale zustanou bezpecne ulozene v databazi.`,
     );
 
     if (!confirmed) return;
@@ -59,41 +59,18 @@ export default function ClientDeletion() {
     setIsDeleting(true);
     setMessage("");
 
-    const testsResult = await supabase
-      .from("knee_extension_tests")
-      .delete()
-      .eq("athlete_id", selectedClient.id);
-
-    if (testsResult.error) {
-      setIsDeleting(false);
-      setMessage(testsResult.error.message);
-      return;
-    }
-
-    const profilesResult = await supabase
-      .from("athlete_profiles")
-      .delete()
-      .eq("athlete_id", selectedClient.id);
-
-    if (profilesResult.error) {
-      setIsDeleting(false);
-      setMessage(profilesResult.error.message);
-      return;
-    }
-
-    const athleteResult = await supabase
-      .from("athletes")
-      .delete()
-      .eq("id", selectedClient.id);
+    const { error } = await supabase.rpc("soft_delete_athlete", {
+      p_id: selectedClient.id,
+    });
 
     setIsDeleting(false);
 
-    if (athleteResult.error) {
-      setMessage(athleteResult.error.message);
+    if (error) {
+      setMessage(error.message);
       return;
     }
 
-    setMessage("Klient je smazany.");
+    setMessage("Klient je archivovany.");
     window.location.reload();
   }
 
@@ -101,7 +78,7 @@ export default function ClientDeletion() {
 
   return (
     <section
-      aria-label="Smazani klienta"
+      aria-label="Archivace klienta"
       style={{
         alignItems: "center",
         background: "#fff8f7",
@@ -122,7 +99,7 @@ export default function ClientDeletion() {
     >
       <div style={{ minWidth: 0 }}>
         <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedClient.name}</strong>
-        <span style={{ color: "#687063", display: "block", fontSize: "12px", marginTop: "2px" }}>Smaze klienta vcetne jeho mereni a profilu.</span>
+        <span style={{ color: "#687063", display: "block", fontSize: "12px", marginTop: "2px" }}>Skryje klienta vcetne jeho mereni. Data zustanou obnovitelna.</span>
       </div>
       <button
         disabled={isDeleting}
@@ -136,7 +113,7 @@ export default function ClientDeletion() {
           whiteSpace: "nowrap",
         }}
       >
-        {isDeleting ? "Mazu..." : "Smazat klienta"}
+        {isDeleting ? "Archivuji..." : "Archivovat klienta"}
       </button>
       {message ? <p className="status error" style={{ gridColumn: "1 / -1" }}>{message}</p> : null}
     </section>
