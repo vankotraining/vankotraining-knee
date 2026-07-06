@@ -24,21 +24,11 @@ type ArchivedMeasurement = {
   deleted_context: string | null;
 };
 
-function readSelectedClient(): SelectedClient {
-  const selects = Array.from(document.querySelectorAll("select"));
-  const clientSelect = selects.find((select) => select.value && select.selectedOptions[0]);
-  const selectedOption = clientSelect?.selectedOptions[0];
+const SELECTED_CLIENT_CHANGE = "knee:selected-client-change";
+const SELECTED_CLIENT_REQUEST = "knee:selected-client-request";
 
-  if (!clientSelect?.value || !selectedOption) return null;
-
-  return {
-    id: clientSelect.value,
-    name: selectedOption.textContent?.trim() || "vybraneho klienta",
-  };
-}
-
-function isSameClient(left: SelectedClient, right: SelectedClient) {
-  return left?.id === right?.id && left?.name === right?.name;
+function selectedClientFromEvent(event: Event): SelectedClient {
+  return (event as CustomEvent<SelectedClient>).detail ?? null;
 }
 
 function isMissingRpcSignature(error: { code?: string; message?: string } | null) {
@@ -104,19 +94,15 @@ export default function ArchivedMeasurements() {
   }, [supabase]);
 
   useEffect(() => {
-    const syncSelectedClient = () => {
-      const nextClient = readSelectedClient();
-      setSelectedClient((currentClient) => isSameClient(currentClient, nextClient) ? currentClient : nextClient);
+    const handleSelectedClientChange = (event: Event) => {
+      setSelectedClient(selectedClientFromEvent(event));
     };
-    const observer = new MutationObserver(syncSelectedClient);
 
-    syncSelectedClient();
-    document.addEventListener("change", syncSelectedClient, true);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    window.addEventListener(SELECTED_CLIENT_CHANGE, handleSelectedClientChange);
+    window.dispatchEvent(new Event(SELECTED_CLIENT_REQUEST));
 
     return () => {
-      document.removeEventListener("change", syncSelectedClient, true);
-      observer.disconnect();
+      window.removeEventListener(SELECTED_CLIENT_CHANGE, handleSelectedClientChange);
     };
   }, []);
 
