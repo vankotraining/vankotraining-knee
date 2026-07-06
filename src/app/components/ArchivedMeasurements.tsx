@@ -37,6 +37,10 @@ function readSelectedClient(): SelectedClient {
   };
 }
 
+function isSameClient(left: SelectedClient, right: SelectedClient) {
+  return left?.id === right?.id && left?.name === right?.name;
+}
+
 function isMissingRpcSignature(error: { code?: string; message?: string } | null) {
   return (
     error?.code === "PGRST202" ||
@@ -100,7 +104,10 @@ export default function ArchivedMeasurements() {
   }, [supabase]);
 
   useEffect(() => {
-    const syncSelectedClient = () => setSelectedClient(readSelectedClient());
+    const syncSelectedClient = () => {
+      const nextClient = readSelectedClient();
+      setSelectedClient((currentClient) => isSameClient(currentClient, nextClient) ? currentClient : nextClient);
+    };
     const observer = new MutationObserver(syncSelectedClient);
 
     syncSelectedClient();
@@ -114,14 +121,14 @@ export default function ArchivedMeasurements() {
   }, []);
 
   useEffect(() => {
-    if (!selectedClient) {
+    if (!selectedClient?.id) {
       setArchivedMeasurements([]);
       setMessage("");
       return;
     }
 
     void loadArchivedMeasurements(selectedClient.id);
-  }, [loadArchivedMeasurements, selectedClient]);
+  }, [loadArchivedMeasurements, selectedClient?.id]);
 
   async function handleRestore(measurement: ArchivedMeasurement) {
     if (!supabase || restoringId) return;
