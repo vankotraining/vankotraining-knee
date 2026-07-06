@@ -162,32 +162,44 @@ function formatNumber(
   return `${value.toFixed(decimals)}${suffix}`;
 }
 
-function formatPercent(value: number | null | undefined) {
+function getAsymmetryValue(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) {
-    return "-";
+    return null;
   }
 
-  const normalized = Math.abs(value) <= 1 ? value * 100 : value;
+  return Math.abs(value) <= 1 ? Math.abs(value) * 100 : Math.abs(value);
+}
+
+function formatPercent(value: number | null | undefined) {
+  const normalized = getAsymmetryValue(value);
+
+  if (normalized === null) {
+    return "-";
+  }
 
   return `${normalized.toFixed(1)} %`;
 }
 
-function getAsymmetryClass(value: number | null | undefined) {
-  if (value === null || value === undefined || Number.isNaN(value)) {
-    return "asymmetry-badge unknown";
+function getAsymmetryTone(value: number | null | undefined) {
+  const normalized = getAsymmetryValue(value);
+
+  if (normalized === null) {
+    return "unknown";
   }
 
-  const normalized = Math.abs(value) <= 1 ? Math.abs(value) * 100 : Math.abs(value);
-
   if (normalized < 10) {
-    return "asymmetry-badge ok";
+    return "ok";
   }
 
   if (normalized <= 20) {
-    return "asymmetry-badge warning";
+    return "warning";
   }
 
-  return "asymmetry-badge problem";
+  return "problem";
+}
+
+function getAsymmetryClass(value: number | null | undefined) {
+  return `asymmetry-badge ${getAsymmetryTone(value)}`;
 }
 
 function formatSide(value: string | null | undefined) {
@@ -279,78 +291,152 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
   const points = tests
     .slice()
     .reverse()
-    .filter((test) => test.left_nm_per_kg !== null || test.right_nm_per_kg !== null);
+    .filter(
+      (test) =>
+        test.left_nm_per_kg !== null ||
+        test.right_nm_per_kg !== null ||
+        test.asymmetry_pct !== null,
+    );
 
   if (points.length === 0) {
     return <p className="status">Zatim tu neni zadny test pro graf.</p>;
   }
 
   const width = 560;
-  const height = 230;
-  const padding = 34;
+  const height = 280;
+  const paddingX = 38;
+  const strengthTop = 30;
+  const strengthHeight = 128;
+  const asymmetryTop = 190;
+  const asymmetryHeight = 46;
+  const chartWidth = width - paddingX * 2;
   const maxValue = Math.max(
     NORM_NM_PER_KG,
     ...points.flatMap((test) => [test.left_nm_per_kg ?? 0, test.right_nm_per_kg ?? 0]),
   );
   const chartMax = Math.max(3, Math.ceil(maxValue * 10) / 10);
-  const chartWidth = width - padding * 2;
-  const chartHeight = height - padding * 2;
+  const asymmetryMax = Math.max(
+    25,
+    Math.ceil(
+      Math.max(...points.map((test) => getAsymmetryValue(test.asymmetry_pct) ?? 0)) / 5,
+    ) * 5,
+  );
   const xForIndex = (index: number) =>
     points.length === 1
       ? width / 2
-      : padding + (index / (points.length - 1)) * chartWidth;
-  const yForValue = (value: number) =>
-    padding + (1 - value / chartMax) * chartHeight;
-  const pathFor = (side: "left" | "right") =>
+      : paddingX + (index / (points.length - 1)) * chartWidth;
+  const yForStrength = (value: number) =>
+    strengthTop + (1 - value / chartMax) * strengthHeight;
+  const yForAsymmetry = (value: number) =>
+    asymmetryTop + (1 - value / asymmetryMax) * asymmetryHeight;
+  const pathForStrength = (side: "left" | "right") =>
     points
       .map((test, index) => {
         const value = side === "left" ? test.left_nm_per_kg : test.right_nm_per_kg;
-        return `${xForIndex(index)},${yForValue(value ?? 0)}`;
+        return `${xForIndex(index)},${yForStrength(value ?? 0)}`;
       })
       .join(" ");
+  const asymmetryPath = points
+    .map((test, index) => {
+      const value = getAsymmetryValue(test.asymmetry_pct) ?? 0;
+      return `${xForIndex(index)},${yForAsymmetry(value)}`;
+    })
+    .join(" ");
 
   return (
-    <div className="chart-card">
+    <div className="chart-card clean-chart">
       <div className="chart-legend">
         <span className="legend-item left">Leva</span>
         <span className="legend-item right">Prava</span>
         <span className="legend-item target">Norma</span>
+        <span className="legend-item asymmetry">Asymetrie</span>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Vyvoj knee extension testu">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Vyvoj knee extension testu a asymetrie">
+        <line
+          className="chart-grid-line"
+          x1={paddingX}
+          x2={width - paddingX}
+          y1={yForStrength(0)}
+          y2={yForStrength(0)}
+        />
         <line
           className="chart-target"
-          x1={padding}
-          x2={width - padding}
-          y1={yForValue(NORM_NM_PER_KG)}
-          y2={yForValue(NORM_NM_PER_KG)}
+          x1={paddingX}
+          x2={width - paddingX}
+          y1={yForStrength(NORM_NM_PER_KG)}
+          y2={yForStrength(NORM_NM_PER_KG)}
         />
-        <text x={padding} y={yForValue(NORM_NM_PER_KG) - 7}>
+        <text x={paddingX} y={yForStrength(NORM_NM_PER_KG) - 7}>
           {formatNumber(NORM_NM_PER_KG, 1)} Nm/kg
         </text>
-        <polyline className="chart-line left" points={pathFor("left")} />
-        <polyline className="chart-line right" points={pathFor("right")} />
-        {points.map((test, index) => (
-          <g key={test.id}>
-            <circle
-              className="chart-dot left"
-              cx={xForIndex(index)}
-              cy={yForValue(test.left_nm_per_kg ?? 0)}
-              r="4"
-            />
-            <circle
-              className="chart-dot right"
-              cx={xForIndex(index)}
-              cy={yForValue(test.right_nm_per_kg ?? 0)}
-              r="4"
-            />
-            <text className="chart-date" x={xForIndex(index)} y={height - 10}>
-              {new Date(`${test.test_date}T00:00:00`).toLocaleDateString("cs-CZ", {
-                day: "numeric",
-                month: "numeric",
-              })}
-            </text>
-          </g>
-        ))}
+        <polyline
+          className="chart-line left"
+          fill="none"
+          points={pathForStrength("left")}
+        />
+        <polyline
+          className="chart-line right"
+          fill="none"
+          points={pathForStrength("right")}
+        />
+
+        <line
+          className="chart-grid-line"
+          x1={paddingX}
+          x2={width - paddingX}
+          y1={yForAsymmetry(0)}
+          y2={yForAsymmetry(0)}
+        />
+        <line
+          className="chart-asymmetry-threshold warning"
+          x1={paddingX}
+          x2={width - paddingX}
+          y1={yForAsymmetry(10)}
+          y2={yForAsymmetry(10)}
+        />
+        <line
+          className="chart-asymmetry-threshold problem"
+          x1={paddingX}
+          x2={width - paddingX}
+          y1={yForAsymmetry(20)}
+          y2={yForAsymmetry(20)}
+        />
+        <text x={paddingX} y={asymmetryTop - 10}>Asymetrie %</text>
+        <text className="chart-axis-label" x={width - paddingX} y={yForAsymmetry(10) - 4}>10</text>
+        <text className="chart-axis-label" x={width - paddingX} y={yForAsymmetry(20) - 4}>20</text>
+        <polyline className="chart-line asymmetry" fill="none" points={asymmetryPath} />
+
+        {points.map((test, index) => {
+          const asymmetryValue = getAsymmetryValue(test.asymmetry_pct) ?? 0;
+          return (
+            <g key={test.id}>
+              <circle
+                className="chart-dot left"
+                cx={xForIndex(index)}
+                cy={yForStrength(test.left_nm_per_kg ?? 0)}
+                r="4"
+              />
+              <circle
+                className="chart-dot right"
+                cx={xForIndex(index)}
+                cy={yForStrength(test.right_nm_per_kg ?? 0)}
+                r="4"
+              />
+              <circle
+                className={`chart-dot asymmetry ${getAsymmetryTone(test.asymmetry_pct)}`}
+                cx={xForIndex(index)}
+                cy={yForAsymmetry(asymmetryValue)}
+                r="4"
+              />
+              <text className="chart-date" x={xForIndex(index)} y={height - 10}>
+                {new Date(`${test.test_date}T00:00:00`).toLocaleDateString("cs-CZ", {
+                  day: "numeric",
+                  month: "numeric",
+                })}
+              </text>
+            </g>
+          );
+        })}
       </svg>
     </div>
   );
