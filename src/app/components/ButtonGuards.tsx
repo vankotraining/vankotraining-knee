@@ -2,6 +2,35 @@
 
 import { useEffect } from "react";
 
+type SelectedClient = {
+  id: string;
+  name: string;
+} | null;
+
+const SELECTED_CLIENT_CHANGE = "knee:selected-client-change";
+const SELECTED_CLIENT_REQUEST = "knee:selected-client-request";
+
+function readSelectedClient(): SelectedClient {
+  const selects = Array.from(document.querySelectorAll("select"));
+  const clientSelect = selects.find((select) => select.value && select.selectedOptions[0]);
+  const selectedOption = clientSelect?.selectedOptions[0];
+
+  if (!clientSelect?.value || !selectedOption) return null;
+
+  return {
+    id: clientSelect.value,
+    name: selectedOption.textContent?.trim() || "vybraneho klienta",
+  };
+}
+
+function publishSelectedClient() {
+  window.dispatchEvent(
+    new CustomEvent<SelectedClient>(SELECTED_CLIENT_CHANGE, {
+      detail: readSelectedClient(),
+    }),
+  );
+}
+
 function isNoClientResult() {
   const selects = Array.from(document.querySelectorAll("select"));
 
@@ -76,6 +105,8 @@ function syncButtonState() {
       button.title = noClientResult ? "Nejdriv vyber klienta z vysledku hledani." : "";
     }
   });
+
+  publishSelectedClient();
 }
 
 export default function ButtonGuards() {
@@ -104,16 +135,20 @@ export default function ButtonGuards() {
         syncButtonState();
       }
     };
-
+    const handleSelectedClientRequest = () => publishSelectedClient();
     const observer = new MutationObserver(syncButtonState);
 
     syncButtonState();
     document.addEventListener("click", handleClick, true);
+    document.addEventListener("change", syncButtonState, true);
+    window.addEventListener(SELECTED_CLIENT_REQUEST, handleSelectedClientRequest);
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
     return () => {
       window.confirm = originalConfirm;
       document.removeEventListener("click", handleClick, true);
+      document.removeEventListener("change", syncButtonState, true);
+      window.removeEventListener(SELECTED_CLIENT_REQUEST, handleSelectedClientRequest);
       observer.disconnect();
     };
   }, []);
