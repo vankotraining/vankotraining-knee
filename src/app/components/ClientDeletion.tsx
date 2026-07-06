@@ -100,20 +100,45 @@ export default function ClientDeletion() {
   if (!selectedClient) return null;
 
   return (
-    <section className="client-delete-bar" aria-label="Smazani klienta">
-      <div>
-        <strong>{selectedClient.name}</strong>
-        <span>Smaze klienta vcetne jeho mereni a profilu.</span>
+    <section
+      aria-label="Smazani klienta"
+      style={{
+        alignItems: "center",
+        background: "#fff8f7",
+        border: "1px solid rgba(155, 44, 44, 0.28)",
+        borderRadius: "8px",
+        bottom: "calc(74px + env(safe-area-inset-bottom))",
+        boxShadow: "0 12px 28px rgba(22, 26, 21, 0.12)",
+        display: "grid",
+        gap: "10px",
+        gridTemplateColumns: "minmax(0, 1fr) auto",
+        left: "max(12px, calc((100vw - 1280px) / 2 + 14px))",
+        maxWidth: "520px",
+        padding: "10px 12px",
+        position: "fixed",
+        right: "12px",
+        zIndex: 34,
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedClient.name}</strong>
+        <span style={{ color: "#687063", display: "block", fontSize: "12px", marginTop: "2px" }}>Smaze klienta vcetne jeho mereni a profilu.</span>
       </div>
       <button
-        className="danger-button"
         disabled={isDeleting}
         type="button"
         onClick={handleDeleteClient}
+        style={{
+          background: "#9b2c2c",
+          color: "#fff",
+          minHeight: "40px",
+          padding: "9px 12px",
+          whiteSpace: "nowrap",
+        }}
       >
-        {isDeleting ? "Mazu klienta..." : "Smazat klienta"}
+        {isDeleting ? "Mazu..." : "Smazat klienta"}
       </button>
-      {message ? <p className="status error">{message}</p> : null}
+      {message ? <p className="status error" style={{ gridColumn: "1 / -1" }}>{message}</p> : null}
     </section>
   );
 }
