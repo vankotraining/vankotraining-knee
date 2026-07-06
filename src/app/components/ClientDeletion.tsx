@@ -11,17 +11,11 @@ type SelectedClient = {
   name: string;
 } | null;
 
-function readSelectedClient(): SelectedClient {
-  const selects = Array.from(document.querySelectorAll("select"));
-  const clientSelect = selects.find((select) => select.value && select.selectedOptions[0]);
-  const selectedOption = clientSelect?.selectedOptions[0];
+const SELECTED_CLIENT_CHANGE = "knee:selected-client-change";
+const SELECTED_CLIENT_REQUEST = "knee:selected-client-request";
 
-  if (!clientSelect?.value || !selectedOption) return null;
-
-  return {
-    id: clientSelect.value,
-    name: selectedOption.textContent?.trim() || "vybraneho klienta",
-  };
+function selectedClientFromEvent(event: Event): SelectedClient {
+  return (event as CustomEvent<SelectedClient>).detail ?? null;
 }
 
 function isMissingRpcSignature(error: { code?: string; message?: string } | null) {
@@ -41,16 +35,16 @@ export default function ClientDeletion() {
   );
 
   useEffect(() => {
-    const syncSelectedClient = () => setSelectedClient(readSelectedClient());
-    const observer = new MutationObserver(syncSelectedClient);
+    const handleSelectedClientChange = (event: Event) => {
+      setSelectedClient(selectedClientFromEvent(event));
+      setMessage("");
+    };
 
-    syncSelectedClient();
-    document.addEventListener("change", syncSelectedClient, true);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    window.addEventListener(SELECTED_CLIENT_CHANGE, handleSelectedClientChange);
+    window.dispatchEvent(new Event(SELECTED_CLIENT_REQUEST));
 
     return () => {
-      document.removeEventListener("change", syncSelectedClient, true);
-      observer.disconnect();
+      window.removeEventListener(SELECTED_CLIENT_CHANGE, handleSelectedClientChange);
     };
   }, []);
 
