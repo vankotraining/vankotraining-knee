@@ -9,6 +9,7 @@
   --accent-strong: #173f31;
   --danger: #9b2c2c;
   --blue: #2d6cdf;
+  --warning: #a75b12;
 }
 
 html {
@@ -231,6 +232,41 @@ dt {
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.asymmetry-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.asymmetry-badge.ok {
+  border-color: rgba(35, 96, 74, 0.28);
+  background: #dfeee5;
+  color: var(--accent-strong);
+}
+
+.asymmetry-badge.warning {
+  border-color: rgba(167, 91, 18, 0.34);
+  background: #fff1d8;
+  color: var(--warning);
+}
+
+.asymmetry-badge.problem {
+  border-color: rgba(155, 44, 44, 0.34);
+  background: #f4dedd;
+  color: var(--danger);
+}
+
+.asymmetry-badge.unknown {
+  background: var(--surface-subtle);
+  color: var(--muted);
 }
 
 .stack-form {
