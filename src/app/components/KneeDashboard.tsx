@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
@@ -9,6 +9,7 @@ import {
 } from "@/lib/supabase-browser";
 
 type LoadState = "idle" | "ready" | "error";
+type ActivePanel = "athlete" | "test" | "edit" | null;
 
 type Athlete = {
   id: string;
@@ -80,8 +81,25 @@ type LegNormGap = {
   isDeficit: boolean;
 };
 
+type TestPayload = {
+  test_date: string;
+  right_force_kg: number;
+  left_force_kg: number;
+  asymmetry_pct: number;
+  weaker_side: "right" | "left" | "none";
+  right_nm_per_kg: number;
+  left_nm_per_kg: number;
+  body_weight_kg: number;
+  shin_length_cm: number;
+  age_at_test_years: number | null;
+  note: string | null;
+  source?: string;
+};
+
 const GRAVITY = 9.80665;
 const NORM_NM_PER_KG = 3;
+const TEST_SELECT =
+  "id,athlete_id,test_date,right_force_kg,left_force_kg,asymmetry_pct,weaker_side,right_nm_per_kg,left_nm_per_kg,body_weight_kg,shin_length_cm,age_at_test_years,note,source,source_row";
 
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
@@ -218,6 +236,17 @@ function formatSide(value: string | null | undefined) {
   return "-";
 }
 
+function testToForm(test: KneeExtensionTest): TestForm {
+  return {
+    test_date: test.test_date || todayIsoDate(),
+    right_force_kg: test.right_force_kg?.toString() ?? "",
+    left_force_kg: test.left_force_kg?.toString() ?? "",
+    body_weight_kg: test.body_weight_kg?.toString() ?? "",
+    shin_length_cm: test.shin_length_cm?.toString() ?? "33",
+    note: test.note ?? "",
+  };
+}
+
 function getNormGap(test: KneeExtensionTest | null | undefined) {
   if (!test) {
     return null;
@@ -285,6 +314,67 @@ function getLegNormGaps(test: KneeExtensionTest): LegNormGap[] {
       isDeficit: (missingKg ?? 0) > 0 || (missingPct ?? 0) > 0,
     };
   });
+}
+
+function buildTestPayload(
+  form: TestForm,
+  athlete: AthleteOverview,
+  includeSource = false,
+): { payload: TestPayload | null; error: string | null } {
+  const bodyWeight = toNumber(form.body_weight_kg);
+  const shinLength = toNumber(form.shin_length_cm);
+  const rightForce = toNumber(form.right_force_kg);
+  const leftForce = toNumber(form.left_force_kg);
+  const testDate = form.test_date || todayIsoDate();
+  const rightNm = forceKgToNmPerKg(rightForce, shinLength, bodyWeight);
+  const leftNm = forceKgToNmPerKg(leftForce, shinLength, bodyWeight);
+
+  if (
+    !Number.isFinite(bodyWeight) ||
+    !Number.isFinite(shinLength) ||
+    !Number.isFinite(rightForce) ||
+    !Number.isFinite(leftForce) ||
+    bodyWeight <= 0 ||
+    shinLength <= 0 ||
+    rightForce <= 0 ||
+    leftForce <= 0 ||
+    rightNm === null ||
+    leftNm === null
+  ) {
+    return {
+      payload: null,
+      error: "Vypln kladne hodnoty pro vahu, bercovou paku a obe strany.",
+    };
+  }
+
+  const strongerForce = Math.max(rightForce, leftForce);
+  const asymmetryPct =
+    strongerForce > 0 ? (Math.abs(rightForce - leftForce) / strongerForce) * 100 : 0;
+  const weakerSide =
+    Math.abs(rightForce - leftForce) < 0.01
+      ? "none"
+      : rightForce < leftForce
+        ? "right"
+        : "left";
+  const birthDate = athlete.latestProfile?.birth_date ?? null;
+
+  return {
+    error: null,
+    payload: {
+      test_date: testDate,
+      right_force_kg: rightForce,
+      left_force_kg: leftForce,
+      asymmetry_pct: asymmetryPct,
+      weaker_side: weakerSide,
+      right_nm_per_kg: rightNm,
+      left_nm_per_kg: leftNm,
+      body_weight_kg: bodyWeight,
+      shin_length_cm: shinLength,
+      age_at_test_years: calculateAge(birthDate, testDate),
+      note: form.note.trim() || null,
+      ...(includeSource ? { source: "manual" } : {}),
+    },
+  };
 }
 
 function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
@@ -543,7 +633,9 @@ export default function KneeDashboard() {
   const [kneeTests, setKneeTests] = useState<KneeExtensionTest[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState<string | null>(null);
   const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
-  const [activePanel, setActivePanel] = useState<"athlete" | "test" | null>(null);
+  const [activePanel, setActivePanel] = useState<ActivePanel>(null);
+  const [editingTestId, setEditingTestId] = useState<string | null>(null);
+  const [deletingTestId, setDeletingTestId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [athleteForm, setAthleteForm] = useState<AthleteForm>({
     display_name: "",
@@ -560,8 +652,17 @@ export default function KneeDashboard() {
     shin_length_cm: "33",
     note: "",
   });
+  const [editTestForm, setEditTestForm] = useState<TestForm>({
+    test_date: todayIsoDate(),
+    right_force_kg: "",
+    left_force_kg: "",
+    body_weight_kg: "",
+    shin_length_cm: "33",
+    note: "",
+  });
   const [isSavingAthlete, setIsSavingAthlete] = useState(false);
   const [isSavingTest, setIsSavingTest] = useState(false);
+  const [isUpdatingTest, setIsUpdatingTest] = useState(false);
 
   const isConfigured = hasSupabaseConfig();
   const supabase = useMemo(() => {
@@ -609,9 +710,7 @@ export default function KneeDashboard() {
         .order("updated_at", { ascending: false, nullsFirst: false }),
       supabase
         .from("knee_extension_tests")
-        .select(
-          "id,athlete_id,test_date,right_force_kg,left_force_kg,asymmetry_pct,weaker_side,right_nm_per_kg,left_nm_per_kg,body_weight_kg,shin_length_cm,age_at_test_years,note,source,source_row",
-        )
+        .select(TEST_SELECT)
         .order("test_date", { ascending: false })
         .order("source_row", { ascending: false, nullsFirst: false }),
     ]).then(([athletesResult, profilesResult, testsResult]) => {
@@ -697,6 +796,7 @@ export default function KneeDashboard() {
     }
 
     setExpandedTestId(null);
+    setEditingTestId(null);
     setTestForm((current) => ({
       ...current,
       body_weight_kg:
@@ -720,6 +820,23 @@ export default function KneeDashboard() {
 
   function updateTestForm(key: keyof TestForm, value: string) {
     setTestForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateEditTestForm(key: keyof TestForm, value: string) {
+    setEditTestForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function openEditTest(test: KneeExtensionTest) {
+    setEditingTestId(test.id);
+    setEditTestForm(testToForm(test));
+    setActivePanel("edit");
+    setExpandedTestId(test.id);
+    setMessage("");
+  }
+
+  function closeEditTest() {
+    setEditingTestId(null);
+    setActivePanel(null);
   }
 
   async function handleMagicLink() {
@@ -822,40 +939,16 @@ export default function KneeDashboard() {
       return;
     }
 
-    const bodyWeight = toNumber(testForm.body_weight_kg);
-    const shinLength = toNumber(testForm.shin_length_cm);
-    const rightForce = toNumber(testForm.right_force_kg);
-    const leftForce = toNumber(testForm.left_force_kg);
-    const testDate = testForm.test_date || todayIsoDate();
-    const rightNm = forceKgToNmPerKg(rightForce, shinLength, bodyWeight);
-    const leftNm = forceKgToNmPerKg(leftForce, shinLength, bodyWeight);
+    const { payload, error: payloadError } = buildTestPayload(
+      testForm,
+      selectedAthlete,
+      true,
+    );
 
-    if (
-      !Number.isFinite(bodyWeight) ||
-      !Number.isFinite(shinLength) ||
-      !Number.isFinite(rightForce) ||
-      !Number.isFinite(leftForce) ||
-      bodyWeight <= 0 ||
-      shinLength <= 0 ||
-      rightForce <= 0 ||
-      leftForce <= 0 ||
-      rightNm === null ||
-      leftNm === null
-    ) {
-      setMessage("Vypln kladne hodnoty pro vahu, bercovou paku a obe strany.");
+    if (!payload) {
+      setMessage(payloadError ?? "Test se nepodarilo pripravit.");
       return;
     }
-
-    const strongerForce = Math.max(rightForce, leftForce);
-    const asymmetryPct =
-      strongerForce > 0 ? (Math.abs(rightForce - leftForce) / strongerForce) * 100 : 0;
-    const weakerSide =
-      Math.abs(rightForce - leftForce) < 0.01
-        ? "none"
-        : rightForce < leftForce
-          ? "right"
-          : "left";
-    const birthDate = selectedAthlete.latestProfile?.birth_date ?? null;
 
     setIsSavingTest(true);
     setMessage("");
@@ -864,20 +957,9 @@ export default function KneeDashboard() {
       .from("knee_extension_tests")
       .insert({
         athlete_id: selectedAthlete.id,
-        test_date: testDate,
-        right_force_kg: rightForce,
-        left_force_kg: leftForce,
-        asymmetry_pct: asymmetryPct,
-        weaker_side: weakerSide,
-        right_nm_per_kg: rightNm,
-        left_nm_per_kg: leftNm,
-        body_weight_kg: bodyWeight,
-        shin_length_cm: shinLength,
-        age_at_test_years: calculateAge(birthDate, testDate),
-        note: testForm.note.trim() || null,
-        source: "manual",
+        ...payload,
       })
-      .select("id,athlete_id,test_date,right_force_kg,left_force_kg,asymmetry_pct,weaker_side,right_nm_per_kg,left_nm_per_kg,body_weight_kg,shin_length_cm,age_at_test_years,note,source,source_row")
+      .select(TEST_SELECT)
       .single();
 
     setIsSavingTest(false);
@@ -898,6 +980,184 @@ export default function KneeDashboard() {
     }));
     setActivePanel(null);
     setMessage("Knee extension test je ulozeny.");
+  }
+
+  async function handleUpdateTest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!supabase || !selectedAthlete || !editingTestId) {
+      return;
+    }
+
+    const { payload, error: payloadError } = buildTestPayload(
+      editTestForm,
+      selectedAthlete,
+    );
+
+    if (!payload) {
+      setMessage(payloadError ?? "Test se nepodarilo pripravit.");
+      return;
+    }
+
+    setIsUpdatingTest(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("knee_extension_tests")
+      .update(payload)
+      .eq("id", editingTestId)
+      .select(TEST_SELECT)
+      .single();
+
+    setIsUpdatingTest(false);
+
+    if (error || !data) {
+      setMessage(error?.message ?? "Test se nepodarilo upravit.");
+      return;
+    }
+
+    setKneeTests((current) =>
+      current.map((test) => (test.id === editingTestId ? (data as KneeExtensionTest) : test)),
+    );
+    setExpandedTestId(editingTestId);
+    setEditingTestId(null);
+    setActivePanel(null);
+    setMessage("Knee extension test je upraveny.");
+  }
+
+  async function handleDeleteTest(test: KneeExtensionTest) {
+    if (!supabase) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Opravdu smazat mereni z ${formatDate(test.test_date)}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingTestId(test.id);
+    setMessage("");
+
+    const { error } = await supabase
+      .from("knee_extension_tests")
+      .delete()
+      .eq("id", test.id);
+
+    setDeletingTestId(null);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setKneeTests((current) => current.filter((item) => item.id !== test.id));
+    if (expandedTestId === test.id) {
+      setExpandedTestId(null);
+    }
+    if (editingTestId === test.id) {
+      setEditingTestId(null);
+      setActivePanel(null);
+    }
+    setMessage("Knee extension test je smazany.");
+  }
+
+  function renderTestForm({
+    form,
+    onChange,
+    onSubmit,
+    isSaving,
+    submitLabel,
+    savingLabel,
+    onCancel,
+  }: {
+    form: TestForm;
+    onChange: (key: keyof TestForm, value: string) => void;
+    onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+    isSaving: boolean;
+    submitLabel: string;
+    savingLabel: string;
+    onCancel?: () => void;
+  }) {
+    return (
+      <form className="stack-form compact-form test-form" onSubmit={onSubmit}>
+        <div className="form-row">
+          <label>
+            Datum testu
+            <input
+              type="date"
+              value={form.test_date}
+              onChange={(event) => onChange("test_date", event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Norma
+            <input value={`${NORM_NM_PER_KG.toFixed(1)} Nm/kg`} readOnly />
+          </label>
+        </div>
+        <div className="form-row">
+          <label>
+            Vaha kg
+            <input
+              inputMode="decimal"
+              value={form.body_weight_kg}
+              onChange={(event) => onChange("body_weight_kg", event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Bercova paka cm
+            <input
+              inputMode="decimal"
+              value={form.shin_length_cm}
+              onChange={(event) => onChange("shin_length_cm", event.target.value)}
+              required
+            />
+          </label>
+        </div>
+        <div className="form-row">
+          <label>
+            Leva kg
+            <input
+              inputMode="decimal"
+              value={form.left_force_kg}
+              onChange={(event) => onChange("left_force_kg", event.target.value)}
+              placeholder="35"
+              required
+            />
+          </label>
+          <label>
+            Prava kg
+            <input
+              inputMode="decimal"
+              value={form.right_force_kg}
+              onChange={(event) => onChange("right_force_kg", event.target.value)}
+              placeholder="42"
+              required
+            />
+          </label>
+        </div>
+        <label>
+          Poznamka k testu
+          <textarea
+            value={form.note}
+            onChange={(event) => onChange("note", event.target.value)}
+            placeholder="Bolest, setup, poznamka k mereni..."
+          />
+        </label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+          <button disabled={isSaving}>{isSaving ? savingLabel : submitLabel}</button>
+          {onCancel ? (
+            <button className="ghost-button" type="button" onClick={onCancel}>
+              Zrusit
+            </button>
+          ) : null}
+        </div>
+      </form>
+    );
   }
 
   if (!isConfigured) {
@@ -1036,7 +1296,9 @@ export default function KneeDashboard() {
               <div className="panel-header">
                 <div>
                   <p className="eyebrow">Rychle akce</p>
-                  <h2>Zadat data</h2>
+                  <h2>
+                    {activePanel === "edit" ? "Upravit mereni" : "Zadat data"}
+                  </h2>
                 </div>
               </div>
 
@@ -1111,81 +1373,33 @@ export default function KneeDashboard() {
                 </form>
               ) : null}
 
-              {activePanel === "test" && selectedAthlete ? (
-                <form className="stack-form compact-form test-form" onSubmit={handleCreateTest}>
-                  <div className="form-row">
-                    <label>
-                      Datum testu
-                      <input
-                        type="date"
-                        value={testForm.test_date}
-                        onChange={(event) => updateTestForm("test_date", event.target.value)}
-                        required
-                      />
-                    </label>
-                    <label>
-                      Norma
-                      <input value={`${NORM_NM_PER_KG.toFixed(1)} Nm/kg`} readOnly />
-                    </label>
-                  </div>
-                  <div className="form-row">
-                    <label>
-                      Vaha kg
-                      <input
-                        inputMode="decimal"
-                        value={testForm.body_weight_kg}
-                        onChange={(event) => updateTestForm("body_weight_kg", event.target.value)}
-                        required
-                      />
-                    </label>
-                    <label>
-                      Bercova paka cm
-                      <input
-                        inputMode="decimal"
-                        value={testForm.shin_length_cm}
-                        onChange={(event) => updateTestForm("shin_length_cm", event.target.value)}
-                        required
-                      />
-                    </label>
-                  </div>
-                  <div className="form-row">
-                    <label>
-                      Leva kg
-                      <input
-                        inputMode="decimal"
-                        value={testForm.left_force_kg}
-                        onChange={(event) => updateTestForm("left_force_kg", event.target.value)}
-                        placeholder="35"
-                        required
-                      />
-                    </label>
-                    <label>
-                      Prava kg
-                      <input
-                        inputMode="decimal"
-                        value={testForm.right_force_kg}
-                        onChange={(event) => updateTestForm("right_force_kg", event.target.value)}
-                        placeholder="42"
-                        required
-                      />
-                    </label>
-                  </div>
-                  <label>
-                    Poznamka k testu
-                    <textarea
-                      value={testForm.note}
-                      onChange={(event) => updateTestForm("note", event.target.value)}
-                      placeholder="Bolest, setup, poznamka k mereni..."
-                    />
-                  </label>
-                  <button disabled={isSavingTest}>{isSavingTest ? "Ukladam..." : "Ulozit test"}</button>
-                </form>
-              ) : null}
+              {activePanel === "test" && selectedAthlete
+                ? renderTestForm({
+                    form: testForm,
+                    onChange: updateTestForm,
+                    onSubmit: handleCreateTest,
+                    isSaving: isSavingTest,
+                    submitLabel: "Ulozit test",
+                    savingLabel: "Ukladam...",
+                  })
+                : null}
+
+              {activePanel === "edit" && selectedAthlete && editingTestId
+                ? renderTestForm({
+                    form: editTestForm,
+                    onChange: updateEditTestForm,
+                    onSubmit: handleUpdateTest,
+                    isSaving: isUpdatingTest,
+                    submitLabel: "Ulozit zmeny",
+                    savingLabel: "Ukladam zmeny...",
+                    onCancel: closeEditTest,
+                  })
+                : null}
 
               {!activePanel ? (
                 <p className="status compact-hint">
                   Vyber sportovce vlevo. Noveho klienta nebo mereni otevres jen
-                  kdyz je potrebujes.
+                  kdyz je potrebujes. Hotove mereni upravis v tabulce dole.
                 </p>
               ) : null}
             </section>
@@ -1259,7 +1473,7 @@ export default function KneeDashboard() {
                           <th>Asym</th>
                           <th>Slabsi</th>
                           <th>Vek</th>
-                          <th>Detail</th>
+                          <th>Akce</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1267,10 +1481,12 @@ export default function KneeDashboard() {
                           const legGaps = getLegNormGaps(test);
                           const deficitLegs = legGaps.filter((leg) => leg.isDeficit);
                           const isExpanded = expandedTestId === test.id;
+                          const isEditing = editingTestId === test.id;
+                          const isDeleting = deletingTestId === test.id;
 
                           return (
-                            <>
-                              <tr key={test.id}>
+                            <Fragment key={test.id}>
+                              <tr>
                                 <td>{formatDate(test.test_date)}</td>
                                 <td>{formatNumber(test.right_force_kg, 1)}</td>
                                 <td>{formatNumber(test.left_force_kg, 1)}</td>
@@ -1284,19 +1500,34 @@ export default function KneeDashboard() {
                                 <td>{formatSide(test.weaker_side)}</td>
                                 <td>{formatNumber(test.age_at_test_years, 1)}</td>
                                 <td>
-                                  <button
-                                    className="detail-button"
-                                    type="button"
-                                    onClick={() =>
-                                      setExpandedTestId(isExpanded ? null : test.id)
-                                    }
-                                  >
-                                    {isExpanded ? "Zavrit" : "Detail"}
-                                  </button>
+                                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                                    <button
+                                      className="detail-button"
+                                      type="button"
+                                      onClick={() => setExpandedTestId(isExpanded ? null : test.id)}
+                                    >
+                                      {isExpanded ? "Zavrit" : "Detail"}
+                                    </button>
+                                    <button
+                                      className="detail-button"
+                                      type="button"
+                                      onClick={() => openEditTest(test)}
+                                    >
+                                      {isEditing ? "Upravuji" : "Upravit"}
+                                    </button>
+                                    <button
+                                      className="detail-button"
+                                      disabled={isDeleting}
+                                      type="button"
+                                      onClick={() => handleDeleteTest(test)}
+                                    >
+                                      {isDeleting ? "Mazu..." : "Smazat"}
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                               {isExpanded ? (
-                                <tr className="expanded-row" key={`${test.id}-detail`}>
+                                <tr className="expanded-row">
                                   <td colSpan={9}>
                                     <div className="test-detail-header">
                                       <div>
@@ -1361,7 +1592,7 @@ export default function KneeDashboard() {
                                   </td>
                                 </tr>
                               ) : null}
-                            </>
+                            </Fragment>
                           );
                         })}
                       </tbody>
