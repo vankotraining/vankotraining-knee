@@ -9,7 +9,7 @@ import {
 } from "@/lib/supabase-browser";
 
 type LoadState = "idle" | "ready" | "error";
-type ActivePanel = "athlete" | "test" | "edit" | null;
+type ActivePanel = "athlete" | "test" | null;
 
 type Athlete = {
   id: string;
@@ -168,11 +168,7 @@ function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat("cs-CZ").format(date);
 }
 
-function formatNumber(
-  value: number | null | undefined,
-  decimals = 1,
-  suffix = "",
-) {
+function formatNumber(value: number | null | undefined, decimals = 1, suffix = "") {
   if (value === null || value === undefined || Number.isNaN(value)) {
     return "-";
   }
@@ -380,11 +376,7 @@ function buildTestPayload(
 function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
   const [visibleSeries, setVisibleSeries] = useState<
     Record<"left" | "right" | "asymmetry", boolean>
-  >({
-    left: true,
-    right: true,
-    asymmetry: true,
-  });
+  >({ left: true, right: true, asymmetry: true });
   const points = tests
     .slice()
     .reverse()
@@ -420,10 +412,8 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
     points.length === 1
       ? leftPadding + chartWidth / 2
       : leftPadding + (index / (points.length - 1)) * chartWidth;
-  const yForStrength = (value: number) =>
-    plotTop + (1 - value / strengthMax) * plotHeight;
-  const yForAsymmetry = (value: number) =>
-    plotTop + (1 - value / asymmetryMax) * plotHeight;
+  const yForStrength = (value: number) => plotTop + (1 - value / strengthMax) * plotHeight;
+  const yForAsymmetry = (value: number) => plotTop + (1 - value / asymmetryMax) * plotHeight;
   const pathForStrength = (side: "left" | "right") =>
     points
       .map((test, index) => {
@@ -504,116 +494,37 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
             y2={yForStrength(value)}
           />
         ))}
-        <line
-          className="chart-axis"
-          x1={leftPadding}
-          x2={leftPadding}
-          y1={plotTop}
-          y2={plotBottom}
-        />
+        <line className="chart-axis" x1={leftPadding} x2={leftPadding} y1={plotTop} y2={plotBottom} />
         {visibleSeries.asymmetry ? (
           <>
-            <line
-              className="chart-axis"
-              x1={width - rightPadding}
-              x2={width - rightPadding}
-              y1={plotTop}
-              y2={plotBottom}
-            />
-            <text className="chart-axis-title right" x={width - rightPadding} y="15">
-              Asym %
-            </text>
-            <text className="chart-axis-label right" x={width - rightPadding + 8} y={plotBottom + 4}>
-              0%
-            </text>
-            <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(asymmetryMax) + 4}>
-              {formatNumber(asymmetryMax, 0, "%")}
-            </text>
-            <line
-              className="chart-asymmetry-threshold warning"
-              x1={leftPadding}
-              x2={width - rightPadding}
-              y1={yForAsymmetry(10)}
-              y2={yForAsymmetry(10)}
-            />
-            <line
-              className="chart-asymmetry-threshold problem"
-              x1={leftPadding}
-              x2={width - rightPadding}
-              y1={yForAsymmetry(20)}
-              y2={yForAsymmetry(20)}
-            />
-            <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(10) + 4}>
-              10%
-            </text>
-            <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(20) + 4}>
-              20%
-            </text>
+            <line className="chart-axis" x1={width - rightPadding} x2={width - rightPadding} y1={plotTop} y2={plotBottom} />
+            <text className="chart-axis-title right" x={width - rightPadding} y="15">Asym %</text>
+            <text className="chart-axis-label right" x={width - rightPadding + 8} y={plotBottom + 4}>0%</text>
+            <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(asymmetryMax) + 4}>{formatNumber(asymmetryMax, 0, "%")}</text>
+            <line className="chart-asymmetry-threshold warning" x1={leftPadding} x2={width - rightPadding} y1={yForAsymmetry(10)} y2={yForAsymmetry(10)} />
+            <line className="chart-asymmetry-threshold problem" x1={leftPadding} x2={width - rightPadding} y1={yForAsymmetry(20)} y2={yForAsymmetry(20)} />
+            <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(10) + 4}>10%</text>
+            <text className="chart-axis-label right" x={width - rightPadding + 8} y={yForAsymmetry(20) + 4}>20%</text>
           </>
         ) : null}
-        <text className="chart-axis-title left" x={leftPadding} y="15">
-          Nm/kg
-        </text>
-        <text className="chart-axis-label left" x={leftPadding - 8} y={plotBottom + 4}>
-          0
-        </text>
-        <text className="chart-axis-label left" x={leftPadding - 8} y={yForStrength(strengthMax) + 4}>
-          {formatNumber(strengthMax, 1)}
-        </text>
-        <line
-          className="chart-target"
-          x1={leftPadding}
-          x2={width - rightPadding}
-          y1={yForStrength(NORM_NM_PER_KG)}
-          y2={yForStrength(NORM_NM_PER_KG)}
-        />
-        <text x={leftPadding + 6} y={yForStrength(NORM_NM_PER_KG) - 7}>
-          {formatNumber(NORM_NM_PER_KG, 1)} Nm/kg
-        </text>
-        {visibleSeries.left ? (
-          <polyline className="chart-line left" points={pathForStrength("left")} />
-        ) : null}
-        {visibleSeries.right ? (
-          <polyline className="chart-line right" points={pathForStrength("right")} />
-        ) : null}
-        {visibleSeries.asymmetry ? (
-          <polyline className="chart-line asymmetry" points={asymmetryPath} />
-        ) : null}
-
+        <text className="chart-axis-title left" x={leftPadding} y="15">Nm/kg</text>
+        <text className="chart-axis-label left" x={leftPadding - 8} y={plotBottom + 4}>0</text>
+        <text className="chart-axis-label left" x={leftPadding - 8} y={yForStrength(strengthMax) + 4}>{formatNumber(strengthMax, 1)}</text>
+        <line className="chart-target" x1={leftPadding} x2={width - rightPadding} y1={yForStrength(NORM_NM_PER_KG)} y2={yForStrength(NORM_NM_PER_KG)} />
+        <text x={leftPadding + 6} y={yForStrength(NORM_NM_PER_KG) - 7}>{formatNumber(NORM_NM_PER_KG, 1)} Nm/kg</text>
+        {visibleSeries.left ? <polyline className="chart-line left" points={pathForStrength("left")} /> : null}
+        {visibleSeries.right ? <polyline className="chart-line right" points={pathForStrength("right")} /> : null}
+        {visibleSeries.asymmetry ? <polyline className="chart-line asymmetry" points={asymmetryPath} /> : null}
         {points.map((test, index) => {
           const asymmetryValue = getAsymmetryValue(test.asymmetry_pct);
 
           return (
             <g key={test.id}>
-              {visibleSeries.left && test.left_nm_per_kg !== null ? (
-                <circle
-                  className="chart-dot left"
-                  cx={xForIndex(index)}
-                  cy={yForStrength(test.left_nm_per_kg)}
-                  r="4"
-                />
-              ) : null}
-              {visibleSeries.right && test.right_nm_per_kg !== null ? (
-                <circle
-                  className="chart-dot right"
-                  cx={xForIndex(index)}
-                  cy={yForStrength(test.right_nm_per_kg)}
-                  r="4"
-                />
-              ) : null}
-              {visibleSeries.asymmetry && asymmetryValue !== null ? (
-                <circle
-                  className={`chart-dot asymmetry ${getAsymmetryTone(test.asymmetry_pct)}`}
-                  cx={xForIndex(index)}
-                  cy={yForAsymmetry(asymmetryValue)}
-                  r="4"
-                />
-              ) : null}
+              {visibleSeries.left && test.left_nm_per_kg !== null ? <circle className="chart-dot left" cx={xForIndex(index)} cy={yForStrength(test.left_nm_per_kg)} r="4" /> : null}
+              {visibleSeries.right && test.right_nm_per_kg !== null ? <circle className="chart-dot right" cx={xForIndex(index)} cy={yForStrength(test.right_nm_per_kg)} r="4" /> : null}
+              {visibleSeries.asymmetry && asymmetryValue !== null ? <circle className={`chart-dot asymmetry ${getAsymmetryTone(test.asymmetry_pct)}`} cx={xForIndex(index)} cy={yForAsymmetry(asymmetryValue)} r="4" /> : null}
               <text className="chart-date" x={xForIndex(index)} y={height - 12}>
-                {new Date(`${test.test_date}T00:00:00`).toLocaleDateString("cs-CZ", {
-                  day: "numeric",
-                  month: "numeric",
-                })}
+                {new Date(`${test.test_date}T00:00:00`).toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" })}
               </text>
             </g>
           );
@@ -637,85 +548,34 @@ export default function KneeDashboard() {
   const [editingTestId, setEditingTestId] = useState<string | null>(null);
   const [deletingTestId, setDeletingTestId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [athleteForm, setAthleteForm] = useState<AthleteForm>({
-    display_name: "",
-    birth_date: "",
-    body_weight_kg: "",
-    shin_length_cm: "33",
-    note: "",
-  });
-  const [testForm, setTestForm] = useState<TestForm>({
-    test_date: todayIsoDate(),
-    right_force_kg: "",
-    left_force_kg: "",
-    body_weight_kg: "",
-    shin_length_cm: "33",
-    note: "",
-  });
-  const [editTestForm, setEditTestForm] = useState<TestForm>({
-    test_date: todayIsoDate(),
-    right_force_kg: "",
-    left_force_kg: "",
-    body_weight_kg: "",
-    shin_length_cm: "33",
-    note: "",
-  });
+  const [athleteForm, setAthleteForm] = useState<AthleteForm>({ display_name: "", birth_date: "", body_weight_kg: "", shin_length_cm: "33", note: "" });
+  const [testForm, setTestForm] = useState<TestForm>({ test_date: todayIsoDate(), right_force_kg: "", left_force_kg: "", body_weight_kg: "", shin_length_cm: "33", note: "" });
+  const [editTestForm, setEditTestForm] = useState<TestForm>({ test_date: todayIsoDate(), right_force_kg: "", left_force_kg: "", body_weight_kg: "", shin_length_cm: "33", note: "" });
   const [isSavingAthlete, setIsSavingAthlete] = useState(false);
   const [isSavingTest, setIsSavingTest] = useState(false);
   const [isUpdatingTest, setIsUpdatingTest] = useState(false);
 
   const isConfigured = hasSupabaseConfig();
-  const supabase = useMemo(() => {
-    if (!isConfigured) {
-      return null;
-    }
-
-    return createBrowserSupabaseClient();
-  }, [isConfigured]);
+  const supabase = useMemo(() => isConfigured ? createBrowserSupabaseClient() : null, [isConfigured]);
 
   useEffect(() => {
-    if (!supabase) {
-      return;
-    }
+    if (!supabase) return;
 
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-    });
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
 
     return () => subscription.unsubscribe();
   }, [supabase]);
 
   useEffect(() => {
-    if (!supabase || !session) {
-      return;
-    }
+    if (!supabase || !session) return;
 
     Promise.all([
-      supabase
-        .from("athletes")
-        .select("id,display_name,name_key,note")
-        .order("display_name"),
-      supabase
-        .from("athlete_profiles")
-        .select(
-          "id,athlete_id,birth_date,shin_length_cm,body_weight_kg,age,profile_date,updated_at",
-        )
-        .order("profile_date", { ascending: false, nullsFirst: false })
-        .order("updated_at", { ascending: false, nullsFirst: false }),
-      supabase
-        .from("knee_extension_tests")
-        .select(TEST_SELECT)
-        .order("test_date", { ascending: false })
-        .order("source_row", { ascending: false, nullsFirst: false }),
+      supabase.from("athletes").select("id,display_name,name_key,note").order("display_name"),
+      supabase.from("athlete_profiles").select("id,athlete_id,birth_date,shin_length_cm,body_weight_kg,age,profile_date,updated_at").order("profile_date", { ascending: false, nullsFirst: false }).order("updated_at", { ascending: false, nullsFirst: false }),
+      supabase.from("knee_extension_tests").select(TEST_SELECT).order("test_date", { ascending: false }).order("source_row", { ascending: false, nullsFirst: false }),
     ]).then(([athletesResult, profilesResult, testsResult]) => {
       const error = athletesResult.error ?? profilesResult.error ?? testsResult.error;
-
       if (error) {
         setMessage(error.message);
         setLoadState("error");
@@ -735,9 +595,7 @@ export default function KneeDashboard() {
     const testsByAthlete = new Map<string, KneeExtensionTest[]>();
 
     athleteProfiles.forEach((profile) => {
-      if (!profilesByAthlete.has(profile.athlete_id)) {
-        profilesByAthlete.set(profile.athlete_id, profile);
-      }
+      if (!profilesByAthlete.has(profile.athlete_id)) profilesByAthlete.set(profile.athlete_id, profile);
     });
 
     kneeTests.forEach((test) => {
@@ -748,31 +606,17 @@ export default function KneeDashboard() {
 
     return athletes.map((athlete) => {
       const tests = (testsByAthlete.get(athlete.id) ?? []).sort((a, b) => {
-        const dateDiff =
-          new Date(b.test_date).getTime() - new Date(a.test_date).getTime();
-
-        if (dateDiff !== 0) {
-          return dateDiff;
-        }
-
-        return (b.source_row ?? 0) - (a.source_row ?? 0);
+        const dateDiff = new Date(b.test_date).getTime() - new Date(a.test_date).getTime();
+        return dateDiff !== 0 ? dateDiff : (b.source_row ?? 0) - (a.source_row ?? 0);
       });
 
-      return {
-        ...athlete,
-        latestProfile: profilesByAthlete.get(athlete.id) ?? null,
-        latestTest: tests[0] ?? null,
-        tests,
-      };
+      return { ...athlete, latestProfile: profilesByAthlete.get(athlete.id) ?? null, latestTest: tests[0] ?? null, tests };
     });
   }, [athleteProfiles, athletes, kneeTests]);
 
   const filteredAthletes = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return athleteOverviews;
-    }
+    if (!normalizedQuery) return athleteOverviews;
 
     return athleteOverviews.filter((athlete) =>
       [athlete.display_name, athlete.name_key, athlete.note, athlete.latestTest?.test_date]
@@ -782,35 +626,23 @@ export default function KneeDashboard() {
   }, [athleteOverviews, query]);
 
   const selectedAthlete = useMemo(
-    () =>
-      filteredAthletes.find((athlete) => athlete.id === selectedAthleteId) ??
-      filteredAthletes[0] ??
-      athleteOverviews[0] ??
-      null,
+    () => filteredAthletes.find((athlete) => athlete.id === selectedAthleteId) ?? filteredAthletes[0] ?? athleteOverviews[0] ?? null,
     [athleteOverviews, filteredAthletes, selectedAthleteId],
   );
 
   useEffect(() => {
-    if (!selectedAthlete) {
-      return;
-    }
+    if (!selectedAthlete) return;
 
     setExpandedTestId(null);
     setEditingTestId(null);
     setTestForm((current) => ({
       ...current,
-      body_weight_kg:
-        selectedAthlete.latestProfile?.body_weight_kg?.toString() ??
-        current.body_weight_kg,
-      shin_length_cm:
-        selectedAthlete.latestProfile?.shin_length_cm?.toString() ??
-        current.shin_length_cm,
+      body_weight_kg: selectedAthlete.latestProfile?.body_weight_kg?.toString() ?? current.body_weight_kg,
+      shin_length_cm: selectedAthlete.latestProfile?.shin_length_cm?.toString() ?? current.shin_length_cm,
     }));
   }, [selectedAthlete]);
 
-  const testedAthleteCount = athleteOverviews.filter(
-    (athlete) => athlete.tests.length > 0,
-  ).length;
+  const testedAthleteCount = athleteOverviews.filter((athlete) => athlete.tests.length > 0).length;
   const latestTestDate = kneeTests[0]?.test_date ?? null;
   const latestNormGap = getNormGap(selectedAthlete?.latestTest);
 
@@ -829,34 +661,21 @@ export default function KneeDashboard() {
   function openEditTest(test: KneeExtensionTest) {
     setEditingTestId(test.id);
     setEditTestForm(testToForm(test));
-    setActivePanel("edit");
     setExpandedTestId(test.id);
+    setActivePanel(null);
     setMessage("");
   }
 
   function closeEditTest() {
     setEditingTestId(null);
-    setActivePanel(null);
   }
 
   async function handleMagicLink() {
-    if (!supabase) {
-      return;
-    }
+    if (!supabase) return;
 
     setMessage("Posilam prihlasovaci odkaz...");
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
-    });
-
-    setMessage(
-      error
-        ? error.message
-        : "Hotovo. Zkontroluj e-mail a klikni na prihlasovaci odkaz.",
-    );
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
+    setMessage(error ? error.message : "Hotovo. Zkontroluj e-mail a klikni na prihlasovaci odkaz.");
   }
 
   async function handleSignOut() {
@@ -865,21 +684,14 @@ export default function KneeDashboard() {
 
   async function handleCreateAthlete(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    if (!supabase || !athleteForm.display_name.trim()) {
-      return;
-    }
+    if (!supabase || !athleteForm.display_name.trim()) return;
 
     setIsSavingAthlete(true);
     setMessage("");
 
     const { data: athlete, error } = await supabase
       .from("athletes")
-      .insert({
-        display_name: athleteForm.display_name.trim(),
-        name_key: nameKey(athleteForm.display_name),
-        note: athleteForm.note.trim() || null,
-      })
+      .insert({ display_name: athleteForm.display_name.trim(), name_key: nameKey(athleteForm.display_name), note: athleteForm.note.trim() || null })
       .select("id,display_name,name_key,note")
       .single();
 
@@ -892,59 +704,35 @@ export default function KneeDashboard() {
     const profilePayload = {
       athlete_id: athlete.id,
       birth_date: athleteForm.birth_date || null,
-      body_weight_kg: athleteForm.body_weight_kg
-        ? toNumber(athleteForm.body_weight_kg)
-        : null,
-      shin_length_cm: athleteForm.shin_length_cm
-        ? toNumber(athleteForm.shin_length_cm)
-        : null,
+      body_weight_kg: athleteForm.body_weight_kg ? toNumber(athleteForm.body_weight_kg) : null,
+      shin_length_cm: athleteForm.shin_length_cm ? toNumber(athleteForm.shin_length_cm) : null,
       age: calculateAge(athleteForm.birth_date || null, todayIsoDate()),
       profile_date: todayIsoDate(),
     };
 
-    if (
-      profilePayload.birth_date ||
-      profilePayload.body_weight_kg ||
-      profilePayload.shin_length_cm
-    ) {
+    if (profilePayload.birth_date || profilePayload.body_weight_kg || profilePayload.shin_length_cm) {
       const { data: profile } = await supabase
         .from("athlete_profiles")
         .insert(profilePayload)
         .select("id,athlete_id,birth_date,shin_length_cm,body_weight_kg,age,profile_date,updated_at")
         .single();
 
-      if (profile) {
-        setAthleteProfiles((current) => [profile as AthleteProfile, ...current]);
-      }
+      if (profile) setAthleteProfiles((current) => [profile as AthleteProfile, ...current]);
     }
 
     setIsSavingAthlete(false);
     setAthletes((current) => [athlete as Athlete, ...current]);
     setSelectedAthleteId((athlete as Athlete).id);
-    setAthleteForm({
-      display_name: "",
-      birth_date: "",
-      body_weight_kg: "",
-      shin_length_cm: "33",
-      note: "",
-    });
+    setAthleteForm({ display_name: "", birth_date: "", body_weight_kg: "", shin_length_cm: "33", note: "" });
     setActivePanel(null);
     setMessage("Klient je zalozeny.");
   }
 
   async function handleCreateTest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!supabase || !selectedAthlete) return;
 
-    if (!supabase || !selectedAthlete) {
-      return;
-    }
-
-    const { payload, error: payloadError } = buildTestPayload(
-      testForm,
-      selectedAthlete,
-      true,
-    );
-
+    const { payload, error: payloadError } = buildTestPayload(testForm, selectedAthlete, true);
     if (!payload) {
       setMessage(payloadError ?? "Test se nepodarilo pripravit.");
       return;
@@ -955,10 +743,7 @@ export default function KneeDashboard() {
 
     const { data, error } = await supabase
       .from("knee_extension_tests")
-      .insert({
-        athlete_id: selectedAthlete.id,
-        ...payload,
-      })
+      .insert({ athlete_id: selectedAthlete.id, ...payload })
       .select(TEST_SELECT)
       .single();
 
@@ -971,29 +756,16 @@ export default function KneeDashboard() {
 
     setKneeTests((current) => [data as KneeExtensionTest, ...current]);
     setExpandedTestId((data as KneeExtensionTest).id);
-    setTestForm((current) => ({
-      ...current,
-      test_date: todayIsoDate(),
-      right_force_kg: "",
-      left_force_kg: "",
-      note: "",
-    }));
+    setTestForm((current) => ({ ...current, test_date: todayIsoDate(), right_force_kg: "", left_force_kg: "", note: "" }));
     setActivePanel(null);
     setMessage("Knee extension test je ulozeny.");
   }
 
   async function handleUpdateTest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!supabase || !selectedAthlete || !editingTestId) return;
 
-    if (!supabase || !selectedAthlete || !editingTestId) {
-      return;
-    }
-
-    const { payload, error: payloadError } = buildTestPayload(
-      editTestForm,
-      selectedAthlete,
-    );
-
+    const { payload, error: payloadError } = buildTestPayload(editTestForm, selectedAthlete);
     if (!payload) {
       setMessage(payloadError ?? "Test se nepodarilo pripravit.");
       return;
@@ -1016,36 +788,22 @@ export default function KneeDashboard() {
       return;
     }
 
-    setKneeTests((current) =>
-      current.map((test) => (test.id === editingTestId ? (data as KneeExtensionTest) : test)),
-    );
+    setKneeTests((current) => current.map((test) => test.id === editingTestId ? (data as KneeExtensionTest) : test));
     setExpandedTestId(editingTestId);
     setEditingTestId(null);
-    setActivePanel(null);
     setMessage("Knee extension test je upraveny.");
   }
 
   async function handleDeleteTest(test: KneeExtensionTest) {
-    if (!supabase) {
-      return;
-    }
+    if (!supabase) return;
 
-    const confirmed = window.confirm(
-      `Opravdu smazat mereni z ${formatDate(test.test_date)}?`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
+    const confirmed = window.confirm(`Opravdu smazat mereni z ${formatDate(test.test_date)}?`);
+    if (!confirmed) return;
 
     setDeletingTestId(test.id);
     setMessage("");
 
-    const { error } = await supabase
-      .from("knee_extension_tests")
-      .delete()
-      .eq("id", test.id);
-
+    const { error } = await supabase.from("knee_extension_tests").delete().eq("id", test.id);
     setDeletingTestId(null);
 
     if (error) {
@@ -1054,13 +812,8 @@ export default function KneeDashboard() {
     }
 
     setKneeTests((current) => current.filter((item) => item.id !== test.id));
-    if (expandedTestId === test.id) {
-      setExpandedTestId(null);
-    }
-    if (editingTestId === test.id) {
-      setEditingTestId(null);
-      setActivePanel(null);
-    }
+    if (expandedTestId === test.id) setExpandedTestId(null);
+    if (editingTestId === test.id) setEditingTestId(null);
     setMessage("Knee extension test je smazany.");
   }
 
@@ -1085,13 +838,18 @@ export default function KneeDashboard() {
       <form className="stack-form compact-form test-form" onSubmit={onSubmit}>
         <div className="form-row">
           <label>
-            Datum testu
-            <input
-              type="date"
-              value={form.test_date}
-              onChange={(event) => onChange("test_date", event.target.value)}
-              required
-            />
+            Datum mereni
+            <input type="date" value={form.test_date} onChange={(event) => onChange("test_date", event.target.value)} required />
+          </label>
+          <label>
+            Vaha pri mereni kg
+            <input inputMode="decimal" value={form.body_weight_kg} onChange={(event) => onChange("body_weight_kg", event.target.value)} required />
+          </label>
+        </div>
+        <div className="form-row">
+          <label>
+            Bercova paka cm
+            <input inputMode="decimal" value={form.shin_length_cm} onChange={(event) => onChange("shin_length_cm", event.target.value)} required />
           </label>
           <label>
             Norma
@@ -1100,61 +858,21 @@ export default function KneeDashboard() {
         </div>
         <div className="form-row">
           <label>
-            Vaha kg
-            <input
-              inputMode="decimal"
-              value={form.body_weight_kg}
-              onChange={(event) => onChange("body_weight_kg", event.target.value)}
-              required
-            />
+            Namerena sila leva kg
+            <input inputMode="decimal" value={form.left_force_kg} onChange={(event) => onChange("left_force_kg", event.target.value)} placeholder="35" required />
           </label>
           <label>
-            Bercova paka cm
-            <input
-              inputMode="decimal"
-              value={form.shin_length_cm}
-              onChange={(event) => onChange("shin_length_cm", event.target.value)}
-              required
-            />
-          </label>
-        </div>
-        <div className="form-row">
-          <label>
-            Leva kg
-            <input
-              inputMode="decimal"
-              value={form.left_force_kg}
-              onChange={(event) => onChange("left_force_kg", event.target.value)}
-              placeholder="35"
-              required
-            />
-          </label>
-          <label>
-            Prava kg
-            <input
-              inputMode="decimal"
-              value={form.right_force_kg}
-              onChange={(event) => onChange("right_force_kg", event.target.value)}
-              placeholder="42"
-              required
-            />
+            Namerena sila prava kg
+            <input inputMode="decimal" value={form.right_force_kg} onChange={(event) => onChange("right_force_kg", event.target.value)} placeholder="42" required />
           </label>
         </div>
         <label>
           Poznamka k testu
-          <textarea
-            value={form.note}
-            onChange={(event) => onChange("note", event.target.value)}
-            placeholder="Bolest, setup, poznamka k mereni..."
-          />
+          <textarea value={form.note} onChange={(event) => onChange("note", event.target.value)} placeholder="Bolest, setup, poznamka k mereni..." />
         </label>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
           <button disabled={isSaving}>{isSaving ? savingLabel : submitLabel}</button>
-          {onCancel ? (
-            <button className="ghost-button" type="button" onClick={onCancel}>
-              Zrusit
-            </button>
-          ) : null}
+          {onCancel ? <button className="ghost-button" type="button" onClick={onCancel}>Zrusit</button> : null}
         </div>
       </form>
     );
@@ -1166,10 +884,7 @@ export default function KneeDashboard() {
         <section className="empty-state">
           <p className="eyebrow">Knee Data</p>
           <h1>Chybi Supabase konfigurace</h1>
-          <p>
-            Ve Vercelu dopln <code>NEXT_PUBLIC_SUPABASE_URL</code> a{" "}
-            <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.
-          </p>
+          <p>Ve Vercelu dopln <code>NEXT_PUBLIC_SUPABASE_URL</code> a <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.</p>
         </section>
       </main>
     );
@@ -1182,11 +897,7 @@ export default function KneeDashboard() {
           <p className="eyebrow">knee.vankotraining.cz</p>
           <h1>Knee extension dashboard</h1>
         </div>
-        {session ? (
-          <button className="ghost-button" onClick={handleSignOut}>
-            Odhlasit
-          </button>
-        ) : null}
+        {session ? <button className="ghost-button" onClick={handleSignOut}>Odhlasit</button> : null}
       </header>
 
       {!session ? (
@@ -1196,12 +907,7 @@ export default function KneeDashboard() {
             <p>Posleme magic link na e-mail s pristupem do Supabase.</p>
           </div>
           <div className="login-row">
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="martin@vankotraining.cz"
-            />
+            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="martin@vankotraining.cz" />
             <button onClick={handleMagicLink}>Poslat link</button>
           </div>
           {message ? <p className="status">{message}</p> : null}
@@ -1209,22 +915,10 @@ export default function KneeDashboard() {
       ) : (
         <>
           <section className="stats-grid">
-            <div className="metric">
-              <span>Sportovci</span>
-              <strong>{athletes.length}</strong>
-            </div>
-            <div className="metric">
-              <span>Knee testy</span>
-              <strong>{kneeTests.length}</strong>
-            </div>
-            <div className="metric">
-              <span>S testem</span>
-              <strong>{testedAthleteCount}</strong>
-            </div>
-            <div className="metric">
-              <span>Posledni test</span>
-              <strong>{formatDate(latestTestDate)}</strong>
-            </div>
+            <div className="metric"><span>Sportovci</span><strong>{athletes.length}</strong></div>
+            <div className="metric"><span>Knee testy</span><strong>{kneeTests.length}</strong></div>
+            <div className="metric"><span>S testem</span><strong>{testedAthleteCount}</strong></div>
+            <div className="metric"><span>Posledni test</span><strong>{formatDate(latestTestDate)}</strong></div>
           </section>
 
           <section className="dashboard-layout">
@@ -1238,224 +932,79 @@ export default function KneeDashboard() {
               </div>
 
               <div className="athlete-picker">
-                <label>
-                  Hledat
-                  <input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Jmeno, poznamka nebo datum"
-                  />
-                </label>
+                <label>Hledat<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Jmeno, poznamka nebo datum" /></label>
                 <label>
                   Vybrany klient
-                  <select
-                    value={selectedAthlete?.id ?? ""}
-                    onChange={(event) => setSelectedAthleteId(event.target.value)}
-                  >
-                    {filteredAthletes.length === 0 ? (
-                      <option value="">Zadny vysledek</option>
-                    ) : null}
-                    {filteredAthletes.map((athlete) => (
-                      <option key={athlete.id} value={athlete.id}>
-                        {athlete.display_name}
-                      </option>
-                    ))}
+                  <select value={selectedAthlete?.id ?? ""} onChange={(event) => setSelectedAthleteId(event.target.value)}>
+                    {filteredAthletes.length === 0 ? <option value="">Zadny vysledek</option> : null}
+                    {filteredAthletes.map((athlete) => <option key={athlete.id} value={athlete.id}>{athlete.display_name}</option>)}
                   </select>
                 </label>
               </div>
 
               {loadState === "idle" ? <p className="status">Nacitam knee data...</p> : null}
               {loadState === "error" ? <p className="status error">{message}</p> : null}
-              {loadState === "ready" && filteredAthletes.length === 0 ? (
-                <p className="status">Zatim tu neni zadny sportovec pro tento filtr.</p>
-              ) : null}
+              {loadState === "ready" && filteredAthletes.length === 0 ? <p className="status">Zatim tu neni zadny sportovec pro tento filtr.</p> : null}
 
               {selectedAthlete ? (
                 <dl className="selected-athlete-meta">
-                  <div>
-                    <dt>Testy</dt>
-                    <dd>{selectedAthlete.tests.length}</dd>
-                  </div>
-                  <div>
-                    <dt>Posledni</dt>
-                    <dd>{formatDate(selectedAthlete.latestTest?.test_date)}</dd>
-                  </div>
-                  <div>
-                    <dt>Asym</dt>
-                    <dd>
-                      <span className={getAsymmetryClass(selectedAthlete.latestTest?.asymmetry_pct)}>
-                        {formatPercent(selectedAthlete.latestTest?.asymmetry_pct)}
-                      </span>
-                    </dd>
-                  </div>
+                  <div><dt>Testy</dt><dd>{selectedAthlete.tests.length}</dd></div>
+                  <div><dt>Posledni</dt><dd>{formatDate(selectedAthlete.latestTest?.test_date)}</dd></div>
+                  <div><dt>Asym</dt><dd><span className={getAsymmetryClass(selectedAthlete.latestTest?.asymmetry_pct)}>{formatPercent(selectedAthlete.latestTest?.asymmetry_pct)}</span></dd></div>
                 </dl>
               ) : null}
             </section>
 
             <section className="panel control-panel action-panel">
               <div className="panel-header">
-                <div>
-                  <p className="eyebrow">Rychle akce</p>
-                  <h2>
-                    {activePanel === "edit" ? "Upravit mereni" : "Zadat data"}
-                  </h2>
-                </div>
+                <div><p className="eyebrow">Rychle akce</p><h2>Zadat data</h2></div>
               </div>
-
               <div className="quick-actions">
-                <button
-                  className={activePanel === "athlete" ? "" : "ghost-button"}
-                  type="button"
-                  onClick={() => setActivePanel(activePanel === "athlete" ? null : "athlete")}
-                >
-                  + Novy klient
-                </button>
-                <button
-                  className={activePanel === "test" ? "" : "ghost-button"}
-                  disabled={!selectedAthlete}
-                  type="button"
-                  onClick={() => setActivePanel(activePanel === "test" ? null : "test")}
-                >
-                  + Nove mereni
-                </button>
+                <button className={activePanel === "athlete" ? "" : "ghost-button"} type="button" onClick={() => setActivePanel(activePanel === "athlete" ? null : "athlete")}>+ Novy klient</button>
+                <button className={activePanel === "test" ? "" : "ghost-button"} disabled={!selectedAthlete} type="button" onClick={() => setActivePanel(activePanel === "test" ? null : "test")}>+ Nove mereni</button>
               </div>
 
               {activePanel === "athlete" ? (
                 <form className="stack-form compact-form" onSubmit={handleCreateAthlete}>
-                  <label>
-                    Jmeno
-                    <input
-                      value={athleteForm.display_name}
-                      onChange={(event) => updateAthleteForm("display_name", event.target.value)}
-                      placeholder="Milos Merta"
-                      required
-                    />
-                  </label>
-                  <label>
-                    Datum narozeni
-                    <input
-                      type="date"
-                      value={athleteForm.birth_date}
-                      onChange={(event) => updateAthleteForm("birth_date", event.target.value)}
-                    />
-                  </label>
+                  <label>Jmeno<input value={athleteForm.display_name} onChange={(event) => updateAthleteForm("display_name", event.target.value)} placeholder="Milos Merta" required /></label>
+                  <label>Datum narozeni<input type="date" value={athleteForm.birth_date} onChange={(event) => updateAthleteForm("birth_date", event.target.value)} /></label>
                   <div className="form-row">
-                    <label>
-                      Vaha kg
-                      <input
-                        inputMode="decimal"
-                        value={athleteForm.body_weight_kg}
-                        onChange={(event) => updateAthleteForm("body_weight_kg", event.target.value)}
-                        placeholder="82"
-                      />
-                    </label>
-                    <label>
-                      Bercova paka cm
-                      <input
-                        inputMode="decimal"
-                        value={athleteForm.shin_length_cm}
-                        onChange={(event) => updateAthleteForm("shin_length_cm", event.target.value)}
-                        placeholder="33"
-                      />
-                    </label>
+                    <label>Vaha kg<input inputMode="decimal" value={athleteForm.body_weight_kg} onChange={(event) => updateAthleteForm("body_weight_kg", event.target.value)} placeholder="82" /></label>
+                    <label>Bercova paka cm<input inputMode="decimal" value={athleteForm.shin_length_cm} onChange={(event) => updateAthleteForm("shin_length_cm", event.target.value)} placeholder="33" /></label>
                   </div>
-                  <label>
-                    Poznamka
-                    <textarea
-                      value={athleteForm.note}
-                      onChange={(event) => updateAthleteForm("note", event.target.value)}
-                      placeholder="Interni poznamka"
-                    />
-                  </label>
-                  <button disabled={isSavingAthlete}>
-                    {isSavingAthlete ? "Ukladam..." : "Zalozit klienta"}
-                  </button>
+                  <label>Poznamka<textarea value={athleteForm.note} onChange={(event) => updateAthleteForm("note", event.target.value)} placeholder="Interni poznamka" /></label>
+                  <button disabled={isSavingAthlete}>{isSavingAthlete ? "Ukladam..." : "Zalozit klienta"}</button>
                 </form>
               ) : null}
 
               {activePanel === "test" && selectedAthlete
-                ? renderTestForm({
-                    form: testForm,
-                    onChange: updateTestForm,
-                    onSubmit: handleCreateTest,
-                    isSaving: isSavingTest,
-                    submitLabel: "Ulozit test",
-                    savingLabel: "Ukladam...",
-                  })
+                ? renderTestForm({ form: testForm, onChange: updateTestForm, onSubmit: handleCreateTest, isSaving: isSavingTest, submitLabel: "Ulozit test", savingLabel: "Ukladam..." })
                 : null}
 
-              {activePanel === "edit" && selectedAthlete && editingTestId
-                ? renderTestForm({
-                    form: editTestForm,
-                    onChange: updateEditTestForm,
-                    onSubmit: handleUpdateTest,
-                    isSaving: isUpdatingTest,
-                    submitLabel: "Ulozit zmeny",
-                    savingLabel: "Ukladam zmeny...",
-                    onCancel: closeEditTest,
-                  })
-                : null}
-
-              {!activePanel ? (
-                <p className="status compact-hint">
-                  Vyber sportovce vlevo. Noveho klienta nebo mereni otevres jen
-                  kdyz je potrebujes. Hotove mereni upravis v tabulce dole.
-                </p>
-              ) : null}
+              {!activePanel ? <p className="status compact-hint">Vyber sportovce vlevo. Nove mereni zadas tady. Hotove mereni upravis primo u daneho radku v tabulce.</p> : null}
             </section>
 
             <section className="panel detail-panel">
               <div className="panel-header">
-                <div>
-                  <p className="eyebrow">Knee extension</p>
-                  <h2>{selectedAthlete ? selectedAthlete.display_name : "Vyber sportovce"}</h2>
-                </div>
+                <div><p className="eyebrow">Knee extension</p><h2>{selectedAthlete ? selectedAthlete.display_name : "Vyber sportovce"}</h2></div>
                 <span className="pill">{selectedAthlete?.tests.length ?? 0} testu</span>
               </div>
 
               {selectedAthlete ? (
                 <>
                   <div className="profile-grid">
-                    <div className="profile-metric">
-                      <span>Datum narozeni</span>
-                      <strong>{formatDate(selectedAthlete.latestProfile?.birth_date)}</strong>
-                    </div>
-                    <div className="profile-metric">
-                      <span>Vaha</span>
-                      <strong>{formatNumber(selectedAthlete.latestProfile?.body_weight_kg, 1, " kg")}</strong>
-                    </div>
-                    <div className="profile-metric">
-                      <span>Delka berce</span>
-                      <strong>{formatNumber(selectedAthlete.latestProfile?.shin_length_cm, 1, " cm")}</strong>
-                    </div>
-                    <div className="profile-metric">
-                      <span>Vek v profilu</span>
-                      <strong>{formatNumber(selectedAthlete.latestProfile?.age, 0)}</strong>
-                    </div>
+                    <div className="profile-metric"><span>Datum narozeni</span><strong>{formatDate(selectedAthlete.latestProfile?.birth_date)}</strong></div>
+                    <div className="profile-metric"><span>Vaha</span><strong>{formatNumber(selectedAthlete.latestProfile?.body_weight_kg, 1, " kg")}</strong></div>
+                    <div className="profile-metric"><span>Delka berce</span><strong>{formatNumber(selectedAthlete.latestProfile?.shin_length_cm, 1, " cm")}</strong></div>
+                    <div className="profile-metric"><span>Vek v profilu</span><strong>{formatNumber(selectedAthlete.latestProfile?.age, 0)}</strong></div>
                   </div>
 
                   {selectedAthlete.latestTest ? (
                     <div className="norm-grid">
-                      <div className="profile-metric highlight">
-                        <span>Leva</span>
-                        <strong>{formatNumber(selectedAthlete.latestTest.left_nm_per_kg, 2)}</strong>
-                        <small>Nm/kg</small>
-                      </div>
-                      <div className="profile-metric highlight">
-                        <span>Prava</span>
-                        <strong>{formatNumber(selectedAthlete.latestTest.right_nm_per_kg, 2)}</strong>
-                        <small>Nm/kg</small>
-                      </div>
-                      <div className="profile-metric highlight">
-                        <span>Asymetrie</span>
-                        <strong>{formatPercent(selectedAthlete.latestTest.asymmetry_pct)}</strong>
-                        <small>{formatSide(selectedAthlete.latestTest.weaker_side)} slabsi</small>
-                      </div>
-                      <div className="profile-metric highlight">
-                        <span>Chybi do normy</span>
-                        <strong>{formatPercent(latestNormGap?.missingPct)}</strong>
-                        <small>{formatNumber(latestNormGap?.missingKg, 1, " kg")} na slabsi strane</small>
-                      </div>
+                      <div className="profile-metric highlight"><span>Leva</span><strong>{formatNumber(selectedAthlete.latestTest.left_nm_per_kg, 2)}</strong><small>Nm/kg</small></div>
+                      <div className="profile-metric highlight"><span>Prava</span><strong>{formatNumber(selectedAthlete.latestTest.right_nm_per_kg, 2)}</strong><small>Nm/kg</small></div>
+                      <div className="profile-metric highlight"><span>Asymetrie</span><strong>{formatPercent(selectedAthlete.latestTest.asymmetry_pct)}</strong><small>{formatSide(selectedAthlete.latestTest.weaker_side)} slabsi</small></div>
+                      <div className="profile-metric highlight"><span>Chybi do normy</span><strong>{formatPercent(latestNormGap?.missingPct)}</strong><small>{formatNumber(latestNormGap?.missingKg, 1, " kg")} na slabsi strane</small></div>
                     </div>
                   ) : null}
 
@@ -1464,17 +1013,7 @@ export default function KneeDashboard() {
                   <div className="table-wrap">
                     <table>
                       <thead>
-                        <tr>
-                          <th>Datum</th>
-                          <th>Prava kg</th>
-                          <th>Leva kg</th>
-                          <th>Prava Nm/kg</th>
-                          <th>Leva Nm/kg</th>
-                          <th>Asym</th>
-                          <th>Slabsi</th>
-                          <th>Vek</th>
-                          <th>Akce</th>
-                        </tr>
+                        <tr><th>Datum</th><th>Prava kg</th><th>Leva kg</th><th>Prava Nm/kg</th><th>Leva Nm/kg</th><th>Asym</th><th>Slabsi</th><th>Vek</th><th>Akce</th></tr>
                       </thead>
                       <tbody>
                         {selectedAthlete.tests.map((test) => {
@@ -1492,103 +1031,69 @@ export default function KneeDashboard() {
                                 <td>{formatNumber(test.left_force_kg, 1)}</td>
                                 <td>{formatNumber(test.right_nm_per_kg, 2)}</td>
                                 <td>{formatNumber(test.left_nm_per_kg, 2)}</td>
-                                <td>
-                                  <span className={getAsymmetryClass(test.asymmetry_pct)}>
-                                    {formatPercent(test.asymmetry_pct)}
-                                  </span>
-                                </td>
+                                <td><span className={getAsymmetryClass(test.asymmetry_pct)}>{formatPercent(test.asymmetry_pct)}</span></td>
                                 <td>{formatSide(test.weaker_side)}</td>
                                 <td>{formatNumber(test.age_at_test_years, 1)}</td>
                                 <td>
                                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                    <button
-                                      className="detail-button"
-                                      type="button"
-                                      onClick={() => setExpandedTestId(isExpanded ? null : test.id)}
-                                    >
-                                      {isExpanded ? "Zavrit" : "Detail"}
-                                    </button>
-                                    <button
-                                      className="detail-button"
-                                      type="button"
-                                      onClick={() => openEditTest(test)}
-                                    >
-                                      {isEditing ? "Upravuji" : "Upravit"}
-                                    </button>
-                                    <button
-                                      className="detail-button"
-                                      disabled={isDeleting}
-                                      type="button"
-                                      onClick={() => handleDeleteTest(test)}
-                                    >
-                                      {isDeleting ? "Mazu..." : "Smazat"}
-                                    </button>
+                                    <button className="detail-button" type="button" onClick={() => setExpandedTestId(isExpanded && !isEditing ? null : test.id)}>{isExpanded && !isEditing ? "Zavrit" : "Detail"}</button>
+                                    <button className="detail-button" type="button" onClick={() => openEditTest(test)}>{isEditing ? "Odemceno" : "Upravit"}</button>
+                                    <button className="detail-button" disabled={isDeleting} type="button" onClick={() => handleDeleteTest(test)}>{isDeleting ? "Mazu..." : "Smazat"}</button>
                                   </div>
                                 </td>
                               </tr>
                               {isExpanded ? (
                                 <tr className="expanded-row">
                                   <td colSpan={9}>
-                                    <div className="test-detail-header">
+                                    {isEditing ? (
                                       <div>
-                                        <strong>Detail testu {formatDate(test.test_date)}</strong>
-                                        <p>
-                                          Norma {formatNumber(NORM_NM_PER_KG, 1)} Nm/kg
-                                          {" · asymetrie "}
-                                          <span className={getAsymmetryClass(test.asymmetry_pct)}>
-                                            {formatPercent(test.asymmetry_pct)}
-                                          </span>
-                                          {deficitLegs.length > 0
-                                            ? ` · deficit: ${deficitLegs.map((leg) => leg.label.toLowerCase()).join(", ")}`
-                                            : " · obe nohy splnuji normu"}
-                                        </p>
-                                      </div>
-                                      <span className="pill">
-                                        cil {formatNumber(legGaps[0]?.targetForceKg, 1, " kg")}
-                                      </span>
-                                    </div>
-                                    <div className="test-detail-grid">
-                                      {legGaps.map((leg) => (
-                                        <article
-                                          className={
-                                            leg.isDeficit
-                                              ? "leg-detail-card deficit"
-                                              : "leg-detail-card ok"
-                                          }
-                                          key={leg.key}
-                                        >
-                                          <div className="leg-detail-title">
-                                            <h3>{leg.label}</h3>
-                                            <span>{leg.isDeficit ? "Pod normou" : "Norma splnena"}</span>
+                                        <div className="test-detail-header">
+                                          <div>
+                                            <strong>Upravit mereni {formatDate(test.test_date)}</strong>
+                                            <p>Odemceno: datum, vaha pri mereni, bercova paka a namerena sila leve/prave nohy.</p>
                                           </div>
-                                          <dl>
-                                            <div>
-                                              <dt>Aktualne</dt>
-                                              <dd>{formatNumber(leg.forceKg, 1, " kg")}</dd>
-                                            </div>
-                                            <div>
-                                              <dt>Nm/kg</dt>
-                                              <dd>{formatNumber(leg.nmPerKg, 2)}</dd>
-                                            </div>
-                                            <div>
-                                              <dt>Cilova sila</dt>
-                                              <dd>{formatNumber(leg.targetForceKg, 1, " kg")}</dd>
-                                            </div>
-                                            <div>
-                                              <dt>Chybi kg</dt>
-                                              <dd>{formatNumber(leg.missingKg, 1, " kg")}</dd>
-                                            </div>
-                                            <div>
-                                              <dt>Chybi %</dt>
-                                              <dd>{formatPercent(leg.missingPct)}</dd>
-                                            </div>
-                                          </dl>
-                                        </article>
-                                      ))}
-                                    </div>
-                                    {test.note ? (
-                                      <p className="test-note">Poznamka: {test.note}</p>
-                                    ) : null}
+                                          <span className="pill">editace</span>
+                                        </div>
+                                        {renderTestForm({
+                                          form: editTestForm,
+                                          onChange: updateEditTestForm,
+                                          onSubmit: handleUpdateTest,
+                                          isSaving: isUpdatingTest,
+                                          submitLabel: "Ulozit zmeny",
+                                          savingLabel: "Ukladam zmeny...",
+                                          onCancel: closeEditTest,
+                                        })}
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <div className="test-detail-header">
+                                          <div>
+                                            <strong>Detail testu {formatDate(test.test_date)}</strong>
+                                            <p>
+                                              Norma {formatNumber(NORM_NM_PER_KG, 1)} Nm/kg{" · asymetrie "}
+                                              <span className={getAsymmetryClass(test.asymmetry_pct)}>{formatPercent(test.asymmetry_pct)}</span>
+                                              {deficitLegs.length > 0 ? ` · deficit: ${deficitLegs.map((leg) => leg.label.toLowerCase()).join(", ")}` : " · obe nohy splnuji normu"}
+                                            </p>
+                                          </div>
+                                          <span className="pill">cil {formatNumber(legGaps[0]?.targetForceKg, 1, " kg")}</span>
+                                        </div>
+                                        <div className="test-detail-grid">
+                                          {legGaps.map((leg) => (
+                                            <article className={leg.isDeficit ? "leg-detail-card deficit" : "leg-detail-card ok"} key={leg.key}>
+                                              <div className="leg-detail-title"><h3>{leg.label}</h3><span>{leg.isDeficit ? "Pod normou" : "Norma splnena"}</span></div>
+                                              <dl>
+                                                <div><dt>Aktualne</dt><dd>{formatNumber(leg.forceKg, 1, " kg")}</dd></div>
+                                                <div><dt>Nm/kg</dt><dd>{formatNumber(leg.nmPerKg, 2)}</dd></div>
+                                                <div><dt>Cilova sila</dt><dd>{formatNumber(leg.targetForceKg, 1, " kg")}</dd></div>
+                                                <div><dt>Chybi kg</dt><dd>{formatNumber(leg.missingKg, 1, " kg")}</dd></div>
+                                                <div><dt>Chybi %</dt><dd>{formatPercent(leg.missingPct)}</dd></div>
+                                              </dl>
+                                            </article>
+                                          ))}
+                                        </div>
+                                        {test.note ? <p className="test-note">Poznamka: {test.note}</p> : null}
+                                      </>
+                                    )}
                                   </td>
                                 </tr>
                               ) : null}
@@ -1599,9 +1104,7 @@ export default function KneeDashboard() {
                     </table>
                   </div>
                 </>
-              ) : (
-                <p className="status">Zatim neni vybran zadny sportovec.</p>
-              )}
+              ) : <p className="status">Zatim neni vybran zadny sportovec.</p>}
               {message ? <p className="status footer-status">{message}</p> : null}
             </section>
           </section>
