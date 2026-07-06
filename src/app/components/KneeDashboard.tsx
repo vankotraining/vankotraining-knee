@@ -7,10 +7,15 @@ import {
   createBrowserSupabaseClient,
   hasSupabaseConfig,
 } from "@/lib/supabase-browser";
+import type { SelectedClient } from "./selected-client";
 
 type LoadState = "idle" | "ready" | "error";
 type ActivePanel = "athlete" | "test" | null;
 type MobileTab = "measurements" | "compare" | "client";
+
+type KneeDashboardProps = {
+  onSelectedClientChange?: (selectedClient: SelectedClient) => void;
+};
 
 type Athlete = {
   id: string;
@@ -490,7 +495,7 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
   );
 }
 
-export default function KneeDashboard() {
+export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardProps) {
   const [email, setEmail] = useState("martin@vankotraining.cz");
   const [message, setMessage] = useState("");
   const [session, setSession] = useState<Session | null>(null);
@@ -586,6 +591,14 @@ export default function KneeDashboard() {
     () => filteredAthletes.find((athlete) => athlete.id === selectedAthleteId) ?? filteredAthletes[0] ?? null,
     [filteredAthletes, selectedAthleteId],
   );
+
+  useEffect(() => {
+    onSelectedClientChange?.(
+      selectedAthlete
+        ? { id: selectedAthlete.id, name: selectedAthlete.display_name }
+        : null,
+    );
+  }, [onSelectedClientChange, selectedAthlete?.display_name, selectedAthlete?.id]);
 
   useEffect(() => {
     if (!selectedAthlete) {
@@ -773,7 +786,7 @@ export default function KneeDashboard() {
   async function handleDeleteTest(test: KneeExtensionTest) {
     if (!supabase) return;
 
-    const confirmed = window.confirm(`Opravdu smazat mereni z ${formatDate(test.test_date)}?`);
+    const confirmed = window.confirm(`Opravdu archivovat pouze toto mereni z ${formatDate(test.test_date)}? Klient zustane aktivni.`);
     if (!confirmed) return;
 
     setDeletingTestId(test.id);
@@ -790,7 +803,7 @@ export default function KneeDashboard() {
     setKneeTests((current) => current.filter((item) => item.id !== test.id));
     if (expandedTestId === test.id) setExpandedTestId(null);
     if (editingTestId === test.id) setEditingTestId(null);
-    setMessage("Knee extension test je smazany.");
+    setMessage("Knee extension test je archivovany.");
   }
 
   function renderAthleteForm() {
@@ -933,7 +946,7 @@ export default function KneeDashboard() {
       <>
         <button className="detail-button" type="button" onClick={() => setExpandedTestId(isExpanded && !isEditing ? null : test.id)}>{isExpanded && !isEditing ? "Zavrit" : "Detail"}</button>
         <button className="detail-button" disabled={isEditing} type="button" onClick={() => openEditTest(test)}>{isEditing ? "Odemceno" : "Upravit"}</button>
-        <button className="detail-button danger-button" disabled={isDeleting} type="button" onClick={() => handleDeleteTest(test)}>{isDeleting ? "Mazu..." : "Smazat"}</button>
+        <button className="detail-button danger-button" disabled={isDeleting} title="Archivuje se pouze toto mereni. Klient zustane aktivni." type="button" onClick={() => handleDeleteTest(test)}>{isDeleting ? "Archivuji..." : "Archivovat mereni"}</button>
       </>
     );
   }
