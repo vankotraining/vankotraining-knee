@@ -8,5 +8,5 @@
     "target": "ES2022",
     "types": ["node"]
   },
-  "include": ["src/lib/**/*.test.ts", "src/lib/**/*.ts"]
+  "include": ["src/lib/knee-metrics.ts", "src/lib/knee-metrics.test.ts"]
 }
