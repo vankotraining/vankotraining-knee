@@ -4,6 +4,16 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
+  calculateAge,
+  calculateAsymmetryPct,
+  forceKgToNmPerKg,
+  getAsymmetryValue,
+  getNormGap as calculateNormGap,
+  getWeakerSide,
+  NORM_NM_PER_KG,
+  targetForceKg,
+} from "@/lib/knee-metrics";
+import {
   createBrowserSupabaseClient,
   hasSupabaseConfig,
 } from "@/lib/supabase-browser";
@@ -102,8 +112,6 @@ type TestPayload = {
   source?: string;
 };
 
-const GRAVITY = 9.80665;
-const NORM_NM_PER_KG = 3;
 const TEST_SELECT =
   "id,athlete_id,test_date,right_force_kg,left_force_kg,asymmetry_pct,weaker_side,right_nm_per_kg,left_nm_per_kg,body_weight_kg,shin_length_cm,age_at_test_years,note,source,source_row";
 
@@ -125,31 +133,6 @@ function nameKey(value: string) {
     .replace(/^-|-$/g, "");
 }
 
-function calculateAge(birthDate: string | null | undefined, testDate: string) {
-  if (!birthDate) return null;
-
-  const birth = new Date(`${birthDate}T00:00:00`);
-  const test = new Date(`${testDate}T00:00:00`);
-
-  if (Number.isNaN(birth.getTime()) || Number.isNaN(test.getTime())) return null;
-
-  return (test.getTime() - birth.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
-}
-
-function forceKgToNmPerKg(forceKg: number, shinLengthCm: number, bodyWeightKg: number) {
-  if (forceKg <= 0 || shinLengthCm <= 0 || bodyWeightKg <= 0) return null;
-
-  return (forceKg * GRAVITY * (shinLengthCm / 100)) / bodyWeightKg;
-}
-
-function targetForceKg(shinLengthCm: number | null, bodyWeightKg: number | null) {
-  if (!shinLengthCm || !bodyWeightKg || shinLengthCm <= 0 || bodyWeightKg <= 0) {
-    return null;
-  }
-
-  return (NORM_NM_PER_KG * bodyWeightKg) / (GRAVITY * (shinLengthCm / 100));
-}
-
 function formatDate(value: string | null | undefined) {
   if (!value) return "-";
 
@@ -163,12 +146,6 @@ function formatNumber(value: number | null | undefined, decimals = 1, suffix = "
   if (value === null || value === undefined || Number.isNaN(value)) return "-";
 
   return `${value.toFixed(decimals)}${suffix}`;
-}
-
-function getAsymmetryValue(value: number | null | undefined) {
-  if (value === null || value === undefined || Number.isNaN(value)) return null;
-
-  return Math.abs(value) <= 1 ? Math.abs(value) * 100 : Math.abs(value);
 }
 
 function formatPercent(value: number | null | undefined) {
@@ -209,33 +186,18 @@ function testToForm(test: KneeExtensionTest): TestForm {
 }
 
 function getNormGap(test: KneeExtensionTest | null | undefined) {
-  if (!test) return null;
-
-  const leftNm = test.left_nm_per_kg ?? null;
-  const rightNm = test.right_nm_per_kg ?? null;
-  const leftForce = test.left_force_kg ?? null;
-  const rightForce = test.right_force_kg ?? null;
-  const targetKg = targetForceKg(test.shin_length_cm, test.body_weight_kg);
-
-  if (
-    leftNm === null ||
-    rightNm === null ||
-    leftForce === null ||
-    rightForce === null ||
-    targetKg === null
-  ) {
-    return null;
-  }
-
-  const weakerNm = Math.min(leftNm, rightNm);
-  const weakerForce = Math.min(leftForce, rightForce);
-  const missingNm = Math.max(0, NORM_NM_PER_KG - weakerNm);
-
-  return {
-    missingKg: Math.max(0, targetKg - weakerForce),
-    missingNm,
-    missingPct: (missingNm / NORM_NM_PER_KG) * 100,
-  };
+  return calculateNormGap(
+    test
+      ? {
+          leftForceKg: test.left_force_kg ?? null,
+          rightForceKg: test.right_force_kg ?? null,
+          leftNmPerKg: test.left_nm_per_kg ?? null,
+          rightNmPerKg: test.right_nm_per_kg ?? null,
+          shinLengthCm: test.shin_length_cm,
+          bodyWeightKg: test.body_weight_kg,
+        }
+      : null,
+  );
 }
 
 function getLegNormGaps(test: KneeExtensionTest): LegNormGap[] {
@@ -306,15 +268,8 @@ function buildTestPayload(
     };
   }
 
-  const strongerForce = Math.max(rightForce, leftForce);
-  const asymmetryPct =
-    strongerForce > 0 ? (Math.abs(rightForce - leftForce) / strongerForce) * 100 : 0;
-  const weakerSide =
-    Math.abs(rightForce - leftForce) < 0.01
-      ? "none"
-      : rightForce < leftForce
-        ? "right"
-        : "left";
+  const asymmetryPct = calculateAsymmetryPct(rightForce, leftForce);
+  const weakerSide = getWeakerSide(rightForce, leftForce);
   const birthDate = athlete.latestProfile?.birth_date ?? null;
 
   return {
