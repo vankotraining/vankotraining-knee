@@ -296,17 +296,12 @@ dt {
 }
 
 .mobile-workbench {
-  position: sticky;
-  top: 0;
-  z-index: 20;
   display: grid;
   gap: 12px;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(251, 252, 250, 0.96);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 10px 24px rgba(22, 26, 21, 0.08);
+  background: var(--surface);
 }
 
 .mobile-client-toolbar {
@@ -339,60 +334,9 @@ dt {
   white-space: nowrap;
 }
 
-.mobile-client-summary {
-  display: grid;
-  grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(130px, 1fr));
-  gap: 8px;
-}
-
-.mobile-client-summary div {
-  min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 12px;
-}
-
-.mobile-client-summary span {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.mobile-client-summary strong {
-  display: block;
-  margin-top: 4px;
-  overflow: hidden;
-  font-size: 18px;
-  line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobile-client-summary .asymmetry-badge {
-  display: inline-flex;
-  max-width: 100%;
-}
-
+.mobile-client-summary,
 .mobile-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.mobile-tab {
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--foreground);
-  padding: 10px;
-}
-
-.mobile-tab.active {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: #fff;
+  display: none;
 }
 
 .mobile-form-panel {
@@ -406,11 +350,13 @@ dt {
 }
 
 .mobile-tab-page {
-  display: none;
+  display: block;
 }
 
-.mobile-tab-page.is-active {
-  display: block;
+.client-page,
+.compare-page,
+.measurements-page {
+  margin-bottom: 14px;
 }
 
 .profile-grid,
@@ -588,9 +534,7 @@ dt {
 }
 
 .mobile-test-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
+  display: none;
 }
 
 .measurement-card {
@@ -755,6 +699,7 @@ dd {
 }
 
 .desktop-table {
+  display: block;
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
@@ -808,10 +753,6 @@ th {
     grid-column: 1 / -1;
   }
 
-  .mobile-client-summary {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
   .test-detail-header,
   .leg-detail-title {
     display: grid;
@@ -853,13 +794,16 @@ th {
   }
 
   .mobile-workbench {
+    position: sticky;
     top: 45px;
+    z-index: 20;
     gap: 10px;
     padding: 10px 10px 8px;
     border-right: 0;
     border-left: 0;
     border-radius: 0;
-    box-shadow: none;
+    background: rgba(251, 252, 250, 0.96);
+    backdrop-filter: blur(10px);
   }
 
   .mobile-client-toolbar {
@@ -891,20 +835,35 @@ th {
   }
 
   .mobile-client-summary {
+    display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
   }
 
   .mobile-client-summary div {
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
     padding: 9px;
   }
 
   .mobile-client-summary span {
+    display: block;
+    color: var(--muted);
     font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
   }
 
   .mobile-client-summary strong {
+    display: block;
+    margin-top: 3px;
+    overflow: hidden;
     font-size: 13px;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .mobile-client-summary .asymmetry-badge {
@@ -914,12 +873,23 @@ th {
   }
 
   .mobile-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
 
   .mobile-tab {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--foreground);
     padding: 9px 6px;
     font-size: 13px;
+  }
+
+  .mobile-tab.active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
   }
 
   .mobile-form-panel {
@@ -933,6 +903,14 @@ th {
 
   .detail-panel {
     padding: 0;
+  }
+
+  .mobile-tab-page {
+    display: none;
+  }
+
+  .mobile-tab-page.is-active {
+    display: block;
   }
 
   .profile-grid,
@@ -964,6 +942,7 @@ th {
   }
 
   .mobile-test-list {
+    display: grid;
     grid-template-columns: 1fr;
     gap: 10px;
   }
