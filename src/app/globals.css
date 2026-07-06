@@ -430,13 +430,19 @@ dd {
   stroke-linejoin: round;
 }
 
-.chart-line.left,
+.chart-line.left {
+  stroke: var(--accent);
+}
+
+.chart-line.right {
+  stroke: var(--blue);
+}
+
 .chart-dot.left {
   stroke: var(--accent);
   fill: var(--accent);
 }
 
-.chart-line.right,
 .chart-dot.right {
   stroke: var(--blue);
   fill: var(--blue);
@@ -473,6 +479,11 @@ dd {
   stroke-width: 1;
 }
 
+.chart-axis {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
 .chart-asymmetry-threshold {
   stroke-dasharray: 4 7;
   stroke-width: 1.5;
@@ -492,7 +503,19 @@ dd {
   font-weight: 700;
 }
 
-.chart-axis-label {
+.chart-axis-label.left {
+  text-anchor: end;
+}
+
+.chart-axis-label.right {
+  text-anchor: start;
+}
+
+.chart-axis-title.left {
+  text-anchor: start;
+}
+
+.chart-axis-title.right {
   text-anchor: end;
 }
 
