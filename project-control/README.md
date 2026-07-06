@@ -11,8 +11,8 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 ## Odhad dokonceni
 
 - Interni pracovni nastroj: 94 %
-- Dlouhodobe udrzovatelny produkt: 84 %
-- Celkove MVP: 92 %
+- Dlouhodobe udrzovatelny produkt: 85 %
+- Celkove MVP: 93 %
 
 ## Aktualni rozhodnuti
 
@@ -23,6 +23,7 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 - Data klientu mohou byt ve sdilene Supabase databazi, ale kod aplikaci se nemicha.
 - Mazani mereni a klientu je resene jako archivace/soft delete, ne fyzicke smazani.
 - Archivace a obnova jsou stabilizovane pres React stav, ne pres DOM/select.
+- Vybrany klient se pro archivacni komponenty predava pres `SelectedClient` z `KneeDashboard` do `KneeApp`, ne pres DOM pozorovani.
 - Vypocetni logika knee metrik je presunuta do `src/lib/knee-metrics.ts` a kryta prvnim smoke-testem.
 
 ## Hotovo
@@ -44,6 +45,7 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 - Mobilni detail mereni ma bezpecne spodni odsazeni proti fixed tlacitku `+ Pridat mereni`.
 - Graf ukazuje levou, pravou a asymetrii s moznosti skryt jednotlive serie.
 - Smoke-test overuje hodnoty pro 82 kg, 33 cm, levou silu 35 kg a pravou silu 42 kg.
+- Nepouzivany legacy `ButtonGuards` s DOM/MutationObserver logikou byl odstranen z kodu.
 
 ## Prakticky overeno
 
@@ -61,11 +63,10 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 
 1. Export/zaloha dat.
 2. Provozni dokumentace: migrace, obnova, kontrola produkce, env promenne.
-3. Uklid nepouzivaneho souboru `ButtonGuards`, pokud se potvrdi, ze uz neni potreba.
-4. Odstraneni legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
-5. Lepsi stavove hlasky po archivaci/obnove bez reloadu stranky.
-6. Rozsireni smoke-testu z vypoctu na zakladni UI/regresni toky.
-7. Volitelne: interpretacni karta klienta - norma, deficit kg, asymetrie, prakticke doporuceni.
+3. Odstraneni legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
+4. Lepsi stavove hlasky po archivaci/obnove bez reloadu stranky.
+5. Rozsireni smoke-testu z vypoctu na zakladni UI/regresni toky.
+6. Volitelne: interpretacni karta klienta - norma, deficit kg, asymetrie, prakticke doporuceni.
 
 ## Hranice projektu
 
