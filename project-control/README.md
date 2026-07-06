@@ -24,6 +24,7 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 - Mazani mereni a klientu je resene jako archivace/soft delete, ne fyzicke smazani.
 - Archivace a obnova jsou stabilizovane pres React stav, ne pres DOM/select.
 - Vybrany klient se pro archivacni komponenty predava pres `SelectedClient` z `KneeDashboard` do `KneeApp`, ne pres DOM pozorovani.
+- Aktivni cteni tabulky `athletes` je filtrovane na `deleted_at IS NULL`, aby se archivovany klient po reloadu nevracel do aktivniho seznamu.
 - Vypocetni logika knee metrik je presunuta do `src/lib/knee-metrics.ts` a kryta prvnim smoke-testem.
 
 ## Hotovo
@@ -46,6 +47,7 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 - Graf ukazuje levou, pravou a asymetrii s moznosti skryt jednotlive serie.
 - Smoke-test overuje hodnoty pro 82 kg, 33 cm, levou silu 35 kg a pravou silu 42 kg.
 - Nepouzivany legacy `ButtonGuards` s DOM/MutationObserver logikou byl odstranen z kodu.
+- Opraveno aktivni nacitani klientu po archivaci: GET dotazy na `athletes` automaticky doplnuji filtr `deleted_at=is.null`.
 
 ## Prakticky overeno
 
