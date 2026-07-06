@@ -39,6 +39,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -102,6 +103,7 @@ label {
 }
 
 input,
+select,
 textarea {
   width: 100%;
   border: 1px solid var(--border);
@@ -200,13 +202,21 @@ dt {
 
 .dashboard-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 390px) minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 390px) minmax(320px, 1fr);
   gap: 14px;
   align-items: start;
 }
 
 .panel {
   padding: 16px;
+}
+
+.control-panel {
+  min-height: 100%;
+}
+
+.detail-panel {
+  grid-column: 1 / -1;
 }
 
 .panel-header {
@@ -274,6 +284,12 @@ dt {
   gap: 12px;
 }
 
+.compact-form {
+  border-top: 1px solid var(--border);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -286,10 +302,40 @@ dt {
   padding-top: 14px;
 }
 
+.athlete-picker,
+.quick-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.quick-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.compact-hint {
+  margin-top: 14px;
+}
+
+.selected-athlete-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.selected-athlete-meta div {
+  min-width: 0;
+}
+
 .athlete-list {
   display: grid;
   gap: 10px;
+  max-height: 420px;
   margin-top: 12px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .athlete-card {
@@ -342,7 +388,7 @@ dd {
 }
 
 .norm-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .profile-metric {
@@ -659,9 +705,15 @@ th {
   .profile-grid,
   .norm-grid,
   .form-row,
+  .selected-athlete-meta,
+  .quick-actions,
   .test-detail-grid,
   .leg-detail-card dl {
     grid-template-columns: 1fr;
+  }
+
+  .detail-panel {
+    grid-column: auto;
   }
 
   .test-detail-header,
