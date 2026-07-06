@@ -72,12 +72,12 @@ function relabelArchiveButtons(button: HTMLButtonElement) {
   }
 
   if (label === "smazat") {
-    button.textContent = "Archivovat";
-    button.title = "Mereni se pouze archivuje a zustane obnovitelne v databazi.";
+    button.textContent = "Archivovat mereni";
+    button.title = "Archivuje se pouze toto mereni. Klient zustane aktivni.";
   }
 
   if (label === "mazu...") {
-    button.textContent = "Archivuji...";
+    button.textContent = "Archivuji mereni...";
   }
 }
 
@@ -116,7 +116,7 @@ export default function ButtonGuards() {
     window.confirm = (message?: string) => {
       const text = String(message ?? "").replace(
         "Opravdu smazat mereni",
-        "Opravdu archivovat mereni",
+        "Opravdu archivovat pouze toto mereni",
       );
 
       return originalConfirm(text);
