@@ -1,22 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   createBrowserSupabaseClient,
   hasSupabaseConfig,
 } from "@/lib/supabase-browser";
-
-type SelectedClient = {
-  id: string;
-  name: string;
-} | null;
-
-const SELECTED_CLIENT_CHANGE = "knee:selected-client-change";
-const SELECTED_CLIENT_REQUEST = "knee:selected-client-request";
-
-function selectedClientFromEvent(event: Event): SelectedClient {
-  return (event as CustomEvent<SelectedClient>).detail ?? null;
-}
+import type { SelectedClient } from "./selected-client";
 
 function isMissingRpcSignature(error: { code?: string; message?: string } | null) {
   return (
@@ -25,28 +14,13 @@ function isMissingRpcSignature(error: { code?: string; message?: string } | null
   );
 }
 
-export default function ClientDeletion() {
-  const [selectedClient, setSelectedClient] = useState<SelectedClient>(null);
+export default function ClientDeletion({ selectedClient }: { selectedClient: SelectedClient }) {
   const [message, setMessage] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const supabase = useMemo(
     () => (hasSupabaseConfig() ? createBrowserSupabaseClient() : null),
     [],
   );
-
-  useEffect(() => {
-    const handleSelectedClientChange = (event: Event) => {
-      setSelectedClient(selectedClientFromEvent(event));
-      setMessage("");
-    };
-
-    window.addEventListener(SELECTED_CLIENT_CHANGE, handleSelectedClientChange);
-    window.dispatchEvent(new Event(SELECTED_CLIENT_REQUEST));
-
-    return () => {
-      window.removeEventListener(SELECTED_CLIENT_CHANGE, handleSelectedClientChange);
-    };
-  }, []);
 
   async function handleDeleteClient() {
     if (!supabase || !selectedClient || isDeleting) return;
