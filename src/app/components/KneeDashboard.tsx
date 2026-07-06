@@ -172,6 +172,24 @@ function formatPercent(value: number | null | undefined) {
   return `${normalized.toFixed(1)} %`;
 }
 
+function getAsymmetryClass(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return "asymmetry-badge unknown";
+  }
+
+  const normalized = Math.abs(value) <= 1 ? Math.abs(value) * 100 : Math.abs(value);
+
+  if (normalized < 10) {
+    return "asymmetry-badge ok";
+  }
+
+  if (normalized <= 20) {
+    return "asymmetry-badge warning";
+  }
+
+  return "asymmetry-badge problem";
+}
+
 function formatSide(value: string | null | undefined) {
   if (value === "right") {
     return "Prava";
@@ -875,7 +893,11 @@ export default function KneeDashboard() {
                       </div>
                       <div>
                         <dt>Asym</dt>
-                        <dd>{formatPercent(athlete.latestTest?.asymmetry_pct)}</dd>
+                        <dd>
+                          <span className={getAsymmetryClass(athlete.latestTest?.asymmetry_pct)}>
+                            {formatPercent(athlete.latestTest?.asymmetry_pct)}
+                          </span>
+                        </dd>
                       </div>
                     </dl>
                   </button>
@@ -1033,7 +1055,11 @@ export default function KneeDashboard() {
                                 <td>{formatNumber(test.left_force_kg, 1)}</td>
                                 <td>{formatNumber(test.right_nm_per_kg, 2)}</td>
                                 <td>{formatNumber(test.left_nm_per_kg, 2)}</td>
-                                <td>{formatPercent(test.asymmetry_pct)}</td>
+                                <td>
+                                  <span className={getAsymmetryClass(test.asymmetry_pct)}>
+                                    {formatPercent(test.asymmetry_pct)}
+                                  </span>
+                                </td>
                                 <td>{formatSide(test.weaker_side)}</td>
                                 <td>{formatNumber(test.age_at_test_years, 1)}</td>
                                 <td>
@@ -1056,9 +1082,13 @@ export default function KneeDashboard() {
                                         <strong>Detail testu {formatDate(test.test_date)}</strong>
                                         <p>
                                           Norma {formatNumber(NORM_NM_PER_KG, 1)} Nm/kg
+                                          {" · asymetrie "}
+                                          <span className={getAsymmetryClass(test.asymmetry_pct)}>
+                                            {formatPercent(test.asymmetry_pct)}
+                                          </span>
                                           {deficitLegs.length > 0
-                                            ? ` - deficit: ${deficitLegs.map((leg) => leg.label.toLowerCase()).join(", ")}`
-                                            : " - obe nohy splnuji normu"}
+                                            ? ` · deficit: ${deficitLegs.map((leg) => leg.label.toLowerCase()).join(", ")}`
+                                            : " · obe nohy splnuji normu"}
                                         </p>
                                       </div>
                                       <span className="pill">
