@@ -4,15 +4,17 @@ Ridici slozka pro projekt `knee.vankotraining.cz`.
 
 ## Aktualni faze k 2026-07-07
 
-Faze: overene interni MVP -> provozni stabilizace a zaloha dat.
+Faze: finalni stabilizace interniho MVP.
 
-Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci knee extension mereni. Hlavni uzivatelske workflow je funkcni a prakticky overene. Stabilizace archivace klientu je hotova. Rucni export a zaloha dat jsou pripravene a prakticky overene. Sirsi provozni dokumentace je doplnena. Dalsi prace uz nema byt stavba zakladnich funkci, ale provozni jistota, dokumentace a ochrana proti regresim.
+Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci knee extension mereni. Hlavni uzivatelske workflow je funkcni a prakticky overene. Stabilizace archivace klientu je hotova. Rucni export a zaloha dat jsou pripravene a prakticky overene. Sirsi provozni dokumentace je doplnena.
+
+Projekt uz nema pokracovat nekonecnym vylepsovanim. Do uzavreni interniho MVP zbyvaji 3 konkretni kroky.
 
 ## Odhad dokonceni
 
-- Interni pracovni nastroj: 96 %
-- Dlouhodobe udrzovatelny produkt: 89 %
-- Celkove MVP: 95 %
+- Interni pracovni nastroj: 97 %
+- Dlouhodobe udrzovatelny produkt: 91 %
+- Celkove MVP: 96 %
 
 ## Aktualni rozhodnuti
 
@@ -72,12 +74,29 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 - Archivovany klient `Testovac Karel` je v exportu vedeny jako `archived` a jeho mereni jako `archived_measurement_and_archived_client`.
 - Asymetrie v exportu je pocitana primo z leve/prave sily a sedi proti kontrolnimu prepoctu.
 
-## Co jeste chybi do hotoveho projektu
+## Zbyvaji 3 kroky k uzavreni MVP
 
-1. Odstraneni legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
-2. Lepsi stavove hlasky po archivaci/obnove bez reloadu stranky.
-3. Rozsireni smoke-testu z vypoctu na zakladni UI/regresni toky.
-4. Volitelne: interpretacni karta klienta - norma, deficit kg, asymetrie, prakticke doporuceni.
+### 1. Finalni technicky uklid
+
+- Odstranit legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
+- Zkontrolovat, ze v kodu nezustava nepouzivana archivacni/DOM logika.
+- Nezavadet novou funkcionalitu.
+
+### 2. Regresni ochrana
+
+- Rozsirit smoke-testy z vypoctu na hlavni kriticke toky:
+  - vytvoreni mereni,
+  - editace mereni,
+  - archivace/obnova mereni,
+  - archivace/obnova klienta,
+  - filtr aktivnich klientu.
+- Minimalni cil: mit jasny opakovatelny checklist nebo automatizovany smoke-test pro hlavni rizika.
+
+### 3. Finalni uzavreni projektu
+
+- Projit finalni rucni akceptacni test.
+- Aktualizovat `project-control` jako uzavrene interni MVP.
+- Rozhodnout, ze dalsi veci jako interpretacni karta klienta patri do v2, ne do dokonceni MVP.
 
 ## Hranice projektu
 
@@ -100,12 +119,6 @@ flowchart TD
     D --> F["Knee aplikace"]
 ```
 
-## Nejblizsi priorita
-
-1. Odstranit legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
-2. Rozsirit smoke-testy tak, aby hlidaly hlavni regresni rizika.
-3. Volitelne doplnit interpretacni kartu klienta.
-
 ## Pravidlo pro dalsi vyvoj
 
-Aplikace uz funkcne staci na praci. Dalsi zmeny maji byt male, overitelne a smerovane hlavne ke spolehlivosti: env cistota, lepsi hlasky, regresni testy a provozni jistota.
+Nepridavat dalsi produktove funkce do MVP. Zbyvajici prace je uzavreni, ne rozsirovani. Interpretacni karta klienta, tisk detailu nebo dalsi klinicke funkce patri do dalsi faze po uzavreni MVP.
