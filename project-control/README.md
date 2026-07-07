@@ -6,13 +6,13 @@ Ridici slozka pro projekt `knee.vankotraining.cz`.
 
 Faze: overene interni MVP -> provozni stabilizace a zaloha dat.
 
-Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci knee extension mereni. Hlavni uzivatelske workflow je funkcni a prakticky overene. Stabilizace archivace klientu je hotova. Dalsi prace uz nema byt stavba zakladnich funkci, ale provozni jistota, dokumentace, zaloha dat a ochrana proti regresim.
+Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci knee extension mereni. Hlavni uzivatelske workflow je funkcni a prakticky overene. Stabilizace archivace klientu je hotova. Rucni export a zaloha dat jsou pripravene a prakticky overene. Dalsi prace uz nema byt stavba zakladnich funkci, ale provozni jistota, dokumentace a ochrana proti regresim.
 
 ## Odhad dokonceni
 
-- Interni pracovni nastroj: 95 %
-- Dlouhodobe udrzovatelny produkt: 87 %
-- Celkove MVP: 94 %
+- Interni pracovni nastroj: 96 %
+- Dlouhodobe udrzovatelny produkt: 89 %
+- Celkove MVP: 95 %
 
 ## Aktualni rozhodnuti
 
@@ -51,7 +51,7 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 - Smoke-test overuje hodnoty pro 82 kg, 33 cm, levou silu 35 kg a pravou silu 42 kg.
 - Nepouzivany legacy `ButtonGuards` s DOM/MutationObserver logikou byl odstranen z kodu.
 - Opraveno aktivni nacitani klientu po archivaci: GET dotazy na `athletes` automaticky doplnuji filtr `deleted_at=is.null`.
-- Pripraven jednoduchy rucni export dat ze Supabase vcetne aktivnich i archivovanych klientu a mereni.
+- Pripraven a prakticky overen jednoduchy rucni export dat ze Supabase vcetne aktivnich i archivovanych klientu a mereni.
 - Dopsana provozni dokumentace pro stazeni CSV zalohy.
 
 ## Prakticky overeno
@@ -65,22 +65,18 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 - Archivovany klient se neukazuje v aktivnim seznamu.
 - Mobilni zobrazeni detailu mereni uz neni prekryte spodnim tlacitkem.
 - Vypocty na testovacich hodnotach sedi: 82 kg, 33 cm, L 35 kg, P 42 kg, L 1.38 Nm/kg, P 1.66 Nm/kg, asymetrie 16.7 %, cilova sila 76.0 kg.
-
-## Ceka na rucni overeni
-
-- Spustit `supabase/manual-data-export.sql` v Supabase SQL Editoru.
-- Stahnout CSV vystup z `public.knee_data_export`.
-- Overit, ze export obsahuje aktivni i archivovana data.
-- Overit, ze archivovany/obnoveny klient meni `client_archive_status` podle skutecneho stavu.
+- Export `public.knee_data_export` vraci 106 radku, 61 klientu, 60 aktivnich klientu a 1 archivovaneho klienta.
+- Export obsahuje 101 aktivnich mereni, 4 archivovana mereni a 1 radek bez mereni.
+- Archivovany klient `Testovac Karel` je v exportu vedeny jako `archived` a jeho mereni jako `archived_measurement_and_archived_client`.
+- Asymetrie v exportu je pocitana primo z leve/prave sily a sedi proti kontrolnimu prepoctu.
 
 ## Co jeste chybi do hotoveho projektu
 
-1. Rucne overit export/zaloha dat v Supabase a stahnout prvni CSV.
-2. Dopsat sirsi provozni dokumentaci: migrace, obnova, kontrola produkce, env promenne.
-3. Odstraneni legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
-4. Lepsi stavove hlasky po archivaci/obnove bez reloadu stranky.
-5. Rozsireni smoke-testu z vypoctu na zakladni UI/regresni toky.
-6. Volitelne: interpretacni karta klienta - norma, deficit kg, asymetrie, prakticke doporuceni.
+1. Dopsat sirsi provozni dokumentaci: migrace, obnova, kontrola produkce, env promenne.
+2. Odstraneni legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
+3. Lepsi stavove hlasky po archivaci/obnove bez reloadu stranky.
+4. Rozsireni smoke-testu z vypoctu na zakladni UI/regresni toky.
+5. Volitelne: interpretacni karta klienta - norma, deficit kg, asymetrie, prakticke doporuceni.
 
 ## Hranice projektu
 
@@ -105,10 +101,10 @@ flowchart TD
 
 ## Nejblizsi priorita
 
-1. Rucne spustit a stahnout prvni CSV export v Supabase.
-2. Dopsat obecnou provozni dokumentaci.
+1. Dopsat obecnou provozni dokumentaci.
+2. Odstranit legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
 3. Rozsirit smoke-testy tak, aby hlidaly hlavni regresni rizika.
 
 ## Pravidlo pro dalsi vyvoj
 
-Nepridavat dalsi velke produktove funkce, dokud nebude rucne overena zaloha dat a dokoncena zakladni provozni dokumentace. Aplikace uz funkcne staci na praci; dalsi hodnota ted lezi ve spolehlivosti a udrzitelnosti.
+Nepridavat dalsi velke produktove funkce, dokud nebude dokoncena zakladni provozni dokumentace. Aplikace uz funkcne staci na praci; dalsi hodnota ted lezi ve spolehlivosti a udrzitelnosti.
