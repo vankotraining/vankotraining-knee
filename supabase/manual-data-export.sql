@@ -83,12 +83,12 @@ with latest_profile as (
       end
     ) as right_nm_per_kg,
     case
+      when greatest(t.left_force_kg, t.right_force_kg) > 0
+        then (abs(t.right_force_kg - t.left_force_kg) / greatest(t.left_force_kg, t.right_force_kg)) * 100
       when t.asymmetry_pct is not null and abs(t.asymmetry_pct) <= 1
         then abs(t.asymmetry_pct) * 100
       when t.asymmetry_pct is not null
         then abs(t.asymmetry_pct)
-      when greatest(t.left_force_kg, t.right_force_kg) > 0
-        then (abs(t.right_force_kg - t.left_force_kg) / greatest(t.left_force_kg, t.right_force_kg)) * 100
       else null
     end as asymmetry_pct,
     coalesce(
