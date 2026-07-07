@@ -167,7 +167,7 @@ Po kazde zmene projit tuto kratkou kontrolu primo na `knee.vankotraining.cz`:
 8. Obnovit archivovane mereni z panelu `Archiv mereni`.
 9. Archivovat testovaciho klienta a overit, ze zmizel z aktivniho seznamu.
 10. Otevrit `Archiv klientu` a obnovit klienta.
-11. Zkontrolovat mobilni zobrazeni: vyber klienta, pridani mereni, detail, spodní tlacitko.
+11. Zkontrolovat mobilni zobrazeni: vyber klienta, pridani mereni, detail, spodni tlacitko.
 12. Spustit export dat a zkontrolovat, ze CSV obsahuje aktivni i archivovana data.
 
 Doporucene testovaci hodnoty pro rychlou kontrolu vypoctu:
