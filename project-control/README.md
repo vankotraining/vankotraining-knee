@@ -2,17 +2,17 @@
 
 Ridici slozka pro projekt `knee.vankotraining.cz`.
 
-## Aktualni faze k 2026-07-06
+## Aktualni faze k 2026-07-07
 
-Faze: overene interni MVP -> provozni stabilizace.
+Faze: overene interni MVP -> provozni stabilizace a zaloha dat.
 
-Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci knee extension mereni. Hlavni uzivatelske workflow je funkcni a prakticky overene. Dalsi prace uz nema byt stavba zakladnich funkci, ale stabilizace, zaloha dat, dokumentace a ochrana proti regresim.
+Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci knee extension mereni. Hlavni uzivatelske workflow je funkcni a prakticky overene. Stabilizace archivace klientu je hotova. Dalsi prace uz nema byt stavba zakladnich funkci, ale provozni jistota, dokumentace, zaloha dat a ochrana proti regresim.
 
 ## Odhad dokonceni
 
-- Interni pracovni nastroj: 94 %
-- Dlouhodobe udrzovatelny produkt: 85 %
-- Celkove MVP: 93 %
+- Interni pracovni nastroj: 95 %
+- Dlouhodobe udrzovatelny produkt: 87 %
+- Celkove MVP: 94 %
 
 ## Aktualni rozhodnuti
 
@@ -26,6 +26,9 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 - Vybrany klient se pro archivacni komponenty predava pres `SelectedClient` z `KneeDashboard` do `KneeApp`, ne pres DOM pozorovani.
 - Aktivni cteni tabulky `athletes` je filtrovane na `deleted_at IS NULL`, aby se archivovany klient po reloadu nevracel do aktivniho seznamu.
 - Vypocetni logika knee metrik je presunuta do `src/lib/knee-metrics.ts` a kryta prvnim smoke-testem.
+- Rucni export/zaloha dat je resena pres Supabase SQL view `public.knee_data_export`.
+- SQL pro export je ulozene v `supabase/manual-data-export.sql`.
+- Provozni navod pro export je ulozeny v `project-control/manual-data-export.md`.
 
 ## Hotovo
 
@@ -48,6 +51,8 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 - Smoke-test overuje hodnoty pro 82 kg, 33 cm, levou silu 35 kg a pravou silu 42 kg.
 - Nepouzivany legacy `ButtonGuards` s DOM/MutationObserver logikou byl odstranen z kodu.
 - Opraveno aktivni nacitani klientu po archivaci: GET dotazy na `athletes` automaticky doplnuji filtr `deleted_at=is.null`.
+- Pripraven jednoduchy rucni export dat ze Supabase vcetne aktivnich i archivovanych klientu a mereni.
+- Dopsana provozni dokumentace pro stazeni CSV zalohy.
 
 ## Prakticky overeno
 
@@ -61,10 +66,17 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 - Mobilni zobrazeni detailu mereni uz neni prekryte spodnim tlacitkem.
 - Vypocty na testovacich hodnotach sedi: 82 kg, 33 cm, L 35 kg, P 42 kg, L 1.38 Nm/kg, P 1.66 Nm/kg, asymetrie 16.7 %, cilova sila 76.0 kg.
 
+## Ceka na rucni overeni
+
+- Spustit `supabase/manual-data-export.sql` v Supabase SQL Editoru.
+- Stahnout CSV vystup z `public.knee_data_export`.
+- Overit, ze export obsahuje aktivni i archivovana data.
+- Overit, ze archivovany/obnoveny klient meni `client_archive_status` podle skutecneho stavu.
+
 ## Co jeste chybi do hotoveho projektu
 
-1. Export/zaloha dat.
-2. Provozni dokumentace: migrace, obnova, kontrola produkce, env promenne.
+1. Rucne overit export/zaloha dat v Supabase a stahnout prvni CSV.
+2. Dopsat sirsi provozni dokumentaci: migrace, obnova, kontrola produkce, env promenne.
 3. Odstraneni legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
 4. Lepsi stavove hlasky po archivaci/obnove bez reloadu stranky.
 5. Rozsireni smoke-testu z vypoctu na zakladni UI/regresni toky.
@@ -93,10 +105,10 @@ flowchart TD
 
 ## Nejblizsi priorita
 
-1. Pridat jednoduchy export/zaloha dat.
-2. Dopsat provozni dokumentaci.
+1. Rucne spustit a stahnout prvni CSV export v Supabase.
+2. Dopsat obecnou provozni dokumentaci.
 3. Rozsirit smoke-testy tak, aby hlidaly hlavni regresni rizika.
 
 ## Pravidlo pro dalsi vyvoj
 
-Nepridavat dalsi velke produktove funkce, dokud nebude vyresena zaloha dat a provozni dokumentace. Aplikace uz funkcne staci na praci; dalsi hodnota ted lezi ve spolehlivosti a udrzitelnosti.
+Nepridavat dalsi velke produktove funkce, dokud nebude rucne overena zaloha dat a dokoncena zakladni provozni dokumentace. Aplikace uz funkcne staci na praci; dalsi hodnota ted lezi ve spolehlivosti a udrzitelnosti.
