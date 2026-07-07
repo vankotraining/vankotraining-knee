@@ -1,53 +1,68 @@
 # Next Step
 
-## Priorita
+## Aktualni faze
 
-Pridat jednoduchy export/zaloha dat a provozni dokumentaci.
+Finalni stabilizace interniho MVP.
 
-## Proc ted
+Projekt uz nema pokracovat nekonecnym vylepsovanim. Hlavni workflow funguje, export a provozni dokumentace jsou pripraveny. Zbyvaji 3 uzaviraci kroky.
 
-Hlavni aplikacni workflow uz funguje a je prakticky overeny:
+## Zbyvaji 3 kroky
 
-- klienti,
-- mereni,
-- editace,
-- archivace mereni,
-- obnova mereni,
-- archivace klienta,
-- obnova klienta,
-- mobilni pouziti.
+### 1. Finalni technicky uklid
 
-Projekt se posunul ze stavby funkcniho MVP do faze provozni stabilizace. Nejvetsi zbyvajici riziko neni chybejici obrazovka, ale ztrata nebo obtizna obnova dat, nejasne migrace a regresni chyby pri dalsich upravach.
+Cil:
 
-## Cil nejblizsiho kroku
+- Odstranit legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
+- Zkontrolovat, ze v kodu nezustava nepouzivana archivacni/DOM logika.
+- Nezavadet novou funkcionalitu.
 
-Vytvorit minimalni, prakticky pouzitelnou datovou zalohu/export.
+Definice hotovo:
 
-Preferovana varianta pro prvni verzi:
+- Supabase konfigurace spoleha na Vercel env promenne.
+- Build/lint projde.
+- Produkcni web dal nacita data.
 
-1. Pridat v aplikaci nebo v Supabase SQL jednoduchy export aktivnich dat:
-   - klienti,
-   - profily klientu,
-   - knee extension testy,
-   - informace o archivaci.
-2. Pripravit SQL view nebo dokumentovany SQL dotaz pro export.
-3. Zapsat postup do `project-control`.
-4. Nezavadet slozitou automatizaci, dokud neni jasne, co presne budeme zalohovat.
+### 2. Regresni ochrana
 
-## Definice hotovo
+Cil:
 
-- Je jasne, jak ziskat zalohu dat.
-- Export obsahuje aktivni i archivovane relevantni zaznamy.
-- Postup je popsany tak, aby ho slo zopakovat rucne.
-- Nezasahuje se do stavajicich funkcnich workflow.
-- Aplikace po zmene dal buildi/lintuje.
+- Rozsirit ochranu pred regresi na hlavni kriticke toky.
+- Minimalne mit jasny opakovatelny smoke-test checklist, idealne i maly automatizovany smoke-test tam, kde to dava smysl.
 
-## Nasledujici krok po exportu
+Toky k hlidani:
 
-1. Dopsat kratkou provozni dokumentaci:
-   - env promenne,
-   - Supabase migrace/RPC,
-   - co zkontrolovat po deployi,
-   - jak obnovit data.
-2. Rozsirit smoke-testy z vypocetni logiky na nejdulezitejsi UI/regresni toky.
-3. Odstranit legacy fallback anon key a nepouzivany `ButtonGuards`, pokud uz nebudou potreba.
+- vytvoreni mereni,
+- editace mereni,
+- archivace/obnova mereni,
+- archivace/obnova klienta,
+- aktivni seznam nesmi ukazovat archivovane klienty,
+- export musi obsahovat aktivni i archivovana data.
+
+Definice hotovo:
+
+- Pred dalsi zmenou existuje jasny testovaci postup.
+- Vypocty knee metrik zustavaji kryte testem.
+- Kriticka archivacni logika je overitelna.
+
+### 3. Finalni uzavreni MVP
+
+Cil:
+
+- Projit finalni rucni akceptacni test.
+- Aktualizovat `project-control` jako uzavrene interni MVP.
+- Rozhodnout, ze dalsi produktove napady patri do v2.
+
+Definice hotovo:
+
+- Projekt ma finalni stavovy zapis.
+- Je jasne, jak aplikaci pouzivat, zalohovat a obnovit data.
+- Dalsi funkcionalita neni blokujici pro pouzivani.
+
+## Co uz ted nepatri do MVP
+
+- Interpretacni karta klienta.
+- Tisk detailu klienta.
+- Dalsi klinicke doporucovaci funkce.
+- Vetsi redesign mobilniho UI.
+
+Tyto veci patri do dalsi faze az po uzavreni MVP.
