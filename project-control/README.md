@@ -6,7 +6,7 @@ Ridici slozka pro projekt `knee.vankotraining.cz`.
 
 Faze: overene interni MVP -> provozni stabilizace a zaloha dat.
 
-Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci knee extension mereni. Hlavni uzivatelske workflow je funkcni a prakticky overene. Stabilizace archivace klientu je hotova. Rucni export a zaloha dat jsou pripravene a prakticky overene. Dalsi prace uz nema byt stavba zakladnich funkci, ale provozni jistota, dokumentace a ochrana proti regresim.
+Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci knee extension mereni. Hlavni uzivatelske workflow je funkcni a prakticky overene. Stabilizace archivace klientu je hotova. Rucni export a zaloha dat jsou pripravene a prakticky overene. Sirsi provozni dokumentace je doplnena. Dalsi prace uz nema byt stavba zakladnich funkci, ale provozni jistota, dokumentace a ochrana proti regresim.
 
 ## Odhad dokonceni
 
@@ -29,6 +29,7 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 - Rucni export/zaloha dat je resena pres Supabase SQL view `public.knee_data_export`.
 - SQL pro export je ulozene v `supabase/manual-data-export.sql`.
 - Provozni navod pro export je ulozeny v `project-control/manual-data-export.md`.
+- Sirsi provozni dokumentace je ulozena v `project-control/operations.md`.
 
 ## Hotovo
 
@@ -53,6 +54,7 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 - Opraveno aktivni nacitani klientu po archivaci: GET dotazy na `athletes` automaticky doplnuji filtr `deleted_at=is.null`.
 - Pripraven a prakticky overen jednoduchy rucni export dat ze Supabase vcetne aktivnich i archivovanych klientu a mereni.
 - Dopsana provozni dokumentace pro stazeni CSV zalohy.
+- Dopsana sirsi provozni dokumentace pro env promenne, databazi, migrace, produkcni kontrolu a incidenty.
 
 ## Prakticky overeno
 
@@ -72,11 +74,10 @@ Aplikace je nasazena na produkcni domene a je prakticky pouzitelna pro evidenci 
 
 ## Co jeste chybi do hotoveho projektu
 
-1. Dopsat sirsi provozni dokumentaci: migrace, obnova, kontrola produkce, env promenne.
-2. Odstraneni legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
-3. Lepsi stavove hlasky po archivaci/obnove bez reloadu stranky.
-4. Rozsireni smoke-testu z vypoctu na zakladni UI/regresni toky.
-5. Volitelne: interpretacni karta klienta - norma, deficit kg, asymetrie, prakticke doporuceni.
+1. Odstraneni legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
+2. Lepsi stavove hlasky po archivaci/obnove bez reloadu stranky.
+3. Rozsireni smoke-testu z vypoctu na zakladni UI/regresni toky.
+4. Volitelne: interpretacni karta klienta - norma, deficit kg, asymetrie, prakticke doporuceni.
 
 ## Hranice projektu
 
@@ -101,10 +102,10 @@ flowchart TD
 
 ## Nejblizsi priorita
 
-1. Dopsat obecnou provozni dokumentaci.
-2. Odstranit legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
-3. Rozsirit smoke-testy tak, aby hlidaly hlavni regresni rizika.
+1. Odstranit legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
+2. Rozsirit smoke-testy tak, aby hlidaly hlavni regresni rizika.
+3. Volitelne doplnit interpretacni kartu klienta.
 
 ## Pravidlo pro dalsi vyvoj
 
-Nepridavat dalsi velke produktove funkce, dokud nebude dokoncena zakladni provozni dokumentace. Aplikace uz funkcne staci na praci; dalsi hodnota ted lezi ve spolehlivosti a udrzitelnosti.
+Aplikace uz funkcne staci na praci. Dalsi zmeny maji byt male, overitelne a smerovane hlavne ke spolehlivosti: env cistota, lepsi hlasky, regresni testy a provozni jistota.
