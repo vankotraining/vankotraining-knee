@@ -917,15 +917,15 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
                 <div><dt>Aktuálně</dt><dd>{formatNumber(leg.forceKg, 1, " kg")}</dd></div>
                 <div><dt>Nm/kg</dt><dd>{formatNumber(leg.nmPerKg, 2)}</dd></div>
                 <div><dt>Cílová síla</dt><dd>{formatNumber(leg.targetForceKg, 1, " kg")}</dd></div>
-                <div><dt>Rozdíl</dt><dd>{formatNumber(leg.differenceKg, 1, " kg")}</dd></div>
+                <div><dt>Rozdíl</dt><dd>{formatNumber(leg.differenceKg, 1, " kg").replace(".", ",")}</dd></div>
               </dl>
               {leg.hasNormData ? (
                 <p className="leg-norm-summary">
-                  Norma je splněna na <strong>{formatNumber(leg.completionPct, 1, " %")}</strong>.{" "}
+                  Norma je splněna na <strong>{formatNumber(leg.completionPct, 1, " %").replace(".", ",")}</strong>.{" "}
                   {leg.isDeficit ? (
-                    <>Do normy chybí <strong>{formatNumber(leg.differenceKg, 1, " kg")}</strong>.</>
+                    <>Do normy chybí <strong>{formatNumber(leg.differenceKg, 1, " kg").replace(".", ",")}</strong>.</>
                   ) : (
-                    <>Norma je překročena o <strong>{formatNumber(leg.differenceKg, 1, " kg")}</strong>.</>
+                    <>Norma je překročena o <strong>{formatNumber(leg.differenceKg, 1, " kg").replace(".", ",")}</strong>.</>
                   )}
                 </p>
               ) : (

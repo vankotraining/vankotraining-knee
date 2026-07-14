@@ -33,3 +33,4 @@ Jde o prezentacni upravu hotoveho interniho MVP. Datovy model, autentizace, arch
 - Plny `npm run lint` byl spusten. Projekt ma znamy vychozi stav 3 chyb a 1 varovani v `ArchivedClients.tsx`, `ArchivedMeasurements.tsx` a v existujicim efektu `KneeDashboard.tsx`; tato mista nejsou soucasti zadane prezentacni upravy.
 - Samostatny lint upraveneho `KneeDashboard.tsx` po vypnuti pouze uvedenych existujicich pravidel probehl uspesne bez nove chyby.
 - `npm run build` probehl uspesne.
+- Nove souhrnne procento a rozdil v kg pouzivaji ceskou desetinnou carku (`84,7 %`, `7,8 kg`).
