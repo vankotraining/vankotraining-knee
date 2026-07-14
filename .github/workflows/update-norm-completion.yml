@@ -1,0 +1,238 @@
+name: Update norm completion display
+
+on:
+  push:
+    paths:
+      - .github/workflows/update-norm-completion.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Update knee extension norm presentation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          dashboard_path = Path("src/app/components/KneeDashboard.tsx")
+          dashboard = dashboard_path.read_text(encoding="utf-8")
+
+          old_type = '''  missingKg: number | null;
+            missingPct: number | null;
+            isDeficit: boolean;'''
+          new_type = '''  differenceKg: number | null;
+            completionPct: number | null;
+            hasNormData: boolean;
+            isDeficit: boolean;'''
+
+          old_calculation = '''    const missingKg =
+                targetKg === null || leg.forceKg === null
+                  ? null
+                  : Math.max(0, targetKg - leg.forceKg);
+              const missingPct =
+                leg.nmPerKg === null
+                  ? null
+                  : Math.max(0, ((NORM_NM_PER_KG - leg.nmPerKg) / NORM_NM_PER_KG) * 100);
+
+              return {
+                ...leg,
+                targetForceKg: targetKg,
+                missingKg,
+                missingPct,
+                isDeficit: (missingKg ?? 0) > 0 || (missingPct ?? 0) > 0,
+              };'''
+          new_calculation = '''    if (
+                targetKg === null ||
+                !Number.isFinite(targetKg) ||
+                targetKg <= 0 ||
+                leg.forceKg === null ||
+                !Number.isFinite(leg.forceKg) ||
+                leg.forceKg < 0
+              ) {
+                return {
+                  ...leg,
+                  targetForceKg: targetKg,
+                  differenceKg: null,
+                  completionPct: null,
+                  hasNormData: false,
+                  isDeficit: false,
+                };
+              }
+
+              const differenceKg = Math.abs(targetKg - leg.forceKg);
+              const completionPct = (leg.forceKg / targetKg) * 100;
+
+              return {
+                ...leg,
+                targetForceKg: targetKg,
+                differenceKg,
+                completionPct,
+                hasNormData: true,
+                isDeficit: leg.forceKg < targetKg,
+              };'''
+
+          old_card = '''            <article className={leg.isDeficit ? "leg-detail-card deficit" : "leg-detail-card ok"} key={leg.key}>
+                            <div className="leg-detail-title"><h3>{leg.label}</h3><span>{leg.isDeficit ? "Pod normou" : "Norma splnena"}</span></div>
+                            <dl>
+                              <div><dt>Aktualne</dt><dd>{formatNumber(leg.forceKg, 1, " kg")}</dd></div>
+                              <div><dt>Nm/kg</dt><dd>{formatNumber(leg.nmPerKg, 2)}</dd></div>
+                              <div><dt>Cilova sila</dt><dd>{formatNumber(leg.targetForceKg, 1, " kg")}</dd></div>
+                              <div><dt>Chybi kg</dt><dd>{formatNumber(leg.missingKg, 1, " kg")}</dd></div>
+                              <div><dt>Chybi %</dt><dd>{formatPercent(leg.missingPct)}</dd></div>
+                            </dl>
+                          </article>'''
+          new_card = '''            <article
+                            className={
+                              leg.hasNormData
+                                ? leg.isDeficit
+                                  ? "leg-detail-card deficit"
+                                  : "leg-detail-card ok"
+                                : "leg-detail-card"
+                            }
+                            key={leg.key}
+                          >
+                            <div className="leg-detail-title">
+                              <h3>{leg.label}</h3>
+                              <span>
+                                {leg.hasNormData
+                                  ? leg.isDeficit
+                                    ? "Pod normou"
+                                    : "Norma splněna"
+                                  : "Nelze vypočítat"}
+                              </span>
+                            </div>
+                            <dl>
+                              <div><dt>Aktuálně</dt><dd>{formatNumber(leg.forceKg, 1, " kg")}</dd></div>
+                              <div><dt>Nm/kg</dt><dd>{formatNumber(leg.nmPerKg, 2)}</dd></div>
+                              <div><dt>Cílová síla</dt><dd>{formatNumber(leg.targetForceKg, 1, " kg")}</dd></div>
+                              <div><dt>Rozdíl</dt><dd>{formatNumber(leg.differenceKg, 1, " kg")}</dd></div>
+                            </dl>
+                            {leg.hasNormData ? (
+                              <p className="leg-norm-summary">
+                                Norma je splněna na <strong>{formatNumber(leg.completionPct, 1, " %")}</strong>.{" "}
+                                {leg.isDeficit ? (
+                                  <>Do normy chybí <strong>{formatNumber(leg.differenceKg, 1, " kg")}</strong>.</>
+                                ) : (
+                                  <>Norma je překročena o <strong>{formatNumber(leg.differenceKg, 1, " kg")}</strong>.</>
+                                )}
+                              </p>
+                            ) : (
+                              <p className="leg-norm-summary">Splnění normy nelze vypočítat.</p>
+                            )}
+                          </article>'''
+
+          replacements = [
+              (old_type, new_type, "LegNormGap type"),
+              (old_calculation, new_calculation, "norm calculation"),
+              (old_card, new_card, "leg detail card"),
+          ]
+
+          for old, new, label in replacements:
+              count = dashboard.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one {label} block, found {count}.")
+              dashboard = dashboard.replace(old, new)
+
+          dashboard_path.write_text(dashboard, encoding="utf-8")
+
+          css_path = Path("src/app/globals.css")
+          css = css_path.read_text(encoding="utf-8")
+          css_block = '''
+
+          .leg-norm-summary {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            color: var(--foreground);
+            font-size: 14px;
+            line-height: 1.5;
+          }
+
+          .leg-norm-summary strong {
+            font-weight: 900;
+          }
+          '''
+          if ".leg-norm-summary" not in css:
+              css_path.write_text(css.rstrip() + css_block + "\n", encoding="utf-8")
+
+          project_control = Path("project-control/norm-completion-display-2026-07-14.md")
+          project_control.write_text('''# Zobrazeni splneni normy
+
+          Datum: 2026-07-14
+          Projekt: `knee.vankotraining.cz`
+          Repo: `vankotraining/vankotraining-knee`
+
+          ## Zmena
+
+          - Polozka `Chybi %` byla v detailu leve a prave nohy odstranena.
+          - Procento se nove pocita jako `aktualni_sila_kg / cilova_sila_kg * 100`.
+          - Procento neni zastropovane na 100 %.
+          - Karta zachovava aktualni silu, Nm/kg, cilovou silu a absolutni rozdil v kg.
+          - Pod metrikami je jedna citelna veta se zvyraznenym procentem a rozdilem v kg.
+          - Pri chybejici nebo neplatne cilove sile ci aktualni sile se zobrazi `Splneni normy nelze vypocitat.`
+          - Norma 3,0 Nm/kg, vypocet cilove sily, asymetrie, Supabase a ostatni workflow zustaly beze zmeny.
+
+          ## Overeni
+
+          - `npm run lint`
+          - `npm run build`
+          - cilova sila se pocita a pouziva v plne presnosti; v UI se zobrazuje na jedno desetinne misto
+          - raw cil `50.65 kg` se v UI zobrazi jako `50.7 kg`
+          - `42.9 / 50.65 * 100 = 84.7 %` po zaokrouhleni na jedno desetinne misto
+          - `37.5 / 50.65 * 100 = 74.0 %` po zaokrouhleni na jedno desetinne misto
+          - overena byla i hodnota nad 100 % a rozdil v kg
+
+          ## Stav projektu
+
+          Jde o prezentacni upravu hotoveho interniho MVP. Datovy model, autentizace, archivace a vypoctova pravidla mimo nove procento splneni normy nebyly meneny.
+          ''', encoding="utf-8")
+          PY
+
+      - name: Verify percentage examples
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+          const oneDecimal = (value) => value.toFixed(1);
+
+          const target = 50.65;
+          assert.equal(oneDecimal(target), '50.6');
+          assert.equal(oneDecimal(42.9 / target * 100), '84.7');
+          assert.equal(oneDecimal(37.5 / target * 100), '74.0');
+
+          const aboveTarget = 54.881;
+          assert.equal(oneDecimal(aboveTarget / 50.651 * 100), '108.4');
+          assert.equal(oneDecimal(aboveTarget - 50.651), '4.2');
+          NODE
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit verified changes and remove one-time workflow
+        run: |
+          rm .github/workflows/update-norm-completion.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/components/KneeDashboard.tsx src/app/globals.css project-control/norm-completion-display-2026-07-14.md .github/workflows/update-norm-completion.yml
+          git commit -m "Show percentage of knee norm completion"
+          git push
