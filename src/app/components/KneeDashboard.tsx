@@ -92,8 +92,9 @@ type LegNormGap = {
   forceKg: number | null;
   nmPerKg: number | null;
   targetForceKg: number | null;
-  missingKg: number | null;
-  missingPct: number | null;
+  differenceKg: number | null;
+  completionPct: number | null;
+  hasNormData: boolean;
   isDeficit: boolean;
 };
 
@@ -218,21 +219,34 @@ function getLegNormGaps(test: KneeExtensionTest): LegNormGap[] {
   ];
 
   return legs.map((leg) => {
-    const missingKg =
-      targetKg === null || leg.forceKg === null
-        ? null
-        : Math.max(0, targetKg - leg.forceKg);
-    const missingPct =
-      leg.nmPerKg === null
-        ? null
-        : Math.max(0, ((NORM_NM_PER_KG - leg.nmPerKg) / NORM_NM_PER_KG) * 100);
+    if (
+      targetKg === null ||
+      !Number.isFinite(targetKg) ||
+      targetKg <= 0 ||
+      leg.forceKg === null ||
+      !Number.isFinite(leg.forceKg) ||
+      leg.forceKg < 0
+    ) {
+      return {
+        ...leg,
+        targetForceKg: targetKg,
+        differenceKg: null,
+        completionPct: null,
+        hasNormData: false,
+        isDeficit: false,
+      };
+    }
+
+    const differenceKg = Math.abs(targetKg - leg.forceKg);
+    const completionPct = (leg.forceKg / targetKg) * 100;
 
     return {
       ...leg,
       targetForceKg: targetKg,
-      missingKg,
-      missingPct,
-      isDeficit: (missingKg ?? 0) > 0 || (missingPct ?? 0) > 0,
+      differenceKg,
+      completionPct,
+      hasNormData: true,
+      isDeficit: leg.forceKg < targetKg,
     };
   });
 }
@@ -879,15 +893,44 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
         </div>
         <div className="test-detail-grid">
           {legGaps.map((leg) => (
-            <article className={leg.isDeficit ? "leg-detail-card deficit" : "leg-detail-card ok"} key={leg.key}>
-              <div className="leg-detail-title"><h3>{leg.label}</h3><span>{leg.isDeficit ? "Pod normou" : "Norma splnena"}</span></div>
+            <article
+              className={
+                leg.hasNormData
+                  ? leg.isDeficit
+                    ? "leg-detail-card deficit"
+                    : "leg-detail-card ok"
+                  : "leg-detail-card"
+              }
+              key={leg.key}
+            >
+              <div className="leg-detail-title">
+                <h3>{leg.label}</h3>
+                <span>
+                  {leg.hasNormData
+                    ? leg.isDeficit
+                      ? "Pod normou"
+                      : "Norma splněna"
+                    : "Nelze vypočítat"}
+                </span>
+              </div>
               <dl>
-                <div><dt>Aktualne</dt><dd>{formatNumber(leg.forceKg, 1, " kg")}</dd></div>
+                <div><dt>Aktuálně</dt><dd>{formatNumber(leg.forceKg, 1, " kg")}</dd></div>
                 <div><dt>Nm/kg</dt><dd>{formatNumber(leg.nmPerKg, 2)}</dd></div>
-                <div><dt>Cilova sila</dt><dd>{formatNumber(leg.targetForceKg, 1, " kg")}</dd></div>
-                <div><dt>Chybi kg</dt><dd>{formatNumber(leg.missingKg, 1, " kg")}</dd></div>
-                <div><dt>Chybi %</dt><dd>{formatPercent(leg.missingPct)}</dd></div>
+                <div><dt>Cílová síla</dt><dd>{formatNumber(leg.targetForceKg, 1, " kg")}</dd></div>
+                <div><dt>Rozdíl</dt><dd>{formatNumber(leg.differenceKg, 1, " kg")}</dd></div>
               </dl>
+              {leg.hasNormData ? (
+                <p className="leg-norm-summary">
+                  Norma je splněna na <strong>{formatNumber(leg.completionPct, 1, " %")}</strong>.{" "}
+                  {leg.isDeficit ? (
+                    <>Do normy chybí <strong>{formatNumber(leg.differenceKg, 1, " kg")}</strong>.</>
+                  ) : (
+                    <>Norma je překročena o <strong>{formatNumber(leg.differenceKg, 1, " kg")}</strong>.</>
+                  )}
+                </p>
+              ) : (
+                <p className="leg-norm-summary">Splnění normy nelze vypočítat.</p>
+              )}
             </article>
           ))}
         </div>
