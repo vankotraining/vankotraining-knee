@@ -2,7 +2,7 @@
 
 Ridici slozka pro projekt `knee.vankotraining.cz`.
 
-## Aktualni faze k 2026-07-07
+## Aktualni faze k 2026-07-14
 
 Faze: finalni stabilizace interniho MVP.
 
@@ -12,9 +12,9 @@ Projekt uz nema pokracovat nekonecnym vylepsovanim. Do uzavreni interniho MVP zb
 
 ## Odhad dokonceni
 
-- Interni pracovni nastroj: 97 %
+- Interni pracovni nastroj: 98 %
 - Dlouhodobe udrzovatelny produkt: 91 %
-- Celkove MVP: 96 %
+- Celkove MVP: 97 %
 
 ## Aktualni rozhodnuti
 
@@ -32,6 +32,7 @@ Projekt uz nema pokracovat nekonecnym vylepsovanim. Do uzavreni interniho MVP zb
 - SQL pro export je ulozene v `supabase/manual-data-export.sql`.
 - Provozni navod pro export je ulozeny v `project-control/manual-data-export.md`.
 - Sirsi provozni dokumentace je ulozena v `project-control/operations.md`.
+- Procentualni vztah k norme se v detailu nohy prezentuje jako `Norma je splnena na X %`, ne jako nejednoznacne `Chybi X %`.
 
 ## Hotovo
 
@@ -57,6 +58,14 @@ Projekt uz nema pokracovat nekonecnym vylepsovanim. Do uzavreni interniho MVP zb
 - Pripraven a prakticky overen jednoduchy rucni export dat ze Supabase vcetne aktivnich i archivovanych klientu a mereni.
 - Dopsana provozni dokumentace pro stazeni CSV zalohy.
 - Dopsana sirsi provozni dokumentace pro env promenne, databazi, migrace, produkcni kontrolu a incidenty.
+- Detail kazde nohy nově ukazuje:
+  - aktualni silu,
+  - Nm/kg,
+  - cilovou silu,
+  - rozdil v kg,
+  - vetu `Norma je splnena na X %. Do normy chybi Y kg.`
+- Pri prekroceni normy se procento nezastropuje na 100 % a zobrazi se veta `Norma je prekrocena o Y kg.`
+- Pri chybejicich datech se zobrazi `Splneni normy nelze vypocitat.`
 
 ## Prakticky overeno
 
@@ -74,12 +83,23 @@ Projekt uz nema pokracovat nekonecnym vylepsovanim. Do uzavreni interniho MVP zb
 - Archivovany klient `Testovac Karel` je v exportu vedeny jako `archived` a jeho mereni jako `archived_measurement_and_archived_client`.
 - Asymetrie v exportu je pocitana primo z leve/prave sily a sedi proti kontrolnimu prepoctu.
 
+## Posledni zmena k overeni na produkci
+
+Zobrazeni splneni normy je implementovane v `main`, ale pred uzavrenim musi byt vizualne overeno na produkci:
+
+- veta je citelna na desktopu i mobilu,
+- procento a kilogramy jsou zvyraznene,
+- hodnota pod normou odpovida `aktualni sila / cilova sila * 100`,
+- hodnota nad normou se zobrazuje nad 100 %, ne jako 100 %, 
+- kompaktni mobilni souhrn je terminologicky konzistentni; aktualne v nem muze zustavat popisek `Chybi`.
+
 ## Zbyvaji 3 kroky k uzavreni MVP
 
 ### 1. Finalni technicky uklid
 
 - Odstranit legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
 - Zkontrolovat, ze v kodu nezustava nepouzivana archivacni/DOM logika.
+- Sjednotit terminologii kompaktniho mobilniho souhrnu s novym zobrazenim splneni normy.
 - Nezavadet novou funkcionalitu.
 
 ### 2. Regresni ochrana
@@ -89,7 +109,8 @@ Projekt uz nema pokracovat nekonecnym vylepsovanim. Do uzavreni interniho MVP zb
   - editace mereni,
   - archivace/obnova mereni,
   - archivace/obnova klienta,
-  - filtr aktivnich klientu.
+  - filtr aktivnich klientu,
+  - vypocet splneni normy pod 100 %, na 100 % a nad 100 %.
 - Minimalni cil: mit jasny opakovatelny checklist nebo automatizovany smoke-test pro hlavni rizika.
 
 ### 3. Finalni uzavreni projektu
