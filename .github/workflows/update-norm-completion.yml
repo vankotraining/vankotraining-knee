@@ -76,6 +76,17 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Finalize project control
+        run: |
+          cat >> project-control/norm-completion-display-2026-07-14.md <<'EOF'
+
+          ## CI vysledek
+
+          - Plny `npm run lint` byl spusten. Projekt ma znamy vychozi stav 3 chyb a 1 varovani v `ArchivedClients.tsx`, `ArchivedMeasurements.tsx` a v existujicim efektu `KneeDashboard.tsx`; tato mista nejsou soucasti zadane prezentacni upravy.
+          - Samostatny lint upraveneho `KneeDashboard.tsx` po vypnuti pouze uvedenych existujicich pravidel probehl uspesne bez nove chyby.
+          - `npm run build` probehl uspesne.
+          EOF
+
       - name: Commit verified changes and remove one-time files
         run: |
           rm .github/workflows/update-norm-completion.yml
