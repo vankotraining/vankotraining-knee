@@ -4,7 +4,18 @@
 
 Finalni stabilizace interniho MVP.
 
-Projekt uz nema pokracovat nekonecnym vylepsovanim. Hlavni workflow funguje, export a provozni dokumentace jsou pripraveny. Zbyvaji 3 uzaviraci kroky.
+Hlavni workflow funguje, export a provozni dokumentace jsou pripravene a zobrazeni procenta vuci norme bylo zpresneno. Zbyvaji 3 uzaviraci kroky.
+
+## Posledni dokoncena zmena
+
+V detailu leve a prave nohy se uz neukazuje nejednoznacne `Chybi X %`.
+
+Nove se zobrazuje veta:
+
+- pod normou: `Norma je splnena na X %. Do normy chybi Y kg.`
+- nad normou: `Norma je splnena na X %. Norma je prekrocena o Y kg.`
+
+Ciselne hodnoty jsou zvyraznene. Procento se pocita jako `aktualni sila / cilova sila * 100` a neni zastropovane na 100 %.
 
 ## Zbyvaji 3 kroky
 
@@ -14,11 +25,13 @@ Cil:
 
 - Odstranit legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
 - Zkontrolovat, ze v kodu nezustava nepouzivana archivacni/DOM logika.
+- Sjednotit kompaktni mobilni souhrn s novou terminologii splneni normy; aktualne muze stale pouzivat popisek `Chybi`.
 - Nezavadet novou funkcionalitu.
 
 Definice hotovo:
 
 - Supabase konfigurace spoleha na Vercel env promenne.
+- Terminologie je konzistentni na desktopu i mobilu.
 - Build/lint projde.
 - Produkcni web dal nacita data.
 
@@ -36,19 +49,22 @@ Toky k hlidani:
 - archivace/obnova mereni,
 - archivace/obnova klienta,
 - aktivni seznam nesmi ukazovat archivovane klienty,
-- export musi obsahovat aktivni i archivovana data.
+- export musi obsahovat aktivni i archivovana data,
+- splneni normy pod 100 %, presne 100 % a nad 100 %,
+- chovani pri chybejicich nebo neplatnych datech.
 
 Definice hotovo:
 
 - Pred dalsi zmenou existuje jasny testovaci postup.
 - Vypocty knee metrik zustavaji kryte testem.
-- Kriticka archivacni logika je overitelna.
+- Kriticka archivacni logika a nova prezentace normy jsou overitelne.
 
 ### 3. Finalni uzavreni MVP
 
 Cil:
 
 - Projit finalni rucni akceptacni test.
+- Vizualne overit novou vetu o splneni normy na desktopu i mobilu.
 - Aktualizovat `project-control` jako uzavrene interni MVP.
 - Rozhodnout, ze dalsi produktove napady patri do v2.
 
