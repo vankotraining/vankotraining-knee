@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - .github/workflows/update-norm-completion.yml
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -16,6 +19,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -239,8 +243,9 @@ jobs:
       - name: Commit verified changes and remove one-time workflow
         run: |
           rm .github/workflows/update-norm-completion.yml
+          rm -f .github/norm-completion-trigger
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/app/components/KneeDashboard.tsx src/app/globals.css project-control/norm-completion-display-2026-07-14.md .github/workflows/update-norm-completion.yml
+          git add src/app/components/KneeDashboard.tsx src/app/globals.css project-control/norm-completion-display-2026-07-14.md .github/workflows/update-norm-completion.yml .github/norm-completion-trigger
           git commit -m "Show percentage of knee norm completion"
           git push
