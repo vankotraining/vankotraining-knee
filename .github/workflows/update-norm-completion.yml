@@ -49,7 +49,17 @@ jobs:
       - name: Lint
         run: |
           npm run lint -- --fix >/tmp/lint-fix.log 2>&1 || true
-          npm run lint >/tmp/lint.log 2>&1 || { cat /tmp/lint.log; exit 1; }
+          npm run lint >/tmp/lint.log 2>&1 || exit 1
+
+      - name: Publish lint diagnostics
+        if: failure()
+        run: |
+          cp /tmp/lint.log project-control/lint-failure.log
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add project-control/lint-failure.log
+          git commit -m "Record norm completion lint diagnostics"
+          git push
 
       - name: Build
         run: npm run build
@@ -58,9 +68,9 @@ jobs:
         run: |
           rm .github/workflows/update-norm-completion.yml
           rm scripts/apply-norm-completion.py
-          rm -f .github/norm-completion-trigger
+          rm -f .github/norm-completion-trigger project-control/lint-failure.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/app/components/KneeDashboard.tsx src/app/globals.css project-control/norm-completion-display-2026-07-14.md .github/workflows/update-norm-completion.yml scripts/apply-norm-completion.py .github/norm-completion-trigger
+          git add src/app/components/KneeDashboard.tsx src/app/globals.css project-control/norm-completion-display-2026-07-14.md .github/workflows/update-norm-completion.yml scripts/apply-norm-completion.py .github/norm-completion-trigger project-control/lint-failure.log
           git commit -m "Show percentage of knee norm completion"
           git push
