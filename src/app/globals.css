@@ -1003,3 +1003,17 @@ th {
     grid-template-columns: 1fr;
   }
 }
+
+.leg-norm-summary {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.leg-norm-summary strong {
+  font-weight: 900;
+}
+
