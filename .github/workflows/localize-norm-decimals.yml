@@ -1,0 +1,63 @@
+name: Localize norm completion decimals
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  localize-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+
+      - name: Check one-time update
+        id: gate
+        run: |
+          if [ -f scripts/localize-norm-decimals.py ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node.js
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: npm install --silent
+
+      - name: Localize norm completion decimals
+        if: steps.gate.outputs.run == 'true'
+        run: python scripts/localize-norm-decimals.py
+
+      - name: Lint changed presentation
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          npx eslint src/app/components/KneeDashboard.tsx --rule 'react-hooks/set-state-in-effect: off' --rule 'react-hooks/exhaustive-deps: off'
+
+      - name: Build
+        if: steps.gate.outputs.run == 'true'
+        run: npm run build
+
+      - name: Commit verified localization and remove one-time files
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          rm .github/workflows/localize-norm-decimals.yml
+          rm scripts/localize-norm-decimals.py
+          rm -f .github/localize-norm-decimals-trigger package-lock.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Use Czech decimal commas in norm summary"
+          git push
