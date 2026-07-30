@@ -72,6 +72,11 @@ jobs:
         working-directory: head
         run: npm test
 
+      - name: Remove generated test output before lint
+        if: steps.gate.outputs.run == 'true'
+        working-directory: head
+        run: rm -rf .test-dist
+
       - name: Capture proposed lint
         if: steps.gate.outputs.run == 'true'
         id: lint_after
@@ -227,6 +232,7 @@ jobs:
           rm .github/workflows/implement-mobile-norm-completion.yml
           rm .github/workflows/verify-mobile-norm-pr.yml
           rm scripts/apply-mobile-norm-completion.py
+          rm scripts/mobile-norm-pr-trigger.txt
           rm -f package-lock.json
           rm -rf .test-dist
           git config user.name "github-actions[bot]"
