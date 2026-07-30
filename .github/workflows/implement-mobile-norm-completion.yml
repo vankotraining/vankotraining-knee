@@ -1,0 +1,222 @@
+name: Implement mobile norm completion
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/implement-mobile-norm-completion.yml
+      - scripts/apply-mobile-norm-completion.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: implement-mobile-norm-completion
+  cancel-in-progress: false
+
+jobs:
+  update-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Check one-time update
+        id: gate
+        run: |
+          if [ -f scripts/apply-mobile-norm-completion.py ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node.js
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: npm install --silent
+
+      - name: Capture lint baseline
+        if: steps.gate.outputs.run == 'true'
+        id: lint_before
+        run: |
+          set +e
+          npm run lint > /tmp/lint-before.log 2>&1
+          status=$?
+          set -e
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          cat /tmp/lint-before.log
+
+      - name: Apply isolated mobile norm change
+        if: steps.gate.outputs.run == 'true'
+        run: python scripts/apply-mobile-norm-completion.py
+
+      - name: Run tests
+        if: steps.gate.outputs.run == 'true'
+        run: npm test
+
+      - name: Capture lint after change
+        if: steps.gate.outputs.run == 'true'
+        id: lint_after
+        run: |
+          set +e
+          npm run lint > /tmp/lint-after.log 2>&1
+          status=$?
+          set -e
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          cat /tmp/lint-after.log
+
+      - name: Verify lint did not regress
+        if: steps.gate.outputs.run == 'true'
+        env:
+          BEFORE_STATUS: ${{ steps.lint_before.outputs.status }}
+          AFTER_STATUS: ${{ steps.lint_after.outputs.status }}
+        run: |
+          python <<'PY'
+          from collections import Counter
+          from pathlib import Path
+          import os
+          import re
+
+          def parse_issues(path: str) -> Counter[tuple[str, str, str]]:
+              current_file = "unknown"
+              issues: Counter[tuple[str, str, str]] = Counter()
+
+              for line in Path(path).read_text(encoding="utf-8").splitlines():
+                  stripped = line.strip()
+                  if stripped.startswith("/") and "/src/" in stripped:
+                      current_file = "src/" + stripped.split("/src/", 1)[1]
+                      continue
+
+                  match = re.match(
+                      r"^\s*\d+:\d+\s+(error|warning)\s+.*?\s+(\S+)\s*$",
+                      line,
+                  )
+                  if match:
+                      severity, rule = match.groups()
+                      issues[(current_file, severity, rule)] += 1
+
+              return issues
+
+          before_status = int(os.environ["BEFORE_STATUS"])
+          after_status = int(os.environ["AFTER_STATUS"])
+          before = parse_issues("/tmp/lint-before.log")
+          after = parse_issues("/tmp/lint-after.log")
+
+          if before_status != after_status or before != after:
+              print("Lint baseline changed.")
+              print("Before status:", before_status)
+              print("After status:", after_status)
+              print("Removed:", before - after)
+              print("Added:", after - before)
+              raise SystemExit(1)
+
+          errors = sum(count for (_, severity, _), count in after.items() if severity == "error")
+          warnings = sum(count for (_, severity, _), count in after.items() if severity == "warning")
+          files = sorted({file for file, _, _ in after})
+
+          if after_status == 0:
+              summary = "- `npm run lint`: PASS (exit code `0`, bez lint problemu).\n"
+          else:
+              file_list = ", ".join(f"`{file}`" for file in files)
+              summary = (
+                  f"- `npm run lint`: znamy vychozi stav zustal beze zmeny "
+                  f"(exit code `{after_status}`, {errors} chyby, {warnings} varovani; {file_list}). "
+                  "Zmena nepridala novy lint problem.\n"
+              )
+
+          Path("/tmp/lint-summary.md").write_text(summary, encoding="utf-8")
+          print(summary)
+          PY
+
+      - name: Run production build
+        if: steps.gate.outputs.run == 'true'
+        run: npm run build
+
+      - name: Record project-control result
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          cat > project-control/mobile-norm-completion-2026-07-30.md <<'EOF'
+          # Mobilni zobrazeni splneni normy
+
+          Datum implementace: 2026-07-30
+          Projekt: `knee.vankotraining.cz`
+          Vychozi commit `main`: `33a03448b33ad23070c3ea5a4d7625fac59619df`
+
+          ## Co bylo zmeneno
+
+          - Sdilena funkce `getNormGap()` nove vraci `completionPct` pro skutecne slabsi nohu podle hodnoty Nm/kg.
+          - Mobilni kompaktni souhrn uz nepouziva `Chybi`; zobrazuje `Splnění` a procento splneni normy slabsi nohou.
+          - Mobilni panel `Porovnani` uz nepouziva `Chybi do normy`; pouziva stejne oznaceni `Splnění` a stejny vyznam procenta.
+          - Existujici udaj v kg zustal v porovnavacim panelu zachovany.
+          - Desetinna procenta a kg v techto normovych vystupech pouzivaji ceskou desetinnou carku.
+          - Databazove schema, Supabase data, autentizace, archivace, asymetrie a norma `3,0 Nm/kg` nebyly meneny.
+
+          ## Vypocet
+
+          Procento se pocita presne jako:
+
+          `completionPct = weakerNmPerKg / NORM_NM_PER_KG * 100`
+
+          Hodnota neni zastropovana na 100 %. Slabsi noha se vybira podle nizsi hodnoty Nm/kg; kg udaj se bere ze stejne nohy.
+
+          Chybejici, nekladne nebo ne-konecne vstupy vraceji nevypocitatelnou hodnotu. UI proto nepodava `NaN %` ani `Infinity %`.
+
+          ## Regresni testy
+
+          Automatizovane testy v `src/lib/knee-metrics.test.ts` overuji:
+
+          - splneni pod 100 % (`80 %`),
+          - presne `100 %`,
+          - splneni nad 100 % (`108,4 %`),
+          - ze vysledek nad 100 % neni zastropovany,
+          - vyber skutecne slabsi nohy podle Nm/kg a prirazeni jeji kg hodnoty,
+          - chybejici, ne-konecne, nulove a zaporne vstupy.
+
+          ## Technicke overeni
+
+          - `npm test`: PASS.
+          EOF
+          cat /tmp/lint-summary.md >> project-control/mobile-norm-completion-2026-07-30.md
+          cat >> project-control/mobile-norm-completion-2026-07-30.md <<'EOF'
+          - `npm run build`: PASS.
+
+          ## Stav
+
+          - Implementovano: ano.
+          - Nasazeno: v tomto zaznamu nepotvrzeno; samotny commit neni dukaz produkcniho deploymentu.
+          - Produkcne overeno: ne; vyzaduje vyslovne potvrzeni uzivatele.
+
+          ## Co zbyva produkcne overit
+
+          V mobilnim zobrazeni na `knee.vankotraining.cz` rucne overit:
+
+          - kompaktni souhrn ukazuje `Splnění X %`,
+          - panel `Porovnani` ukazuje stejny vyznam procenta,
+          - pod normou se zobrazi napr. `80,0 %`,
+          - presne na norme se zobrazi `100,0 %`,
+          - nad normou se zobrazi napr. `108,4 %`,
+          - pri chybejicich nebo neplatnych datech se zobrazi existujici prazdna hodnota, ne `NaN %` ani `Infinity %`,
+          - zachovany kg udaj odpovida slabsi noze.
+          EOF
+
+      - name: Commit verified implementation
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          rm .github/workflows/implement-mobile-norm-completion.yml
+          rm scripts/apply-mobile-norm-completion.py
+          rm -f package-lock.json
+          rm -rf .test-dist
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Show weaker-leg norm completion on mobile"
+          git push origin HEAD:main
