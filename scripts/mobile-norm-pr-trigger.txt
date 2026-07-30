@@ -1,2 +1,0 @@
-One-time trigger for the verified mobile norm completion pull request.
-Retry after excluding generated test output from lint comparison.
