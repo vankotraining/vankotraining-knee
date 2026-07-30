@@ -71,21 +71,45 @@ export function getNormGap(test: NormGapInput | null | undefined) {
 
   if (
     test.leftNmPerKg === null ||
+    !Number.isFinite(test.leftNmPerKg) ||
+    test.leftNmPerKg <= 0 ||
     test.rightNmPerKg === null ||
+    !Number.isFinite(test.rightNmPerKg) ||
+    test.rightNmPerKg <= 0 ||
     test.leftForceKg === null ||
+    !Number.isFinite(test.leftForceKg) ||
+    test.leftForceKg <= 0 ||
     test.rightForceKg === null ||
-    targetKg === null
+    !Number.isFinite(test.rightForceKg) ||
+    test.rightForceKg <= 0 ||
+    targetKg === null ||
+    !Number.isFinite(targetKg) ||
+    targetKg <= 0 ||
+    !Number.isFinite(NORM_NM_PER_KG) ||
+    NORM_NM_PER_KG <= 0
   ) {
     return null;
   }
 
-  const weakerNm = Math.min(test.leftNmPerKg, test.rightNmPerKg);
-  const weakerForce = Math.min(test.leftForceKg, test.rightForceKg);
-  const missingNm = Math.max(0, NORM_NM_PER_KG - weakerNm);
+  const weakerIsLeft = test.leftNmPerKg <= test.rightNmPerKg;
+  const weakerNmPerKg = weakerIsLeft ? test.leftNmPerKg : test.rightNmPerKg;
+  const weakerForceKg = weakerIsLeft ? test.leftForceKg : test.rightForceKg;
+  const weakerSide: WeakerSide =
+    test.leftNmPerKg === test.rightNmPerKg
+      ? "none"
+      : weakerIsLeft
+        ? "left"
+        : "right";
+  const completionPct = (weakerNmPerKg / NORM_NM_PER_KG) * 100;
+
+  if (!Number.isFinite(completionPct)) return null;
 
   return {
-    missingKg: Math.max(0, targetKg - weakerForce),
-    missingNm,
-    missingPct: (missingNm / NORM_NM_PER_KG) * 100,
+    weakerSide,
+    weakerForceKg,
+    weakerNmPerKg,
+    missingKg: Math.max(0, targetKg - weakerForceKg),
+    missingNm: Math.max(0, NORM_NM_PER_KG - weakerNmPerKg),
+    completionPct,
   };
 }

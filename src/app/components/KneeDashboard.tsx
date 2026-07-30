@@ -1021,8 +1021,8 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
                   <strong><span className={getAsymmetryClass(selectedAthlete.latestTest?.asymmetry_pct)}>{formatPercent(selectedAthlete.latestTest?.asymmetry_pct)}</span></strong>
                 </div>
                 <div>
-                  <span>Chybi</span>
-                  <strong>{formatPercent(latestNormGap?.missingPct)}</strong>
+                  <span>Splnění</span>
+                  <strong>{formatNumber(latestNormGap?.completionPct, 1, " %").replace(".", ",")}</strong>
                 </div>
               </div>
             ) : null}
@@ -1127,7 +1127,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
                         <div className="profile-metric highlight"><span>Leva</span><strong>{formatNumber(selectedAthlete.latestTest.left_nm_per_kg, 2)}</strong><small>Nm/kg</small></div>
                         <div className="profile-metric highlight"><span>Prava</span><strong>{formatNumber(selectedAthlete.latestTest.right_nm_per_kg, 2)}</strong><small>Nm/kg</small></div>
                         <div className="profile-metric highlight"><span>Asymetrie</span><strong>{formatPercent(selectedAthlete.latestTest.asymmetry_pct)}</strong><small>{formatSide(selectedAthlete.latestTest.weaker_side)} slabsi</small></div>
-                        <div className="profile-metric highlight"><span>Chybi do normy</span><strong>{formatPercent(latestNormGap?.missingPct)}</strong><small>{formatNumber(latestNormGap?.missingKg, 1, " kg")} na slabsi strane</small></div>
+                        <div className="profile-metric highlight"><span>Splnění</span><strong>{formatNumber(latestNormGap?.completionPct, 1, " %").replace(".", ",")}</strong><small>{formatNumber(latestNormGap?.missingKg, 1, " kg").replace(".", ",")} na slabsi strane</small></div>
                       </div>
                     ) : null}
 

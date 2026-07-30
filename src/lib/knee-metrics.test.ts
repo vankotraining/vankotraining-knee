@@ -45,19 +45,83 @@ describe("knee metrics", () => {
     assert.equal(getAsymmetryValue(null), null);
   });
 
-  it("calculates the weaker-side norm gap", () => {
+  it("calculates norm completion below 100% from the weaker leg", () => {
     const gap = getNormGap({
-      leftForceKg: 35,
-      rightForceKg: 42,
-      leftNmPerKg: forceKgToNmPerKg(35, 33, 82),
-      rightNmPerKg: forceKgToNmPerKg(42, 33, 82),
+      leftForceKg: 40,
+      rightForceKg: 45,
+      leftNmPerKg: 2.4,
+      rightNmPerKg: 2.7,
       shinLengthCm: 33,
       bodyWeightKg: 82,
     });
 
-    assertClose(gap?.missingKg ?? null, 41.0152086038092);
-    assertClose(gap?.missingNm ?? null, 1.6186974695121954);
-    assertClose(gap?.missingPct ?? null, 53.95658231707318);
+    assert.equal(gap?.weakerSide, "left");
+    assertClose(gap?.weakerNmPerKg ?? null, 2.4);
+    assertClose(gap?.completionPct ?? null, 80);
+  });
+
+  it("calculates exactly 100% norm completion", () => {
+    const gap = getNormGap({
+      leftForceKg: 50,
+      rightForceKg: 55,
+      leftNmPerKg: 3,
+      rightNmPerKg: 3.2,
+      shinLengthCm: 33,
+      bodyWeightKg: 82,
+    });
+
+    assertClose(gap?.completionPct ?? null, 100);
+  });
+
+  it("keeps norm completion above 100% uncapped", () => {
+    const gap = getNormGap({
+      leftForceKg: 82.4,
+      rightForceKg: 86,
+      leftNmPerKg: 3.252,
+      rightNmPerKg: 3.4,
+      shinLengthCm: 33,
+      bodyWeightKg: 82,
+    });
+
+    assertClose(gap?.completionPct ?? null, 108.4);
+    assert.ok((gap?.completionPct ?? 0) > 100);
+  });
+
+  it("uses the force belonging to the genuinely weaker Nm/kg leg", () => {
+    const gap = getNormGap({
+      leftForceKg: 60,
+      rightForceKg: 40,
+      leftNmPerKg: 2.1,
+      rightNmPerKg: 2.7,
+      shinLengthCm: 33,
+      bodyWeightKg: 82,
+    });
+
+    assert.equal(gap?.weakerSide, "left");
+    assertClose(gap?.weakerForceKg ?? null, 60);
+    assertClose(gap?.completionPct ?? null, 70);
+    assertClose(gap?.missingKg ?? null, 16.0152086038092);
+  });
+
+  it("returns null for missing, non-finite, zero, or negative norm inputs", () => {
+    const validInput = {
+      leftForceKg: 40,
+      rightForceKg: 45,
+      leftNmPerKg: 2.4,
+      rightNmPerKg: 2.7,
+      shinLengthCm: 33,
+      bodyWeightKg: 82,
+    };
+
+    assert.equal(getNormGap(null), null);
+    assert.equal(getNormGap(undefined), null);
+    assert.equal(getNormGap({ ...validInput, leftNmPerKg: null }), null);
+    assert.equal(getNormGap({ ...validInput, leftNmPerKg: Number.NaN }), null);
+    assert.equal(getNormGap({ ...validInput, rightForceKg: Number.POSITIVE_INFINITY }), null);
+    assert.equal(getNormGap({ ...validInput, leftForceKg: 0 }), null);
+    assert.equal(getNormGap({ ...validInput, rightNmPerKg: -1 }), null);
+    assert.equal(getNormGap({ ...validInput, shinLengthCm: 0 }), null);
+    assert.equal(getNormGap({ ...validInput, bodyWeightKg: -82 }), null);
   });
 
   it("calculates age at the test date", () => {
