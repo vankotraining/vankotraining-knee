@@ -1,8 +1,10 @@
 # Mobilni zobrazeni splneni normy
 
 Datum implementace: 2026-07-30
+Datum produkcniho overeni: 2026-07-30
 Projekt: `knee.vankotraining.cz`
 Vychozi commit `main`: `33a03448b33ad23070c3ea5a4d7625fac59619df`
+Implementacni commit: `1de66ddf343c5f0b58a748f0c2c45cca0af51c73`
 
 ## Co bylo zmeneno
 
@@ -43,17 +45,9 @@ Automatizovane testy v `src/lib/knee-metrics.test.ts` overuji:
 ## Stav
 
 - Implementovano: ano.
-- Nasazeno: v tomto zaznamu nepotvrzeno; samotny commit neni dukaz produkcniho deploymentu.
-- Produkcne overeno: ne; vyzaduje vyslovne potvrzeni uzivatele.
+- Nasazeno: ano; uzivatel potvrdil funkcni zmenu na produkcni domene `knee.vankotraining.cz`.
+- Produkcne overeno: ano; uzivatel dne 2026-07-30 vyslovne potvrdil, ze mobilni kontrola je v poradku.
 
-## Co zbyva produkcne overit
+## Vysledek produkcni kontroly
 
-V mobilnim zobrazeni na `knee.vankotraining.cz` rucne overit:
-
-- kompaktni souhrn ukazuje `Splnění X %`,
-- panel `Porovnani` ukazuje stejny vyznam procenta,
-- pod normou se zobrazi napr. `80,0 %`,
-- presne na norme se zobrazi `100,0 %`,
-- nad normou se zobrazi napr. `108,4 %`,
-- pri chybejicich nebo neplatnych datech se zobrazi existujici prazdna hodnota, ne `NaN %` ani `Infinity %`,
-- zachovany kg udaj odpovida slabsi noze.
+Mobilni zobrazeni bylo uzivatelem zkontrolovano na produkci a vysledek byl potvrzen jako v poradku. Zmena je uzavrena jako implementovana, nasazena a produkcne overena.
