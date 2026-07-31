@@ -4,6 +4,7 @@ Datum implementace: 2026-07-31
 Projekt: `knee.vankotraining.cz`
 Repo: `vankotraining/vankotraining-knee`
 Výchozí commit `main`: `da83f4ab1a66079f5839b1125d41b5e08fcd37b3`
+Implementační commit: `18dcde174a1e261e3db4c1e20c4b4ec998627035`
 
 ## Zařazení
 
@@ -110,10 +111,21 @@ Projekt nemá komponentní testovací infrastrukturu; kvůli jediné funkci prot
 - `npm run build`: PASS.
 - `git diff --check`: PASS.
 
+## Důkaz nasazení
+
+Vercel deployment `dpl_9qUUd6U2cF6kiJB9YfmUHcqyrtUr`:
+
+- projekt: `vankotraining-knee`,
+- Git commit: `18dcde174a1e261e3db4c1e20c4b4ec998627035`,
+- Git větev: `main`,
+- stav: `READY`,
+- cíl: `production`,
+- přiřazená produkční doména projektu: `knee.vankotraining.cz`.
+
 ## Stav
 
-- Implementováno: ano po dokončení ověřovacího commitu v `main`.
-- Nasazeno: zatím bez důkazu o deploymentu příslušného commitu.
+- Implementováno: ano; změna je v commitu `18dcde174a1e261e3db4c1e20c4b4ec998627035` na `main`.
+- Nasazeno: ano; existuje výše uvedený Vercel production deployment příslušného commitu.
 - Produkčně ověřeno: ne; vyžaduje výslovné potvrzení uživatele po ruční kontrole produkce.
 
 ## Co zbývá ověřit na produkci
