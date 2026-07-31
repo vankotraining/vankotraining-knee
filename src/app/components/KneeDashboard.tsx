@@ -6,8 +6,10 @@ import type { Session } from "@supabase/supabase-js";
 import {
   calculateAge,
   calculateAsymmetryPct,
+  compareMeasurementsChronologically,
   forceKgToNmPerKg,
   getAsymmetryValue,
+  getMeasurementComparison,
   getNormGap as calculateNormGap,
   getWeakerSide,
   NORM_NM_PER_KG,
@@ -61,6 +63,8 @@ type KneeExtensionTest = {
   note: string | null;
   source: string | null;
   source_row: number | null;
+  created_at: string | null;
+  deleted_at: string | null;
 };
 
 type AthleteOverview = Athlete & {
@@ -114,7 +118,7 @@ type TestPayload = {
 };
 
 const TEST_SELECT =
-  "id,athlete_id,test_date,right_force_kg,left_force_kg,asymmetry_pct,weaker_side,right_nm_per_kg,left_nm_per_kg,body_weight_kg,shin_length_cm,age_at_test_years,note,source,source_row";
+  "id,athlete_id,test_date,right_force_kg,left_force_kg,asymmetry_pct,weaker_side,right_nm_per_kg,left_nm_per_kg,body_weight_kg,shin_length_cm,age_at_test_years,note,source,source_row,created_at,deleted_at";
 
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
@@ -173,6 +177,37 @@ function formatSide(value: string | null | undefined) {
   if (value === "left") return "Leva";
   if (value === "none") return "Bez rozdilu";
   return "-";
+}
+
+function toComparisonMeasurement(test: KneeExtensionTest) {
+  return {
+    id: test.id,
+    testDate: test.test_date,
+    createdAt: test.created_at,
+    sourceRow: test.source_row,
+    leftForceKg: test.left_force_kg,
+    rightForceKg: test.right_force_kg,
+    archivedAt: test.deleted_at,
+  };
+}
+
+function formatSignedChange(
+  value: number | null | undefined,
+  suffix: " kg" | " %",
+) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "-";
+
+  const normalized = Math.abs(value) < 0.0005 ? 0 : value;
+  const sign = normalized > 0 ? "+" : normalized < 0 ? "−" : "";
+  const formatted = Math.abs(normalized).toFixed(1).replace(".", ",");
+
+  return `${sign}${formatted}${suffix}`;
+}
+
+function getChangeTone(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "unknown";
+  if (Math.abs(value) < 0.0005) return "neutral";
+  return value > 0 ? "positive" : "negative";
 }
 
 function testToForm(test: KneeExtensionTest): TestForm {
@@ -504,7 +539,14 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
     Promise.all([
       supabase.from("athletes").select("id,display_name,name_key,note").order("display_name"),
       supabase.from("athlete_profiles").select("id,athlete_id,birth_date,shin_length_cm,body_weight_kg,age,profile_date,updated_at").order("profile_date", { ascending: false, nullsFirst: false }).order("updated_at", { ascending: false, nullsFirst: false }),
-      supabase.from("knee_extension_tests").select(TEST_SELECT).order("test_date", { ascending: false }).order("source_row", { ascending: false, nullsFirst: false }),
+      supabase
+        .from("knee_extension_tests")
+        .select(TEST_SELECT)
+        .is("deleted_at", null)
+        .order("test_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("source_row", { ascending: false, nullsFirst: false })
+        .order("id", { ascending: false }),
     ]).then(([athletesResult, profilesResult, testsResult]) => {
       const error = athletesResult.error ?? profilesResult.error ?? testsResult.error;
       if (error) {
@@ -536,10 +578,12 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
     });
 
     return athletes.map((athlete) => {
-      const tests = (testsByAthlete.get(athlete.id) ?? []).sort((a, b) => {
-        const dateDiff = new Date(b.test_date).getTime() - new Date(a.test_date).getTime();
-        return dateDiff !== 0 ? dateDiff : (b.source_row ?? 0) - (a.source_row ?? 0);
-      });
+      const tests = (testsByAthlete.get(athlete.id) ?? []).sort((a, b) =>
+        compareMeasurementsChronologically(
+          toComparisonMeasurement(b),
+          toComparisonMeasurement(a),
+        ),
+      );
 
       return { ...athlete, latestProfile: profilesByAthlete.get(athlete.id) ?? null, latestTest: tests[0] ?? null, tests };
     });
@@ -855,6 +899,11 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
   }
 
   function renderMeasurementDetail(test: KneeExtensionTest, legGaps: LegNormGap[], deficitLegs: LegNormGap[], isEditing: boolean) {
+    const comparison = getMeasurementComparison(
+      selectedAthlete?.tests.map(toComparisonMeasurement) ?? [],
+      test.id,
+    );
+
     if (isEditing) {
       return (
         <div>
@@ -934,6 +983,35 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
             </article>
           ))}
         </div>
+        <section className="measurement-change-panel" aria-label="Změna oproti předchozímu měření">
+          {comparison.hasComparison ? (
+            <>
+              <h3>Změna oproti měření {formatDate(comparison.previousMeasurementDate)}</h3>
+              <div className="measurement-change-grid">
+                {[
+                  { key: "left", label: "Levá noha", change: comparison.left },
+                  { key: "right", label: "Pravá noha", change: comparison.right },
+                ].map((leg) => (
+                  <article className={`measurement-change-card ${getChangeTone(leg.change.changeKg)}`} key={leg.key}>
+                    <h4>{leg.label}</h4>
+                    <p className="measurement-change-value">
+                      {formatSignedChange(leg.change.changeKg, " kg")}
+                      <span aria-hidden="true"> · </span>
+                      {formatSignedChange(leg.change.changePct, " %")}
+                    </p>
+                    {!leg.change.hasComparison ? (
+                      <small>Změnu nelze vypočítat.</small>
+                    ) : leg.change.changePct === null ? (
+                      <small>Procentní změnu nelze vypočítat.</small>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="measurement-change-empty">Předchozí měření není k dispozici.</p>
+          )}
+        </section>
         {test.note ? <p className="test-note">Poznamka: {test.note}</p> : null}
       </>
     );

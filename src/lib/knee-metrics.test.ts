@@ -3,12 +3,16 @@ import { describe, it } from "node:test";
 import {
   calculateAge,
   calculateAsymmetryPct,
+  calculateMeasurementChange,
+  compareMeasurementsChronologically,
   forceKgToNmPerKg,
   getAsymmetryValue,
+  getMeasurementComparison,
   getNormGap,
   getWeakerSide,
   targetForceKg,
 } from "./knee-metrics";
+import type { MeasurementForComparison } from "./knee-metrics";
 
 function assertClose(actual: number | null, expected: number, tolerance = 0.000001) {
   if (actual === null) assert.fail("Expected a number, got null");
@@ -128,5 +132,199 @@ describe("knee metrics", () => {
     assertClose(calculateAge("1990-07-10", "2026-07-06"), 35.98904859685147);
     assert.equal(calculateAge(null, "2026-07-06"), null);
     assert.equal(calculateAge("not-a-date", "2026-07-06"), null);
+  });
+});
+
+function measurement(
+  id: string,
+  testDate: string,
+  leftForceKg: number | null,
+  rightForceKg: number | null,
+  options: Partial<
+    Pick<
+      MeasurementForComparison,
+      "createdAt" | "sourceRow" | "archivedAt"
+    >
+  > = {},
+): MeasurementForComparison {
+  return {
+    id,
+    testDate,
+    createdAt: options.createdAt ?? `${testDate}T08:00:00.000Z`,
+    sourceRow: options.sourceRow ?? null,
+    leftForceKg,
+    rightForceKg,
+    archivedAt: options.archivedAt ?? null,
+  };
+}
+
+describe("measurement changes", () => {
+  it("preserves a positive direction in kilograms", () => {
+    const change = calculateMeasurementChange(44, 40);
+
+    assert.equal(change.changeKg, 4);
+    assert.equal(change.hasComparison, true);
+  });
+
+  it("preserves a negative direction in kilograms", () => {
+    const change = calculateMeasurementChange(39.3, 40);
+
+    assertClose(change.changeKg, -0.7);
+  });
+
+  it("returns a neutral zero change", () => {
+    const change = calculateMeasurementChange(40, 40);
+
+    assert.equal(change.changeKg, 0);
+    assert.equal(change.changePct, 0);
+  });
+
+  it("calculates the percentage from the previous force", () => {
+    const change = calculateMeasurementChange(44, 40);
+
+    assert.equal(change.changePct, 10);
+  });
+
+  it("calculates left and right legs independently", () => {
+    const measurements = [
+      measurement("previous", "2026-07-14", 40, 44),
+      measurement("current", "2026-07-21", 42.8, 43.3),
+    ];
+    const comparison = getMeasurementComparison(measurements, "current");
+
+    assertClose(comparison.left.changeKg, 2.8);
+    assertClose(comparison.left.changePct, 7);
+    assertClose(comparison.right.changeKg, -0.7);
+    assertClose(comparison.right.changePct, -1.5909090909090917);
+  });
+
+  it("returns no comparison for the first active measurement", () => {
+    const comparison = getMeasurementComparison(
+      [measurement("first", "2026-07-14", 40, 44)],
+      "first",
+    );
+
+    assert.equal(comparison.hasComparison, false);
+    assert.equal(comparison.previousMeasurementId, null);
+  });
+
+  it("does not calculate a leg with a missing current value", () => {
+    const change = calculateMeasurementChange(null, 40);
+
+    assert.deepEqual(change, {
+      changeKg: null,
+      changePct: null,
+      hasComparison: false,
+    });
+  });
+
+  it("does not calculate a leg with a missing previous value", () => {
+    const change = calculateMeasurementChange(44, null);
+
+    assert.deepEqual(change, {
+      changeKg: null,
+      changePct: null,
+      hasComparison: false,
+    });
+  });
+
+  it("keeps the kilogram change but omits percentage after a zero value", () => {
+    const change = calculateMeasurementChange(4, 0);
+
+    assert.equal(change.changeKg, 4);
+    assert.equal(change.changePct, null);
+    assert.equal(change.hasComparison, true);
+  });
+
+  it("never returns NaN or Infinity", () => {
+    const invalidChanges = [
+      calculateMeasurementChange(Number.NaN, 40),
+      calculateMeasurementChange(44, Number.POSITIVE_INFINITY),
+      calculateMeasurementChange(Number.NEGATIVE_INFINITY, 0),
+      calculateMeasurementChange(4, 0),
+    ];
+
+    invalidChanges.forEach((change) => {
+      assert.ok(change.changeKg === null || Number.isFinite(change.changeKg));
+      assert.ok(change.changePct === null || Number.isFinite(change.changePct));
+    });
+  });
+
+  it("selects the chronologically nearest older measurement", () => {
+    const measurements = [
+      measurement("oldest", "2026-07-01", 35, 36),
+      measurement("nearest", "2026-07-14", 40, 41),
+      measurement("current", "2026-07-21", 44, 45),
+    ];
+    const comparison = getMeasurementComparison(measurements, "current");
+
+    assert.equal(comparison.previousMeasurementId, "nearest");
+    assert.equal(comparison.previousMeasurementDate, "2026-07-14");
+  });
+
+  it("uses measurement chronology after a historical insertion", () => {
+    const measurements = [
+      measurement("oldest", "2026-07-01", 35, 36),
+      measurement("current", "2026-07-21", 44, 45),
+      measurement("inserted-later", "2026-07-14", 42, 43, {
+        createdAt: "2026-07-30T12:00:00.000Z",
+      }),
+    ];
+    const comparison = getMeasurementComparison(measurements, "current");
+
+    assert.equal(comparison.previousMeasurementId, "inserted-later");
+    assert.equal(comparison.left.changeKg, 2);
+  });
+
+  it("recalculates the following comparison after editing a historical value", () => {
+    const measurements = [
+      measurement("previous", "2026-07-14", 40, 41),
+      measurement("current", "2026-07-21", 44, 45),
+    ];
+    const beforeEdit = getMeasurementComparison(measurements, "current");
+    const editedMeasurements = measurements.map((item) =>
+      item.id === "previous" ? { ...item, leftForceKg: 42 } : item,
+    );
+    const afterEdit = getMeasurementComparison(editedMeasurements, "current");
+
+    assert.equal(beforeEdit.left.changeKg, 4);
+    assert.equal(afterEdit.left.changeKg, 2);
+  });
+
+  it("uses created_at and source_row for multiple measurements on one day", () => {
+    const measurements = [
+      measurement("same-time-row-10", "2026-07-14", 40, 40, {
+        createdAt: "2026-07-14T08:00:00.000Z",
+        sourceRow: 10,
+      }),
+      measurement("same-time-row-11", "2026-07-14", 41, 41, {
+        createdAt: "2026-07-14T08:00:00.000Z",
+        sourceRow: 11,
+      }),
+      measurement("later-created", "2026-07-14", 42, 42, {
+        createdAt: "2026-07-14T09:00:00.000Z",
+        sourceRow: null,
+      }),
+    ];
+
+    assert.ok(
+      compareMeasurementsChronologically(measurements[0], measurements[1]) < 0,
+    );
+    const comparison = getMeasurementComparison(measurements, "later-created");
+    assert.equal(comparison.previousMeasurementId, "same-time-row-11");
+  });
+
+  it("excludes archived measurements from the previous reference", () => {
+    const measurements = [
+      measurement("active-older", "2026-07-01", 40, 40),
+      measurement("archived-nearer", "2026-07-14", 50, 50, {
+        archivedAt: "2026-07-20T10:00:00.000Z",
+      }),
+      measurement("current", "2026-07-21", 60, 60),
+    ];
+    const comparison = getMeasurementComparison(measurements, "current");
+
+    assert.equal(comparison.previousMeasurementId, "active-older");
+    assert.equal(comparison.left.changeKg, 20);
   });
 });

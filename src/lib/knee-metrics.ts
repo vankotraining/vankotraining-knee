@@ -113,3 +113,128 @@ export function getNormGap(test: NormGapInput | null | undefined) {
     completionPct,
   };
 }
+
+export type MeasurementForComparison = {
+  id: string;
+  testDate: string;
+  createdAt: string | null;
+  sourceRow: number | null;
+  leftForceKg: number | null;
+  rightForceKg: number | null;
+  archivedAt: string | null;
+};
+
+export type MeasurementChange = {
+  changeKg: number | null;
+  changePct: number | null;
+  hasComparison: boolean;
+};
+
+export type MeasurementComparison = {
+  previousMeasurementId: string | null;
+  previousMeasurementDate: string | null;
+  left: MeasurementChange;
+  right: MeasurementChange;
+  hasComparison: boolean;
+};
+
+function comparePrimitive(left: number | string, right: number | string) {
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
+}
+
+function timestampForOrdering(value: string | null | undefined) {
+  if (!value) return Number.NEGATIVE_INFINITY;
+
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
+}
+
+function sourceRowForOrdering(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : Number.NEGATIVE_INFINITY;
+}
+
+function isValidForce(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+export function compareMeasurementsChronologically(
+  left: MeasurementForComparison,
+  right: MeasurementForComparison,
+) {
+  const dateComparison = comparePrimitive(
+    timestampForOrdering(left.testDate),
+    timestampForOrdering(right.testDate),
+  );
+  if (dateComparison !== 0) return dateComparison;
+
+  const createdAtComparison = comparePrimitive(
+    timestampForOrdering(left.createdAt),
+    timestampForOrdering(right.createdAt),
+  );
+  if (createdAtComparison !== 0) return createdAtComparison;
+
+  const sourceRowComparison = comparePrimitive(
+    sourceRowForOrdering(left.sourceRow),
+    sourceRowForOrdering(right.sourceRow),
+  );
+  if (sourceRowComparison !== 0) return sourceRowComparison;
+
+  return comparePrimitive(left.id, right.id);
+}
+
+export function calculateMeasurementChange(
+  currentForceKg: number | null | undefined,
+  previousForceKg: number | null | undefined,
+): MeasurementChange {
+  if (!isValidForce(currentForceKg) || !isValidForce(previousForceKg)) {
+    return { changeKg: null, changePct: null, hasComparison: false };
+  }
+
+  const changeKg = currentForceKg - previousForceKg;
+  const changePct =
+    previousForceKg > 0 ? (changeKg / previousForceKg) * 100 : null;
+
+  return {
+    changeKg: Number.isFinite(changeKg) ? changeKg : null,
+    changePct:
+      changePct !== null && Number.isFinite(changePct) ? changePct : null,
+    hasComparison: Number.isFinite(changeKg),
+  };
+}
+
+export function getMeasurementComparison(
+  measurements: MeasurementForComparison[],
+  currentMeasurementId: string,
+): MeasurementComparison {
+  const activeMeasurements = measurements
+    .filter((measurement) => measurement.archivedAt === null)
+    .slice()
+    .sort(compareMeasurementsChronologically);
+  const currentIndex = activeMeasurements.findIndex(
+    (measurement) => measurement.id === currentMeasurementId,
+  );
+
+  if (currentIndex <= 0) {
+    return {
+      previousMeasurementId: null,
+      previousMeasurementDate: null,
+      left: { changeKg: null, changePct: null, hasComparison: false },
+      right: { changeKg: null, changePct: null, hasComparison: false },
+      hasComparison: false,
+    };
+  }
+
+  const current = activeMeasurements[currentIndex];
+  const previous = activeMeasurements[currentIndex - 1];
+
+  return {
+    previousMeasurementId: previous.id,
+    previousMeasurementDate: previous.testDate,
+    left: calculateMeasurementChange(current.leftForceKg, previous.leftForceKg),
+    right: calculateMeasurementChange(current.rightForceKg, previous.rightForceKg),
+    hasComparison: true,
+  };
+}
