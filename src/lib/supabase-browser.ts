@@ -1,14 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ??
-  "https://zxvndqicslyulrinbpyn.supabase.co";
-const legacyAnonKey =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dm5kcWljc2x5dWxyaW5icHluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNjAyODYsImV4cCI6MjA5ODYzNjI4Nn0.46uqGVRE04E5nV7s2BtVotm7ikExkTBX7SftZe42DS8";
-const configuredAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabaseAnonKey = configuredAnonKey?.startsWith("eyJ")
-  ? configuredAnonKey
-  : legacyAnonKey;
+import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseConfig, hasSupabaseConfig } from "@/lib/supabase-config";
 
 function fetchWithActiveAthletesFilter(input: RequestInfo | URL, init?: RequestInit) {
   const method = (
@@ -43,16 +34,16 @@ function fetchWithActiveAthletesFilter(input: RequestInfo | URL, init?: RequestI
   return fetch(input, init);
 }
 
-export function hasSupabaseConfig() {
-  return Boolean(supabaseUrl && supabaseAnonKey);
-}
+export { hasSupabaseConfig };
 
 export function createBrowserSupabaseClient() {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  const { url, key } = getSupabaseConfig();
+
+  if (!url || !key) {
     throw new Error("Missing Supabase environment variables.");
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  return createBrowserClient(url, key, {
     global: {
       fetch: fetchWithActiveAthletesFilter,
     },
