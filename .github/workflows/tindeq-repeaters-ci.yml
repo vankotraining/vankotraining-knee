@@ -78,3 +78,51 @@ jobs:
           PY
 
       - run: npm run build
+
+  database-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.101.0
+          github-token: ${{ github.token }}
+
+      - name: Start isolated Supabase database
+        run: |
+          mkdir -p /tmp/tindeq-supabase
+          cd /tmp/tindeq-supabase
+          supabase init
+          supabase db start
+
+      - name: Apply baseline and Tindeq migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql \
+            --host 127.0.0.1 \
+            --port 54322 \
+            --username postgres \
+            --dbname postgres \
+            --set ON_ERROR_STOP=1 \
+            --file supabase/tests/tindeq_ci_baseline.sql \
+            --file supabase/migrations/20260801_tindeq_repeaters_stage1.sql
+
+      - name: Verify schema, RLS and private Storage
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql \
+            --host 127.0.0.1 \
+            --port 54322 \
+            --username postgres \
+            --dbname postgres \
+            --set ON_ERROR_STOP=1 \
+            --file supabase/tests/tindeq_stage1_integration.sql
+
+      - name: Stop isolated Supabase database
+        if: always()
+        run: |
+          cd /tmp/tindeq-supabase
+          supabase stop --no-backup
