@@ -138,6 +138,9 @@ jobs:
         run: |
           rm .github/workflows/implement-tindeq-repeaters-stage1.yml
           rm scripts/apply-tindeq-repeaters-stage1.py
+          rm scripts/tindeq_stage1_core.py
+          rm scripts/tindeq_stage1_app.py
+          rm scripts/tindeq_stage1_db.py
           rm -rf .test-dist .next
           git diff --check
           git config user.name "github-actions[bot]"
