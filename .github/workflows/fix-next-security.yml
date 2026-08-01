@@ -28,8 +28,12 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Install patched Next.js
-        run: npm install --save-exact next@16.2.12
+      - name: Install patched framework and transitive dependencies
+        shell: bash
+        run: |
+          npm pkg set overrides.postcss=8.5.18
+          npm pkg set overrides.sharp=0.35.0
+          npm install --save-exact next@16.2.12 eslint-config-next@16.2.12
 
       - name: Verify production dependency audit
         run: npm audit --omit=dev --audit-level=high
@@ -50,5 +54,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Update Next.js to patched 16.2.12"
+          git commit -m "Update Next.js security dependencies"
           git push origin feature/tindeq-repeaters-import
