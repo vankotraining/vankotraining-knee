@@ -1,5 +1,6 @@
 name: Apply Next.js security update
 
+# One-time workflow: removes itself after a verified update.
 on:
   push:
     branches:
