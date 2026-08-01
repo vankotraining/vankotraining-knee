@@ -140,11 +140,13 @@ jobs:
         shell: bash
         run: |
           rm .github/workflows/implement-tindeq-repeaters-stage1.yml
+          rm -f .github/workflows/tindeq-repeaters-ci.yml
           rm scripts/apply-tindeq-repeaters-stage1.py
           rm scripts/tindeq_stage1_core.py
           rm scripts/tindeq_stage1_app.py
           rm scripts/tindeq_stage1_db.py
-          rm -rf .test-dist .next
+          rm -rf scripts/__pycache__ .test-dist .next
+          rm -f tsconfig.tsbuildinfo
           git diff --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
