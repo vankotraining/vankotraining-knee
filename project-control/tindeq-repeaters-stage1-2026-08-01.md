@@ -2,6 +2,7 @@
 
 Datum: 2026-08-01  
 Větev: `feature/tindeq-repeaters-import`  
+Draft PR: `#11`  
 Produkční aplikace: `https://knee.vankotraining.cz`
 
 ## Audit před změnou
@@ -67,9 +68,19 @@ Původní ZIP se ukládá beze změny do:
 - Service-role klíč se nepoužívá a není přidán do frontendového kódu.
 - Bucket je privátní a cesta začíná `auth.uid()`; RLS dovoluje pouze SELECT/INSERT/DELETE vlastních objektů.
 - Technický detail importní chyby je pouze v server logu a chráněné tabulce.
+- Next.js byl aktualizován z `16.2.10` na bezpečnostně opravený `16.2.12`; `eslint-config-next` je na stejné verzi.
+- Produkční dependency tree používá overrides `postcss@8.5.18` a `sharp@0.35.0`; `npm audit --omit=dev --audit-level=high` vrací 0 zranitelností.
 - Stávající širší policies sdílené databáze nebyly automaticky odstraněny. Je vhodné je samostatně auditovat s ohledem na druhou aplikaci.
 
-## Testování
+## Automatické ověření
+
+Finální ověřený stav feature větve:
+
+- 37/37 testů PASS,
+- TypeScript kontrola PASS,
+- žádný nový lint nález proti `main`,
+- production dependency audit: 0 zranitelností,
+- Next.js production build PASS.
 
 Automatické testy používají syntetické anonymní ZIP fixtures a pokrývají:
 
@@ -83,20 +94,23 @@ Automatické testy používají syntetické anonymní ZIP fixtures a pokrývají
 - bilaterální měření,
 - neúplný interval,
 - konec bez relaxace,
-- bolest `null`, `0` a `1–10`.
+- bolest `null`, `0` a `1–10`,
+- duplicitní upload vracející existující session,
+- odmítnutí uploadu bez autentizované session.
 
 Reálné klientské exporty nejsou součástí veřejného repozitáře. Před přijetím PR je nutné provést ruční test s dodaným privátním Tindeq ZIPem v preview prostředí.
 
-## Nasazení migrace
+## Nasazení migrace a preview gate
 
-Migrace není automaticky aplikována do produkčního Supabase projektu. Pro bezpečné preview je potřeba Supabase development branch nebo oddělený preview projekt, následně:
+Migrace nebyla aplikována do produkčního Supabase projektu. Projekt aktuálně nemá Supabase development branch. Pro bezpečné funkční preview je potřeba vytvořit development branch nebo oddělený preview projekt a následně:
 
 1. aplikovat migraci,
 2. nastavit preview `NEXT_PUBLIC_SUPABASE_URL` a publishable key,
 3. spustit SQL kontrolu RLS,
-4. ověřit upload, duplicitu a přístup k privátnímu objektu,
-5. teprve potom uvažovat o produkční migraci.
+4. ověřit mobilní upload reálného privátního ZIPu,
+5. ověřit duplicitu a přístup k privátnímu objektu,
+6. teprve potom uvažovat o produkční migraci.
 
 ## Známá omezení a další etapa
 
-Etapa 2 (PWA manifest a Android Web Share Target) nebyla zahájena, protože etapa 1 musí nejprve projít preview testem a ověřením RLS/Storage. Grafy, klientská historie Repeaters a ruční správa nepřiřazených měření patří do etapy 3.
+Etapa 2 (PWA manifest a Android Web Share Target) nebyla zahájena, protože etapa 1 ještě nemá runtime ověření RLS/Storage a reálného uploadu v izolovaném Supabase preview prostředí. Grafy, klientská historie Repeaters a ruční správa nepřiřazených měření patří do etapy 3.
