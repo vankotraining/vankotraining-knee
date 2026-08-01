@@ -7,6 +7,9 @@ on:
     paths:
       - .github/workflows/implement-tindeq-repeaters-stage1.yml
       - scripts/apply-tindeq-repeaters-stage1.py
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
