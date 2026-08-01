@@ -1,0 +1,79 @@
+name: Tindeq Repeaters CI
+
+on:
+  push:
+    branches:
+      - feature/tindeq-repeaters-import
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run check:types
+
+      - name: Verify no new lint findings
+        shell: bash
+        run: |
+          git worktree add /tmp/knee-main origin/main
+          cd /tmp/knee-main
+          npm install --silent
+          set +e
+          npm run lint > /tmp/lint-main.log 2>&1
+          set -e
+          cd "$GITHUB_WORKSPACE"
+          set +e
+          npm run lint > /tmp/lint-feature.log 2>&1
+          set -e
+          python - <<'PY'
+          import collections
+          import re
+          from pathlib import Path
+
+          issue_start = re.compile(r"^\s*\d+:\d+\s+(error|warning)\s+")
+          rule_pattern = re.compile(r"\s{2,}(@?[\w-]+(?:/[\w-]+)+)\s*$")
+
+          def parse(path):
+              current = None
+              severity = None
+              issues = []
+              for line in Path(path).read_text(encoding="utf-8").splitlines():
+                  stripped = line.strip()
+                  if stripped.startswith("/") and stripped.endswith((".ts", ".tsx", ".js", ".jsx")):
+                      current = "src/" + stripped.split("/src/", 1)[1] if "/src/" in stripped else stripped
+                      severity = None
+                      continue
+                  start = issue_start.match(line)
+                  if start:
+                      severity = start.group(1)
+                  rule = rule_pattern.search(line)
+                  if current and severity and rule:
+                      issues.append((current, severity, rule.group(1)))
+                      severity = None
+              return collections.Counter(issues)
+
+          added = parse("/tmp/lint-feature.log") - parse("/tmp/lint-main.log")
+          if added:
+              raise SystemExit(
+                  "Feature branch introduced new lint findings:\n"
+                  + "\n".join(f"{item}: {count}" for item, count in sorted(added.items()))
+                  + "\n\n"
+                  + Path("/tmp/lint-feature.log").read_text(encoding="utf-8")
+              )
+          print("Lint baseline preserved.")
+          PY
+
+      - run: npm run build
