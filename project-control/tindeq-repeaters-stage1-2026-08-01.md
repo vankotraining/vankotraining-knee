@@ -80,7 +80,8 @@ Finální ověřený stav feature větve:
 - TypeScript kontrola PASS,
 - žádný nový lint nález proti `main`,
 - production dependency audit: 0 zranitelností,
-- Next.js production build PASS.
+- Next.js production build PASS,
+- izolovaný databázový integrační job PASS.
 
 Automatické testy používají syntetické anonymní ZIP fixtures a pokrývají:
 
@@ -98,19 +99,44 @@ Automatické testy používají syntetické anonymní ZIP fixtures a pokrývají
 - duplicitní upload vracející existující session,
 - odmítnutí uploadu bez autentizované session.
 
-Reálné klientské exporty nejsou součástí veřejného repozitáře. Před přijetím PR je nutné provést ruční test s dodaným privátním Tindeq ZIPem v preview prostředí.
+GitHub Actions navíc spouští čistou lokální Supabase instanci, aplikuje migraci a ověřuje RLS, privátní Storage, izolaci vlastníků, duplicitu a databázové constraints. Workflow run `30716054045` je PASS.
 
-## Nasazení migrace a preview gate
+## Bezplatné hostované preview
 
-Migrace nebyla aplikována do produkčního Supabase projektu. Projekt aktuálně nemá Supabase development branch. Pro bezpečné funkční preview je potřeba vytvořit development branch nebo oddělený preview projekt a následně:
+V organizaci `vanko-training` byl založen samostatný bezplatný Supabase projekt:
 
-1. aplikovat migraci,
-2. nastavit preview `NEXT_PUBLIC_SUPABASE_URL` a publishable key,
-3. spustit SQL kontrolu RLS,
-4. ověřit mobilní upload reálného privátního ZIPu,
-5. ověřit duplicitu a přístup k privátnímu objektu,
-6. teprve potom uvažovat o produkční migraci.
+- název: `tindeq-repeaters-preview`,
+- project ref: `ednbxwvvzomvdkjdybau`,
+- region: Frankfurt (`eu-central-1`),
+- cena: `0 USD / měsíc`,
+- neobsahuje produkční klientská data.
+
+Do projektu byly aplikovány pouze minimální Knee tabulky potřebné pro preview, Tindeq migrace a privátní bucket. Supabase security advisors po úpravách nevracejí žádný nález.
+
+Vercel preview používá tento projekt pouze tehdy, když současně platí:
+
+- `VERCEL_ENV=preview`,
+- `VERCEL_GIT_COMMIT_REF=feature/tindeq-repeaters-import`.
+
+Produkční build ani jiné větve se touto konfigurací nemění. Preview deployment pro commit `06e6df0` je READY a zobrazuje samostatné testovací přihlášení.
+
+Preview URL:
+
+`https://vankotraining-knee-ntsm1xvt0-vankotrainings-projects.vercel.app`
+
+## Ruční end-to-end gate
+
+Reálné klientské exporty nejsou součástí veřejného repozitáře ani CI. Před přijetím PR zbývá ručně ověřit:
+
+1. přihlášení do testovacího preview,
+2. upload jednoho reálného privátního Tindeq ZIPu,
+3. otevření detailu měření,
+4. opakovaný upload stejného ZIPu a návrat existující session,
+5. fyzickou existenci původního ZIPu v privátním bucketu,
+6. uložení bolesti, RPE a poznámky.
+
+Po dokončení tohoto gate lze rozhodnout o produkční migraci. Produkční Supabase projekt zatím nebyl změněn.
 
 ## Známá omezení a další etapa
 
-Etapa 2 (PWA manifest a Android Web Share Target) nebyla zahájena, protože etapa 1 ještě nemá runtime ověření RLS/Storage a reálného uploadu v izolovaném Supabase preview prostředí. Grafy, klientská historie Repeaters a ruční správa nepřiřazených měření patří do etapy 3.
+Etapa 2 (PWA manifest a Android Web Share Target) nebyla zahájena, protože ještě chybí ruční end-to-end test s reálným privátním ZIPem. Grafy, klientská historie Repeaters a ruční správa nepřiřazených měření patří do etapy 3.
