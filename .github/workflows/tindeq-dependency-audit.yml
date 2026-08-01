@@ -6,6 +6,9 @@ on:
       - feature/tindeq-repeaters-import
     paths:
       - .github/workflows/tindeq-dependency-audit.yml
+  pull_request:
+    branches:
+      - main
 
 jobs:
   audit:
