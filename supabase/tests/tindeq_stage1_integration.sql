@@ -46,7 +46,7 @@ select pg_temp.assert_true(
   'expected Tindeq table and Storage policies were not created'
 );
 select pg_temp.assert_true(
-  (select public is false from storage.buckets where id = 'tindeq-raw'),
+  (select not "public" from storage.buckets where id = 'tindeq-raw'),
   'tindeq-raw bucket must be private'
 );
 select pg_temp.assert_true(
@@ -70,6 +70,7 @@ select set_config(
 );
 
 insert into public.tindeq_repeaters_sessions (
+  id,
   owner_user_id,
   file_hash,
   storage_path,
@@ -81,6 +82,7 @@ insert into public.tindeq_repeaters_sessions (
   rpe
 )
 values (
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   '11111111-1111-4111-8111-111111111111',
   'hash-owner-one',
   '11111111-1111-4111-8111-111111111111/session-one/original.zip',
@@ -90,8 +92,7 @@ values (
   'test-metrics',
   null,
   null
-)
-returning id as own_session_id \gset
+);
 
 insert into public.tindeq_repetitions (
   session_id,
@@ -99,7 +100,7 @@ insert into public.tindeq_repetitions (
   work_start_seconds,
   work_end_seconds
 )
-values (:'own_session_id', 1, 0, 10);
+values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 1, 0, 10);
 
 insert into public.tindeq_import_errors (
   owner_user_id,
@@ -144,7 +145,7 @@ begin
   begin
     update public.tindeq_repeaters_sessions
     set owner_user_id = '22222222-2222-4222-8222-222222222222'
-    where id = :'own_session_id';
+    where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
     raise exception 'owner reassignment unexpectedly succeeded';
   exception when insufficient_privilege then
     null;
@@ -170,6 +171,7 @@ $$;
 reset role;
 
 insert into public.tindeq_repeaters_sessions (
+  id,
   owner_user_id,
   file_hash,
   storage_path,
@@ -179,6 +181,7 @@ insert into public.tindeq_repeaters_sessions (
   metrics_version
 )
 values (
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   '22222222-2222-4222-8222-222222222222',
   'hash-owner-two',
   '22222222-2222-4222-8222-222222222222/session-two/original.zip',
@@ -186,8 +189,7 @@ values (
   'test-parser',
   'test-segmentation',
   'test-metrics'
-)
-returning id as other_session_id \gset
+);
 
 insert into public.tindeq_repetitions (
   session_id,
@@ -195,7 +197,20 @@ insert into public.tindeq_repetitions (
   work_start_seconds,
   work_end_seconds
 )
-values (:'other_session_id', 1, 0, 10);
+values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 1, 0, 10);
+
+insert into public.tindeq_import_errors (
+  owner_user_id,
+  file_name,
+  error_code,
+  user_message
+)
+values (
+  '22222222-2222-4222-8222-222222222222',
+  'other.zip',
+  'OTHER_ERROR',
+  'Other owner error'
+);
 
 insert into storage.objects (bucket_id, name)
 values (
@@ -213,6 +228,21 @@ select set_config(
   )::text,
   true
 );
+
+do $$
+begin
+  begin
+    insert into public.tindeq_repetitions (
+      session_id, repetition_number, work_start_seconds, work_end_seconds
+    ) values (
+      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 2, 10, 20
+    );
+    raise exception 'cross-owner repetition INSERT unexpectedly succeeded';
+  exception when insufficient_privilege then
+    null;
+  end;
+end;
+$$;
 
 select count(*)::integer as visible_sessions
 from public.tindeq_repeaters_sessions
