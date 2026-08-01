@@ -1,0 +1,147 @@
+name: Implement Tindeq Repeaters Stage 1
+
+on:
+  push:
+    branches:
+      - feature/tindeq-repeaters-import
+    paths:
+      - .github/workflows/implement-tindeq-repeaters-stage1.yml
+      - scripts/apply-tindeq-repeaters-stage1.py
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: feature/tindeq-repeaters-import
+
+      - name: Check one-time implementation
+        id: gate
+        shell: bash
+        run: |
+          if [ -f scripts/apply-tindeq-repeaters-stage1.py ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node.js
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package.json
+
+      - name: Verify main baseline
+        if: steps.gate.outputs.run == 'true'
+        shell: bash
+        run: |
+          git worktree add /tmp/knee-main origin/main
+          cd /tmp/knee-main
+          npm install --silent
+          npm test
+          npx tsc --noEmit
+          set +e
+          npm run lint > /tmp/lint-main.log 2>&1
+          echo "$?" > /tmp/lint-main.exit
+          set -e
+          npm run build
+
+      - name: Apply Stage 1 implementation
+        if: steps.gate.outputs.run == 'true'
+        run: python scripts/apply-tindeq-repeaters-stage1.py
+
+      - name: Install dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: npm install --silent
+
+      - name: Check patch formatting
+        if: steps.gate.outputs.run == 'true'
+        run: git diff --check
+
+      - name: Run tests
+        if: steps.gate.outputs.run == 'true'
+        run: npm test
+
+      - name: Run TypeScript check
+        if: steps.gate.outputs.run == 'true'
+        run: npm run check:types
+
+      - name: Compare lint with main
+        if: steps.gate.outputs.run == 'true'
+        shell: bash
+        run: |
+          set +e
+          npm run lint > /tmp/lint-feature.log 2>&1
+          echo "$?" > /tmp/lint-feature.exit
+          set -e
+          python - <<'PY'
+          import collections
+          import re
+          from pathlib import Path
+
+          issue_start = re.compile(r"^\s*\d+:\d+\s+(error|warning)\s+")
+          rule_pattern = re.compile(r"\s{2,}(@?[\w-]+(?:/[\w-]+)+)\s*$")
+
+          def parse(path: str):
+              current_file = None
+              pending = None
+              issues = []
+              for line in Path(path).read_text(encoding="utf-8").splitlines():
+                  stripped = line.strip()
+                  if stripped.startswith("/") and stripped.endswith((".ts", ".tsx", ".js", ".jsx")):
+                      marker = "/src/"
+                      current_file = "src/" + stripped.split(marker, 1)[1] if marker in stripped else stripped
+                      pending = None
+                      continue
+                  match = issue_start.match(line)
+                  if match:
+                      pending = match.group(1)
+                  rule = rule_pattern.search(line)
+                  if rule and current_file and pending:
+                      issues.append((current_file, pending, rule.group(1)))
+                      pending = None
+              return collections.Counter(issues)
+
+          main = parse("/tmp/lint-main.log")
+          feature = parse("/tmp/lint-feature.log")
+          main_status = int(Path("/tmp/lint-main.exit").read_text().strip())
+          feature_status = int(Path("/tmp/lint-feature.exit").read_text().strip())
+
+          added = feature - main
+          if added:
+              raise SystemExit(
+                  "Feature branch introduced new lint issues:\n"
+                  + "\n".join(f"{item}: {count}" for item, count in sorted(added.items()))
+                  + "\n\n"
+                  + Path("/tmp/lint-feature.log").read_text(encoding="utf-8")
+              )
+          if main_status == 0 and feature_status != 0:
+              raise SystemExit(Path("/tmp/lint-feature.log").read_text(encoding="utf-8"))
+          print(f"Lint baseline preserved: main={sum(main.values())}, feature={sum(feature.values())}")
+          PY
+
+      - name: Build
+        if: steps.gate.outputs.run == 'true'
+        run: npm run build
+
+      - name: Commit verified implementation
+        if: steps.gate.outputs.run == 'true'
+        shell: bash
+        run: |
+          rm .github/workflows/implement-tindeq-repeaters-stage1.yml
+          rm scripts/apply-tindeq-repeaters-stage1.py
+          rm -rf .test-dist .next
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Implement Tindeq Repeaters Stage 1"
+          git push origin feature/tindeq-repeaters-import
