@@ -1103,3 +1103,164 @@ th {
   font-weight: 900;
 }
 
+
+
+/* Tindeq Repeaters Stage 1 */
+.tindeq-upload-shell {
+  width: min(1280px, calc(100% - 28px));
+  margin: 14px auto 0;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 12px 35px rgba(22, 26, 21, 0.08);
+}
+
+.tindeq-upload-shell h2 {
+  margin-top: 4px;
+  font-size: clamp(21px, 4vw, 30px);
+}
+
+.tindeq-upload-message,
+.tindeq-detail-note {
+  margin-top: 7px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.tindeq-upload-actions {
+  min-width: min(100%, 290px);
+  display: grid;
+  gap: 8px;
+}
+
+.tindeq-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.tindeq-upload-button,
+.tindeq-secondary-button {
+  min-height: 48px;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: white;
+  font-weight: 800;
+}
+
+.tindeq-secondary-button {
+  min-height: 42px;
+  background: var(--accent-strong);
+}
+
+.tindeq-stage {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.tindeq-stage-error { color: var(--danger); }
+.tindeq-stage-done { color: var(--accent); }
+
+.tindeq-detail-shell {
+  width: min(920px, calc(100% - 28px));
+  margin: 0 auto;
+  padding: max(18px, env(safe-area-inset-top)) 0 60px;
+}
+
+.tindeq-back-link {
+  display: inline-block;
+  margin-bottom: 18px;
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tindeq-detail-header,
+.tindeq-detail-card,
+.tindeq-duplicate-note {
+  margin-bottom: 14px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.tindeq-detail-header h1 { margin: 4px 0 7px; }
+.tindeq-detail-header > p:last-child { color: var(--muted); }
+.tindeq-duplicate-note { border-color: var(--accent); color: var(--accent-strong); font-weight: 700; }
+.tindeq-detail-card h2 { margin-bottom: 12px; }
+
+.tindeq-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.tindeq-metric-grid article {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--surface);
+}
+
+.tindeq-metric-grid span,
+.tindeq-repetition-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tindeq-metric-grid strong { display: block; margin-top: 5px; font-size: 19px; }
+
+.tindeq-definition-grid,
+.tindeq-repetition-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tindeq-definition-grid div,
+.tindeq-repetition-card dl div {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.tindeq-definition-grid dt,
+.tindeq-repetition-card dt { color: var(--muted); font-size: 12px; }
+.tindeq-definition-grid dd,
+.tindeq-repetition-card dd { margin-top: 3px; font-weight: 700; }
+
+.tindeq-warning-list { margin: 12px 0 0 20px; line-height: 1.7; }
+.tindeq-repetition-list { display: grid; gap: 10px; }
+.tindeq-repetition-card { padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-subtle); }
+.tindeq-repetition-card > div { display: flex; justify-content: space-between; gap: 12px; }
+
+.tindeq-clinical-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tindeq-detail-card label { display: grid; gap: 6px; margin-top: 12px; font-weight: 700; }
+.tindeq-detail-card select,
+.tindeq-detail-card textarea { width: 100%; padding: 11px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--foreground); }
+.tindeq-form-footer { margin-top: 14px; display: flex; align-items: center; gap: 12px; }
+
+@media (max-width: 720px) {
+  .tindeq-upload-shell { align-items: stretch; flex-direction: column; }
+  .tindeq-upload-actions { min-width: 100%; }
+  .tindeq-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tindeq-definition-grid,
+  .tindeq-repetition-card dl,
+  .tindeq-clinical-grid { grid-template-columns: 1fr; }
+  .tindeq-detail-header,
+  .tindeq-detail-card { padding: 16px; }
+}

@@ -6,7 +6,13 @@
     "rootDir": ".",
     "strict": true,
     "target": "ES2022",
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["src/lib/knee-metrics.ts", "src/lib/knee-metrics.test.ts"]
+  "include": [
+    "src/lib/knee-metrics.ts",
+    "src/lib/knee-metrics.test.ts",
+    "src/lib/tindeq/**/*.ts"
+  ]
 }

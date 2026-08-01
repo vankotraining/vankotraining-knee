@@ -5,6 +5,7 @@ import ArchivedClients from "./ArchivedClients";
 import ArchivedMeasurements from "./ArchivedMeasurements";
 import ClientDeletion from "./ClientDeletion";
 import KneeDashboard from "./KneeDashboard";
+import TindeqUploadCard from "./TindeqUploadCard";
 import type { SelectedClient } from "./selected-client";
 
 export default function KneeApp() {
@@ -12,6 +13,7 @@ export default function KneeApp() {
 
   return (
     <>
+      <TindeqUploadCard />
       <KneeDashboard onSelectedClientChange={setSelectedClient} />
       <ArchivedClients />
       <ClientDeletion selectedClient={selectedClient} />
