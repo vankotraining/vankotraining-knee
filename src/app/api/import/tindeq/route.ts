@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { requireTindeqUser } from "@/lib/tindeq/auth";
 import { TindeqImportError } from "@/lib/tindeq/errors";
 import { importTindeqFile, logTindeqImportError } from "@/lib/tindeq/import-service";
 
@@ -13,11 +14,17 @@ function getFile(formData: FormData) {
 
 export async function POST(request: Request) {
   const supabase = await createServerSupabaseClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
+
+  let user;
+  try {
+    user = await requireTindeqUser(supabase);
+  } catch (error) {
+    const known = error instanceof TindeqImportError
+      ? error
+      : new TindeqImportError("UNAUTHORIZED", undefined, 401);
     return NextResponse.json(
-      { success: false, code: "UNAUTHORIZED", message: "Pro import se nejprve přihlas." },
-      { status: 401 },
+      { success: false, code: known.code, message: known.message },
+      { status: known.status },
     );
   }
 
