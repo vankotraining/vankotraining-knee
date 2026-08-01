@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { strToU8, zipSync } from "fflate";
 import { analyzeTindeqExport } from "./analysis";
+import { requireTindeqUser } from "./auth";
 import { normalizeAthleteTag } from "./csv";
 import { TindeqImportError } from "./errors";
+import { importTindeqFile } from "./import-service";
 import { parseTindeqZip } from "./parser";
 import { validateClinicalScale } from "./validation";
 
@@ -122,5 +125,54 @@ describe("Tindeq Repeaters parser and analysis", () => {
     assert.equal(validateClinicalScale(0, "pain"), 0);
     assert.equal(validateClinicalScale(7, "pain"), 7);
     assert.throws(() => validateClinicalScale(11, "pain"));
+  });
+
+  it("returns the existing measurement for a duplicate upload", async () => {
+    const query = {
+      select() {
+        return this;
+      },
+      eq() {
+        return this;
+      },
+      async maybeSingle() {
+        return {
+          data: { id: "existing-session", athlete_id: null },
+          error: null,
+        };
+      },
+    };
+    const supabase = {
+      from(table: string) {
+        assert.equal(table, "tindeq_repeaters_sessions");
+        return query;
+      },
+    } as unknown as SupabaseClient;
+    const zip = exportZip();
+    const file = new File([zip], "repeaters.zip", { type: "application/zip" });
+
+    const result = await importTindeqFile(supabase, "user-1", file);
+
+    assert.equal(result.duplicate, true);
+    assert.equal(result.importedCount, 0);
+    assert.equal(result.measurementId, "existing-session");
+    assert.equal(result.detailUrl, "/repeaters/existing-session");
+  });
+
+  it("rejects an import without an authenticated user", async () => {
+    const supabase = {
+      auth: {
+        async getUser() {
+          return { data: { user: null }, error: null };
+        },
+      },
+    } as unknown as Pick<SupabaseClient, "auth">;
+
+    await assert.rejects(
+      () => requireTindeqUser(supabase),
+      (error) => error instanceof TindeqImportError
+        && error.code === "UNAUTHORIZED"
+        && error.status === 401,
+    );
   });
 });
