@@ -25,3 +25,23 @@ if __name__ == "__main__":
         "  if (rows.length >= 2 && rows[0].length > 2 && rows[0].length === rows[1].length) {\n",
     )
     parser_path.write_text(parser, encoding="utf-8")
+
+    detail_path = Path("src/app/components/TindeqSessionDetail.tsx")
+    detail = detail_path.read_text(encoding="utf-8")
+    detail = detail.replace(
+        'import { notFound, redirect } from "next/navigation";\n',
+        'import Link from "next/link";\nimport { notFound, redirect } from "next/navigation";\n',
+    )
+    detail = detail.replace(
+        '<a className="tindeq-back-link" href="/">← Zpět do Knee</a>',
+        '<Link className="tindeq-back-link" href="/">← Zpět do Knee</Link>',
+    )
+    detail_path.write_text(detail, encoding="utf-8")
+
+    eslint_path = Path("eslint.config.mjs")
+    eslint = eslint_path.read_text(encoding="utf-8")
+    eslint = eslint.replace(
+        'globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),',
+        'globalIgnores([".next/**", ".test-dist/**", "out/**", "build/**", "next-env.d.ts"]),',
+    )
+    eslint_path.write_text(eslint, encoding="utf-8")
