@@ -5,79 +5,135 @@
 - Base branch: `main`
 - Base commit reviewed before implementation: `71d6b1f0e67c571c71a53db6248e526704bddabe`
 - Working branch: `agent/tindeq-results-site`
+- Implementation head verified before this documentation update: `adc6e2a8086a0cc87109e1e1b559f4347d3a33db`
 - Draft pull request: `#12`
 - Route: `/tindeq`
+- Supabase project inspected: `zxvndqicslyulrinbpyn`
 
-## Current status
+## Status vocabulary
 
-### Implemented
+- **Implemented** means the change exists on the working branch.
+- **Tested** means automated evidence exists for the exact implementation head.
+- **Preview deployed** requires a Vercel deployment whose metadata matches the exact final commit.
+- **Production deployed** requires a production deployment of that exact commit.
+- **Production verified** requires explicit user confirmation after production review.
 
-- The result opens in the `Pro klienta` view by default.
-- An accessible tab switch exposes `Pro klienta` and `Detail pro trenéra` without importing or analysing the ZIP again.
-- After a successful import, the large upload panel is replaced by a compact `Nahrát jiný Tindeq ZIP` control so the result remains immediately visible.
-- The client view contains:
-  - one plain-language series conclusion,
-  - target achievement, force stability and performance maintenance cards,
-  - separate left and right leg cards,
-  - presentation-only average-force conversion from target force and the existing target percentage,
-  - a simplified chart description, axis labels, regions and legend,
-  - a maximum two-sentence chart interpretation,
-  - plain-language recording warnings,
-  - a neutral statement that the result describes only the performed force series.
-- Positive, warning and problem labels use explicit verbal states as well as colour; `Bez výrazného poklesu` is classified as a positive state.
-- The trainer view retains the existing technical domains, side metrics, protocol data, sampling frequency, warnings, normalized chart, repetition table and method note.
-- Existing analytical calculations and heuristic thresholds in `src/lib/tindeq-browser.ts` were not changed.
-- Client wording and layout do not provide a diagnosis, readiness decision or automatic load progression.
-- Mobile CSS contains safe-area handling, visible focus states and controlled horizontal scrolling only for the chart and trainer table.
+## Implemented
 
-### Deployed
+### Authentication and athlete selection
 
-- No preview deployment corresponds to the current client-view commit.
-- Vercel rejected automatic preview builds for the current commits because the account reached its build-rate limit.
-- The last successful Tindeq preview belongs to the earlier commit `f9566bdfcb3ac0150d8aba2af54b99b0ec35698e` and must not be treated as evidence for this client-view change.
-- Production remains on `main` commit `71d6b1f0e67c571c71a53db6248e526704bddabe`.
+- `/tindeq` uses the existing browser Supabase client, current session and `onAuthStateChange` subscription.
+- Signed-out users see the same magic-link authentication model as the main application.
+- Athletes, imported results and history are not rendered without a valid session.
+- Active athletes are loaded from `public.athletes`, ordered by `display_name` and searchable by name.
+- A result cannot be saved without a valid selected `athlete_id`.
+- The Tindeq export tag is shown only as supporting information. A non-matching tag produces a non-blocking warning; no automatic or fuzzy athlete matching is performed.
 
-### Production verified
+### Local analysis and explicit save
 
-- Not verified by the user.
-- No production deployment or merge was performed for this change.
+- ZIP parsing and analysis remain local in the browser.
+- `src/lib/tindeq-browser.ts`, its analytical model and heuristic thresholds were not changed.
+- Client and trainer views continue to use the same already calculated `TindeqSession` object.
+- The user sees the analysed result before save and must explicitly select `Uložit měření ke klientovi`.
+- The original ZIP and raw time-series samples are not uploaded to Supabase Storage or the database.
+- Multi-session archives are saved as one database row per analysed session in import order.
+- Partial failure is reported per session. A retry sends only failed sessions and retains the analysed result on screen.
+
+### Persistence mapping
+
+- Analysis version: `tindeq-repeaters-v1`.
+- Relational columns include athlete, measured/imported timestamps, source filename and dataset, source tag, protocol, left/right target force in kg, sampling rate and repetition counts.
+- Detailed side summaries, overall summary, repetitions, warnings and normalized metadata are stored as validated `jsonb`.
+- Supported force units are normalized to kg before storage (`kg`, `N`, `lb`). Unsupported units are rejected.
+- Stored analytical values are not editable through the application. Correction is by soft-delete and re-import.
+
+### Athlete history
+
+- History is filtered by selected athlete and ordered by `measured_at desc, created_at desc`.
+- It has loading, empty and error states and is visually separated from the current unsaved analysis.
+- Each entry shows measured date, source tag/protocol, target force, left/right result, target achievement, stability and maintenance.
+- Saved detail can be opened without reprocessing a ZIP.
+
+## Database migration prepared
+
+Migration file: `supabase/migrations/20260802_tindeq_sessions.sql`.
+Verification queries: `supabase/checks/20260802_tindeq_sessions_checks.sql`.
+
+The migration prepares `public.tindeq_sessions` with:
+
+- UUID primary key and UUID foreign key to `athletes(id)` with `on delete cascade`,
+- soft-delete and audit metadata consistent with the knee tables,
+- active-history index on `(athlete_id, measured_at desc, created_at desc)`,
+- analysis-version index,
+- positive-value, JSON shape and required-text constraints,
+- RLS enabled,
+- authenticated `select`/`insert` and column-limited soft-delete `update` grants,
+- policies using the existing `public.is_knee_admin()` authorization model,
+- insert validation that the referenced athlete exists and is active,
+- no ordinary table delete grant,
+- guarded security-definer functions for soft-delete/restore with `PUBLIC` and `anon` execution revoked,
+- existing `set_knee_updated_at()` and `log_knee_table_change()` triggers,
+- athlete-level soft-delete/restore extended to Tindeq rows.
+
+### RLS limitation
+
+The current application is effectively a single authorized knee administrator. `is_knee_admin()` currently authorizes the configured administrator email. This is consistent with the inspected knee tables but is not a multi-tenant ownership model. Before multi-user use, rows need explicit owner/organization columns and ownership-scoped RLS.
+
+### Migration application status
+
+- The migration was **not applied**.
+- Only one shared active Supabase project was confirmed; a separate development/preview database was not available.
+- Applying this migration to the shared project requires explicit user approval.
+- No athlete or measurement records were created, updated or deleted during verification.
 
 ## Automated verification
 
-Code verification commit: `7140e4f20ae11dfb2c16dc8244aee3f6ebc999d2`.
-GitHub Actions workflow: `Verify Tindeq client view`, run `30744363313`.
+Verified implementation commit: `adc6e2a8086a0cc87109e1e1b559f4347d3a33db`.
+GitHub Actions workflow: `Verify Tindeq client view`, run `30746969433`.
+Screenshot artifact: `tindeq-client-view-screenshots`, artifact ID `8833200421`.
 
-- `npm test`: passed, 38/38 tests.
-- Added presentation tests cover the default client mode, mode switch, plain-language labels, good result, target miss, instability, performance decline, side-specific output, warnings, missing/non-finite data, presentation-only force conversion and mobile overflow rules.
-- `npm run lint`: exits non-zero on both current `main` and the working branch with the same baseline: 3 errors and 1 warning in pre-existing dashboard/archive components. The Tindeq change introduces no additional lint errors.
-- `npm run build`: passed; `/tindeq` is statically generated.
-- Playwright browser verification: passed, 2/2 tests.
-  - individual synthetic bilateral Repeaters ZIP,
-  - outer ZIP containing two measurements,
-  - default client mode,
-  - compact re-upload control after import,
-  - trainer switch and keyboard return,
-  - graph accessible name,
-  - positive colour treatment for `Bez výrazného poklesu`,
-  - no root horizontal overflow at 360, 390, 720, 1024 and 1440 px,
-  - stacked side cards through 720 px and side-by-side cards at desktop widths.
-- Five responsive screenshots are stored in CI artifact `tindeq-client-view-screenshots`, artifact ID `8832381786`.
-- The 360 px and 1024 px screenshots were visually reviewed after the automated run; the result begins near the top of the page, the mobile cards remain readable and the positive maintenance label is no longer shown as a problem state.
+- `npm test`: passed, **49/49**.
+- Persistence tests cover payload mapping, `athlete_id`, units, `analysis_version`, unsupported version, missing athlete, incomplete analysis, single save, multi-save, transparent partial failure and athlete-filtered history.
+- `npm run lint`: working branch and current `main` both retain the same existing baseline, **3 errors + 1 warning** in pre-existing archive/dashboard components. No new lint errors are introduced.
+- `npm run build`: passed; `/tindeq` is statically generated and performs session/data checks client-side.
+- Playwright: passed, **4/4**.
+  - signed-out authentication gate,
+  - signed-in mocked Supabase client and athlete loading,
+  - athlete search/selection,
+  - ZIP import and result display,
+  - explicit save and history refresh,
+  - result preservation after save failure,
+  - client/trainer switch,
+  - multi-session archive handling,
+  - root overflow checks at 360, 390, 720, 1024 and 1440 px.
+- Test fixtures are synthetic and contain no production personal data.
 
-## Existing parser validation
+## Preview deployment
 
-- Private individual bilateral Repeaters fixture: 8/8 repetitions detected.
-- Private batch archive: 18/18 sessions imported without parser errors; planned repetition count matched in every session.
-- Private client fixtures remain excluded from Git.
+- The exact implementation commit is **not preview deployed**.
+- Both linked Vercel project checks for `adc6e2a...` failed with `build-rate-limit`.
+- Older successful previews belong to different commits and are not evidence for this implementation.
+- Because the migration is not applied to the shared Supabase database, a real preview persistence smoke test is intentionally pending approval even after Vercel accepts a build.
 
-## Privacy
+## Production
 
-Raw ZIP files and time-series data remain in browser memory and are cleared on refresh. This version does not upload, persist or associate Tindeq data with Supabase.
+- `main` was not changed or merged.
+- Production remains on commit `71d6b1f0e67c571c71a53db6248e526704bddabe`.
+- The production Supabase schema was not changed.
+- Production environment variables were not changed.
+- Production verification by the user has not occurred.
+
+## Remaining approval gates
+
+1. Explicit approval to apply `20260802_tindeq_sessions.sql` to the shared Supabase project, or provision a separate development/preview branch first.
+2. Database post-migration checks and authenticated smoke test without production athlete modifications.
+3. Exact-commit Vercel preview and browser review when the build-rate limit permits it.
+4. Explicit approval to merge PR `#12` into `main`.
+5. Explicit approval for production deployment, followed by user production verification.
 
 ## Known limitations
 
-- ZIP decompression relies on `DecompressionStream('deflate-raw')`, targeting current Chrome/Android and current Chromium desktop browsers.
-- Thresholds remain working analytical heuristics, not validated clinical cut-off values.
-- The browser verification uses generated deterministic fixtures; final visual review with the user's real exports still belongs in the preview review step.
-- A current preview URL and exact deployed commit cannot be recorded until Vercel accepts a new preview build.
-- Persistence, pain/RPE fields and client history remain deferred.
+- ZIP decompression relies on `DecompressionStream('deflate-raw')` for current Chromium-class browsers.
+- Analytical thresholds remain working heuristics, not validated clinical cut-off values.
+- Browser tests use deterministic mocks and synthetic ZIPs; they do not substitute for a post-migration authenticated database smoke test.
+- Pain/RPE entry and longitudinal trend modelling remain outside this persistence change.
