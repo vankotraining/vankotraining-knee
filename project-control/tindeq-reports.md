@@ -90,3 +90,8 @@ Every finding includes the metric value and the rule used. The report does not d
 ## Known auth blocker
 
 The existing Knee/Workout magic-link redirect issue remains a separate blocker for final production verification. No shared Supabase Auth configuration, Workout code or additional magic-link diagnostics are changed by this report work.
+
+## Preview deployment trigger
+
+- Preview redeployment requested on `2026-08-02 21:05 CEST` after the anonymous demo passed unit, build and browser verification.
+- This documentation-only commit does not change application runtime behavior and is intended solely to trigger the Git-connected Vercel preview pipeline.
