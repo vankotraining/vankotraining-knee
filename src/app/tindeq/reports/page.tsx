@@ -5,7 +5,7 @@ import TindeqReports from "./TindeqReports";
 
 export const metadata: Metadata = {
   title: "Tindeq reporty | Knee Data",
-  description: "Pravidlove reporty nad ulozenymi normalizovanymi Tindeq vysledky.",
+  description: "Pravidlové reporty nad uloženými normalizovanými Tindeq výsledky.",
 };
 
 export default function TindeqReportsPage() {
@@ -16,12 +16,12 @@ export default function TindeqReportsPage() {
           <p className={styles.eyebrow}>knee.vankotraining.cz</p>
           <h1>Tindeq reporty</h1>
           <p className={styles.intro}>
-            Vyhodnoceni cile, stability, unavy, rozdilu stran a transparentni doporuceni pro dalsi trenink.
+            Vyhodnocení cíle, stability, únavy, rozdílu stran a transparentní doporučení pro další trénink.
           </p>
         </div>
         <nav aria-label="Navigace Tindeq">
           <Link className={styles.backLink} href="/tindeq">Import a historie</Link>{" "}
-          <Link className={styles.backLink} href="/">Zpet na klienty</Link>
+          <Link className={styles.backLink} href="/">Zpět na klienty</Link>
         </nav>
       </header>
       <TindeqReports />
