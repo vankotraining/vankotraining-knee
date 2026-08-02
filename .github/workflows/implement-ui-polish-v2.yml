@@ -1,0 +1,336 @@
+name: Implement UI polish v2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - scripts/apply-ui-polish-v2.py
+      - .github/workflows/implement-ui-polish-v2.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: implement-ui-polish-v2
+  cancel-in-progress: false
+
+jobs:
+  implement-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify source baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_COMMIT="a20a6157330f46e3396e2ef1a2e7206c82835965"
+          git merge-base --is-ancestor "$BASE_COMMIT" HEAD
+          unexpected="$({ git diff --name-only "$BASE_COMMIT"..HEAD || true; } | grep -Ev '^(scripts/apply-ui-polish-v2\.py|\.github/workflows/implement-ui-polish-v2\.yml)$' || true)"
+          if [[ -n "$unexpected" ]]; then
+            echo "Unexpected source changes since baseline:"
+            echo "$unexpected"
+            exit 1
+          fi
+          test -f scripts/apply-ui-polish-v2.py
+          test -f .github/workflows/implement-ui-polish-v2.yml
+
+      - name: Install dependencies
+        run: npm install --silent
+
+      - name: Capture lint baseline
+        id: lint-before
+        shell: bash
+        run: |
+          set +e
+          rm -rf .test-dist
+          npm run lint -- --format json --output-file /tmp/lint-before.json
+          status=$?
+          set -e
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          test -s /tmp/lint-before.json
+
+      - name: Apply scoped UI polish
+        run: python scripts/apply-ui-polish-v2.py
+
+      - name: Static UI audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          dashboard = Path("src/app/components/KneeDashboard.tsx").read_text(encoding="utf-8")
+          css = Path("src/app/globals.css").read_text(encoding="utf-8")
+          archives = "\n".join(
+              Path(path).read_text(encoding="utf-8")
+              for path in [
+                  "src/app/components/ArchivedClients.tsx",
+                  "src/app/components/ArchivedMeasurements.tsx",
+                  "src/app/components/ClientDeletion.tsx",
+              ]
+          )
+
+          required_dashboard = [
+              'placeholder="vas@email.cz"',
+              '>E-mail',
+              'role="tab"',
+              'aria-selected={mobileTab === tab.key}',
+              'aria-controls={`mobile-panel-${tab.key}`}',
+              'role="tabpanel"',
+              'aria-labelledby="mobile-tab-measurements"',
+              'onKeyDown={handleMobileTabKeyDown}',
+              'className="mobile-sticky-controls"',
+              'client-context-meta',
+              'Změna oproti měření',
+          ]
+          for marker in required_dashboard:
+              assert marker in dashboard, marker
+
+          forbidden_dashboard = [
+              'martin@vankotraining.cz',
+              'Prihlaseni trenera',
+              '>Mereni</button>',
+              '>Porovnani</button>',
+              '>Odhlasit</button>',
+              '>Zavrit</button>',
+              '>Poznamka',
+          ]
+          for marker in forbidden_dashboard:
+              assert marker not in dashboard, marker
+
+          for marker in [
+              ':focus-visible',
+              'max-width: 580px',
+              '.mobile-sticky-controls',
+              'top: calc(45px + env(safe-area-inset-top))',
+              '@media (min-width: 721px)',
+          ]:
+              assert marker in css, marker
+
+          for marker in [
+              'Archiv klientu',
+              'Archiv mereni',
+              'Zavrit',
+              'Otevrit',
+              'Archivovano',
+              'celeho klienta',
+          ]:
+              assert marker not in archives, marker
+          PY
+          git diff --check
+
+      - name: Run calculation tests
+        run: npm test
+
+      - name: Compare lint with baseline
+        id: lint-after
+        shell: bash
+        run: |
+          set +e
+          rm -rf .test-dist
+          npm run lint -- --format json --output-file /tmp/lint-after.json
+          status=$?
+          set -e
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          test -s /tmp/lint-after.json
+          python - <<'PY'
+          import json
+          from collections import Counter
+          from pathlib import Path
+
+          def issues(path: str) -> Counter:
+              data = json.loads(Path(path).read_text(encoding="utf-8"))
+              found = Counter()
+              for result in data:
+                  file_path = result.get("filePath", "").replace("\\", "/")
+                  if "/.test-dist/" in file_path:
+                      continue
+                  relative = file_path.split("/vankotraining-knee/")[-1]
+                  for message in result.get("messages", []):
+                      key = (
+                          relative,
+                          message.get("severity"),
+                          message.get("ruleId"),
+                          message.get("message"),
+                      )
+                      found[key] += 1
+              return found
+
+          before = issues("/tmp/lint-before.json")
+          after = issues("/tmp/lint-after.json")
+          regressions = after - before
+          if regressions:
+              print("New lint issues introduced:")
+              for issue, count in regressions.items():
+                  print(count, issue)
+              raise SystemExit(1)
+          print(f"Lint baseline issues: {sum(before.values())}")
+          print(f"Lint after issues: {sum(after.values())}")
+          print("No new lint issue introduced.")
+          PY
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Browser smoke and responsive screenshots
+        id: browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ui-polish-v2-screenshots
+          npm run start -- --hostname 127.0.0.1 > /tmp/next-start.log 2>&1 &
+          server_pid=$!
+          cleanup() {
+            kill "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          ready=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000 > /tmp/ui-polish-v2.html; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != "1" ]]; then
+            cat /tmp/next-start.log
+            exit 1
+          fi
+
+          grep -q "Knee extension" /tmp/ui-polish-v2.html
+          if grep -Eq "Internal Server Error|Application error|nextjs-portal" /tmp/ui-polish-v2.html; then
+            cat /tmp/ui-polish-v2.html
+            exit 1
+          fi
+
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [[ -z "$chrome" ]]; then
+            echo "Chrome executable not available on runner."
+            exit 1
+          fi
+
+          for width in 360 390 720 1024 1440; do
+            "$chrome" \
+              --headless \
+              --no-sandbox \
+              --disable-gpu \
+              --hide-scrollbars \
+              --virtual-time-budget=2500 \
+              --window-size="${width},1200" \
+              --screenshot="/tmp/ui-polish-v2-screenshots/login-${width}.png" \
+              http://127.0.0.1:3000 \
+              > "/tmp/chrome-${width}.log" 2>&1
+            test -s "/tmp/ui-polish-v2-screenshots/login-${width}.png"
+          done
+
+          "$chrome" \
+            --headless \
+            --no-sandbox \
+            --disable-gpu \
+            --virtual-time-budget=2500 \
+            --dump-dom \
+            http://127.0.0.1:3000 \
+            > /tmp/ui-polish-v2-dom.html 2> /tmp/chrome-dom.log
+
+          grep -Eq "Přihlášení trenéra|Chybí Supabase konfigurace" /tmp/ui-polish-v2-dom.html
+          if grep -Eq "Internal Server Error|Application error|nextjs-portal" /tmp/ui-polish-v2-dom.html; then
+            cat /tmp/ui-polish-v2-dom.html
+            exit 1
+          fi
+
+      - name: Upload responsive screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-polish-v2-responsive-screenshots
+          path: /tmp/ui-polish-v2-screenshots/*.png
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Finalize project-control verification
+        env:
+          LINT_BEFORE_STATUS: ${{ steps.lint-before.outputs.status }}
+          LINT_AFTER_STATUS: ${{ steps.lint-after.outputs.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          def issue_count(path: str) -> int:
+              data = json.loads(Path(path).read_text(encoding="utf-8"))
+              total = 0
+              for result in data:
+                  if "/.test-dist/" in result.get("filePath", "").replace("\\", "/"):
+                      continue
+                  total += len(result.get("messages", []))
+              return total
+
+          before_count = issue_count("/tmp/lint-before.json")
+          after_count = issue_count("/tmp/lint-after.json")
+          before_status = int(os.environ["LINT_BEFORE_STATUS"])
+          after_status = int(os.environ["LINT_AFTER_STATUS"])
+
+          if before_status == 0 and after_status == 0:
+              lint_result = "PASS; projekt neměl lint chyby před změnou ani po změně."
+          else:
+              lint_result = (
+                  f"Výchozí lint skončil stavem {before_status} s {before_count} hlášeními; "
+                  f"lint po změně skončil stavem {after_status} s {after_count} hlášeními. "
+                  "Porovnání podle souboru, pravidla a zprávy potvrdilo, že změna nepřidala nový lint problém."
+              )
+
+          technical = f'''- `npm test`: PASS (existující výpočetní testy včetně normy a V2-01).
+          - `npm run lint`: {lint_result}
+          - `npm run build`: PASS.
+          - `git diff --check`: PASS.
+          - Statický audit přihlášení, sticky struktury, českých textů, focus stavů a ARIA vazeb: PASS.'''
+
+          browser = '''- Produkční Next.js bundle byl spuštěn lokálně pomocí `npm run start` a stránka odpověděla přes HTTP bez Next.js error stránky.
+          - Headless Chrome načetl stránku a vytvořil screenshoty při šířkách 360, 390, 720, 1024 a 1440 px; artefakt workflow: `ui-polish-v2-responsive-screenshots`.
+          - DOM kontrola potvrdila viditelnou přihlašovací obrazovku nebo korektní stav chybějící konfigurace a nezachytila Next.js error overlay.
+          - Přihlášené datové obrazovky nebylo možné v CI vizuálně otevřít bez magic-link session; jejich přesný produkční průchod zůstává v ručním checklistu.'''
+
+          path = Path("project-control/ui-polish-v2-2026-08-02.md")
+          text = path.read_text(encoding="utf-8")
+          text = text.replace("{{TECHNICAL_VERIFICATION}}", technical)
+          text = text.replace("{{BROWSER_VERIFICATION}}", browser)
+          path.write_text(text, encoding="utf-8")
+          PY
+          git diff --check
+
+      - name: Commit verified implementation to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .test-dist
+          rm -f scripts/apply-ui-polish-v2.py
+          rm -f .github/workflows/implement-ui-polish-v2.yml
+
+          git fetch origin main
+          if [[ "$(git rev-parse origin/main)" != "$(git rev-parse HEAD)" ]]; then
+            echo "main changed during verification; refusing to overwrite it."
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Implement UI polish v2"
+          git push origin HEAD:main
