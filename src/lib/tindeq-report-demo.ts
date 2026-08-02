@@ -3,11 +3,7 @@ import type {
   StoredSideMetrics,
   StoredTindeqSession,
 } from "./tindeq-persistence.js";
-import {
-  buildTindeqReportFromStoredSession,
-  type TindeqCanonicalReport,
-  type TindeqReportClinicalContext,
-} from "./tindeq-report.js";
+import type { TindeqReportClinicalContext } from "./tindeq-report.js";
 
 export const TINDEQ_DEMO_ATHLETE_NAME = "Ukázkový klient";
 
@@ -153,10 +149,3 @@ export const TINDEQ_DEMO_SESSION = {
   },
   created_at: "2026-08-01T14:35:00.000Z",
 } satisfies StoredTindeqSession;
-
-export function buildTindeqDemoReport(): TindeqCanonicalReport {
-  return buildTindeqReportFromStoredSession(TINDEQ_DEMO_SESSION, {
-    athleteName: TINDEQ_DEMO_ATHLETE_NAME,
-    clinicalContext: TINDEQ_DEMO_CONTEXT,
-  });
-}
