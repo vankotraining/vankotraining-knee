@@ -60,28 +60,32 @@ export default function TindeqReports() {
   useEffect(() => {
     if (!supabase || !session) return;
     let active = true;
-    setAthletesState("loading");
-    setAthletesError(null);
-    supabase
-      .from("athletes")
-      .select("id,display_name,name_key,note")
-      .order("display_name")
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) {
-          setAthletesState("error");
-          setAthletesError(error.message);
-          return;
-        }
-        const records = (data ?? []) as Athlete[];
-        setAthletes(records);
-        setSelectedAthleteId((current) =>
-          current && records.some((athlete) => athlete.id === current)
-            ? current
-            : records[0]?.id ?? null,
-        );
-        setAthletesState("ready");
-      });
+
+    void (async () => {
+      await Promise.resolve();
+      if (!active) return;
+      setAthletesState("loading");
+      setAthletesError(null);
+      const { data, error } = await supabase
+        .from("athletes")
+        .select("id,display_name,name_key,note")
+        .order("display_name");
+      if (!active) return;
+      if (error) {
+        setAthletesState("error");
+        setAthletesError(error.message);
+        return;
+      }
+      const records = (data ?? []) as Athlete[];
+      setAthletes(records);
+      setSelectedAthleteId((current) =>
+        current && records.some((athlete) => athlete.id === current)
+          ? current
+          : records[0]?.id ?? null,
+      );
+      setAthletesState("ready");
+    })();
+
     return () => {
       active = false;
     };
@@ -90,22 +94,27 @@ export default function TindeqReports() {
   useEffect(() => {
     if (!supabase || !session || !selectedAthleteId) return;
     let active = true;
-    setHistoryState("loading");
-    setHistoryError(null);
-    loadTindeqHistory(supabase, selectedAthleteId)
-      .then((records) => {
+
+    void (async () => {
+      await Promise.resolve();
+      if (!active) return;
+      setHistoryState("loading");
+      setHistoryError(null);
+      try {
+        const records = await loadTindeqHistory(supabase, selectedAthleteId);
         if (!active) return;
         setHistory(records);
         setSelectedSessionId(records[0]?.id ?? null);
         setHistoryState("ready");
-      })
-      .catch((error) => {
+      } catch (error) {
         if (!active) return;
         setHistory([]);
         setSelectedSessionId(null);
         setHistoryState("error");
         setHistoryError(error instanceof Error ? error.message : "Historii se nepodařilo načíst.");
-      });
+      }
+    })();
+
     return () => {
       active = false;
     };
