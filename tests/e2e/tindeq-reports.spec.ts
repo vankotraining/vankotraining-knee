@@ -60,7 +60,7 @@ function storedRecord() {
     left_summary: sideSummary(),
     right_summary: sideSummary(),
     overall_summary: {
-      domains: { accuracy: "Dobra", control: "Stabilni", maintenance: "Bez poklesu" },
+      domains: { accuracy: "Dobrá", control: "Stabilní", maintenance: "Bez poklesu" },
       meanAbsOnsetDifferenceSeconds: 0.1,
       meanSignedOnsetDifferenceSeconds: 0.05,
       restTargetLeftKg: 2.5,
@@ -146,23 +146,23 @@ async function setupSignedInMock(page: Page) {
   });
 }
 
-test("reporty zustavaji skryte bez session", async ({ page }) => {
+test("reporty zůstávají skryté bez session", async ({ page }) => {
   await page.goto("/tindeq/reports");
-  await expect(page.getByRole("heading", { name: "Pro reporty je nutne prihlaseni" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Rozhodovaci report Tindeq" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Pro reporty je nutné přihlášení" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Rozhodovací report Tindeq" })).toHaveCount(0);
 });
 
-test("mockovana session nacte historii a klinicky kontext zmeni doporuceni", async ({ page }) => {
+test("mockovaná session načte historii a klinický kontext změní doporučení", async ({ page }) => {
   await setupSignedInMock(page);
   await page.goto("/tindeq/reports");
 
   await expect(page.getByRole("heading", { name: "Vyber klienta pro report" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Rozhodovaci report Tindeq" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Rozhodovací report Tindeq" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "doplnění údajů před rozhodnutím" })).toBeVisible();
 
-  await page.getByLabel("Uhel kolene (°)").fill("60");
-  await page.getByLabel("Bolest pred (0–10)").fill("1");
-  await page.getByLabel("Bolest behem (0–10)").fill("2");
+  await page.getByLabel("Úhel kolene (°)").fill("60");
+  await page.getByLabel("Bolest před (0–10)").fill("1");
+  await page.getByLabel("Bolest během (0–10)").fill("2");
   await page.getByLabel("Bolest po (0–10)").fill("1");
 
   await expect(page.getByRole("heading", { name: "progrese" })).toBeVisible();
