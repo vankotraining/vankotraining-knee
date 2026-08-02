@@ -1,0 +1,174 @@
+--- a/src/app/tindeq/TindeqAnalyzer.tsx
++++ b/src/app/tindeq/TindeqAnalyzer.tsx
+@@ -1,6 +1,6 @@
+ "use client";
+ 
+-import { useEffect, useState, type KeyboardEvent } from "react";
++import { useState, type KeyboardEvent } from "react";
+ import {
+   importTindeqArchive,
+   type RepetitionResult,
+@@ -677,11 +677,9 @@
+   const [selectedId, setSelectedId] = useState<string | null>(null);
+   const [saveState, setSaveState] = useState<SaveState>("idle");
+   const [saveResults, setSaveResults] = useState<Record<string, SaveTindeqSessionResult>>({});
+-
+-  useEffect(() => {
+-    setSaveState("idle");
+-    setSaveResults({});
+-  }, [selectedAthlete?.id]);
++  const [saveAthleteId, setSaveAthleteId] = useState<string | null>(null);
++  const activeSaveState = saveAthleteId === selectedAthlete?.id ? saveState : "idle";
++  const activeSaveResults = saveAthleteId === selectedAthlete?.id ? saveResults : {};
+ 
+   const selected = sessions.find((session) => session.id === selectedId) ?? sessions[0] ?? null;
+ 
+@@ -693,6 +691,7 @@
+     setErrors([]);
+     setSaveState("idle");
+     setSaveResults({});
++    setSaveAthleteId(null);
+     try {
+       const result = await importTindeqArchive(file);
+       if (result.sessions.length === 0) {
+@@ -709,10 +708,11 @@
+   }
+ 
+   async function handleSave() {
+-    if (!selectedAthlete || saveState === "saving") return;
+-    const sessionsToSave = sessions.filter((session) => !saveResults[session.id]?.ok);
++    if (!selectedAthlete || activeSaveState === "saving") return;
++    const sessionsToSave = sessions.filter((session) => !activeSaveResults[session.id]?.ok);
+     if (sessionsToSave.length === 0) return;
+ 
++    setSaveAthleteId(selectedAthlete.id);
+     setSaveState("saving");
+     try {
+       const results = await onSaveSessions(sessionsToSave);
+@@ -747,7 +747,7 @@
+     }
+   }
+ 
+-  const savedCount = sessions.filter((session) => saveResults[session.id]?.ok).length;
++  const savedCount = sessions.filter((session) => activeSaveResults[session.id]?.ok).length;
+   const remainingCount = sessions.length - savedCount;
+   const mismatchedSessions = selectedAthlete
+     ? sessions.filter((session) => !tagMatchesAthlete(session.metadata.tag, selectedAthlete.displayName))
+@@ -804,11 +804,11 @@
+             </div>
+             <button
+               className={styles.saveButton}
+-              disabled={!selectedAthlete || saveState === "saving" || remainingCount === 0}
++              disabled={!selectedAthlete || activeSaveState === "saving" || remainingCount === 0}
+               onClick={handleSave}
+               type="button"
+             >
+-              {saveState === "saving"
++              {activeSaveState === "saving"
+                 ? "Ukládám…"
+                 : remainingCount === 0
+                   ? "Měření uloženo"
+@@ -829,21 +829,21 @@
+           ) : null}
+ 
+           <div aria-live="polite" className={styles.saveStatus}>
+-            {saveState === "success" && remainingCount === 0 ? (
++            {activeSaveState === "success" && remainingCount === 0 ? (
+               <p className={styles.saveSuccess}>Všechna měření byla bezpečně uložena.</p>
+             ) : null}
+-            {saveState === "partial" ? (
++            {activeSaveState === "partial" ? (
+               <p className={styles.savePartial}>
+                 Část měření byla uložena. Znovu se odešlou pouze neúspěšné položky.
+               </p>
+             ) : null}
+-            {saveState === "error" ? (
++            {activeSaveState === "error" ? (
+               <p className={styles.saveError}>Uložení selhalo. Analyzovaný výsledek zůstává na obrazovce.</p>
+             ) : null}
+-            {Object.keys(saveResults).length > 0 ? (
++            {Object.keys(activeSaveResults).length > 0 ? (
+               <ul className={styles.saveResultList}>
+                 {sessions.map((session) => {
+-                  const result = saveResults[session.id];
++                  const result = activeSaveResults[session.id];
+                   if (!result) return null;
+                   return (
+                     <li className={result.ok ? styles.saveSuccess : styles.saveError} key={session.id}>
+--- a/src/app/tindeq/TindeqWorkspace.tsx
++++ b/src/app/tindeq/TindeqWorkspace.tsx
+@@ -174,20 +174,20 @@
+   const [historyVersion, setHistoryVersion] = useState(0);
+ 
+   useEffect(() => {
+-    if (!supabase || !session) {
+-      setAthletes([]);
+-      setSelectedAthleteId(null);
+-      return;
+-    }
++    if (!supabase || !session) return;
+ 
+     let active = true;
+-    setAthletesState("loading");
+-    setAthletesError(null);
+-    supabase
+-      .from("athletes")
+-      .select("id,display_name,name_key,note")
+-      .order("display_name")
+-      .then(({ data, error }) => {
++    Promise.resolve().then(() => {
++      if (!active) return;
++      setAthletesState("loading");
++      setAthletesError(null);
++      return supabase
++        .from("athletes")
++        .select("id,display_name,name_key,note")
++        .order("display_name");
++    }).then((result) => {
++        if (!result) return;
++        const { data, error } = result;
+         if (!active) return;
+         if (error) {
+           setAthletesState("error");
+@@ -225,18 +225,18 @@
+   );
+ 
+   useEffect(() => {
+-    if (!supabase || !session || !selectedAthleteId) {
+-      setHistory([]);
+-      setHistoryState("idle");
+-      return;
+-    }
++    if (!supabase || !session || !selectedAthleteId) return;
+ 
+     let active = true;
+-    setHistoryState("loading");
+-    setHistoryError(null);
+-    loadTindeqHistory(supabase, selectedAthleteId)
++    Promise.resolve()
++      .then(() => {
++        if (!active) return null;
++        setHistoryState("loading");
++        setHistoryError(null);
++        return loadTindeqHistory(supabase, selectedAthleteId);
++      })
+       .then((records) => {
+-        if (!active) return;
++        if (!active || !records) return;
+         setHistory(records);
+         setHistoryState("ready");
+       })
+--- a/src/lib/use-supabase-session.ts
++++ b/src/lib/use-supabase-session.ts
+@@ -22,10 +22,7 @@
+   const [error, setError] = useState<string | null>(null);
+ 
+   useEffect(() => {
+-    if (!supabase) {
+-      setState("unconfigured");
+-      return;
+-    }
++    if (!supabase) return;
+ 
+     let active = true;
+     supabase.auth.getSession().then(({ data, error: sessionError }) => {
