@@ -1,2 +1,3 @@
 Temporary trigger for the tracked UI polish v2 verification pull request.
 Retry after removing the invalid setup-node cache requirement.
+Retry with direct failure diagnostics and final-workflow preservation.
