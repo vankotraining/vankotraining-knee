@@ -15,7 +15,6 @@ permissions:
 
 jobs:
   apply_persistence:
-    if: github.event_name == 'push' && github.event.head_commit.message == 'Apply Tindeq persistence payload'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -27,7 +26,18 @@ jobs:
           fetch-depth: 0
           ref: agent/tindeq-results-site
 
+      - name: Check one-time trigger
+        id: guard
+        shell: bash
+        run: |
+          if [[ -f .github/tindeq-payload/trigger ]]; then
+            echo "apply=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "apply=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Apply reviewed implementation
+        if: steps.guard.outputs.apply == 'true'
         shell: bash
         run: |
           cat .github/tindeq-payload/part-* > /tmp/tindeq-changes.b64
@@ -94,6 +104,7 @@ jobs:
           rm -f .github/workflows/export-agent-source.yml
 
       - name: Commit implementation
+        if: steps.guard.outputs.apply == 'true'
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
