@@ -1,6 +1,14 @@
 name: Verify Tindeq reports
 
 on:
+  push:
+    branches: [agent/tindeq-results-site]
+    paths:
+      - "src/app/tindeq/**"
+      - "src/lib/tindeq-*.ts"
+      - "tests/e2e/tindeq-reports.spec.ts"
+      - "tsconfig.test.json"
+      - ".github/workflows/tindeq-reports.yml"
   pull_request:
     branches: [main]
     paths:
