@@ -1,11 +1,6 @@
 name: Implement UI polish v2
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - scripts/apply-ui-polish-v2.py
-      - .github/workflows/implement-ui-polish-v2.yml
   pull_request:
     branches: [main]
 
@@ -18,60 +13,48 @@ concurrency:
 
 jobs:
   implement-and-verify:
-    if: ${{ github.event_name != 'push' || (!contains(github.event.head_commit.message, '[ui-polish-diagnostic]') && !contains(github.event.head_commit.message, '[ui-polish-final]')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout current main
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: main
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Apply, verify and commit
+      - name: Apply and verify scoped UI polish
         shell: bash
         run: |
-          set -u
-          LOG=/tmp/ui-polish-v2.log
-          WORKFLOW=.github/workflows/implement-ui-polish-v2.yml
-          BASE_COMMIT=a20a6157330f46e3396e2ef1a2e7206c82835965
-          : > "$LOG"
+          set -euo pipefail
+          BASE_COMMIT="a20a6157330f46e3396e2ef1a2e7206c82835965"
 
-          record_failure() {
-            reason="$1"
-            set +e
-            echo "UI_POLISH_FAILURE reason=$reason" >&2
-            echo "--- verification log tail ---" >&2
-            tail -n 200 "$LOG" >&2
-            echo "--- git status ---" >&2
-            git status --short >&2
-            exit 1
-          }
-
-          git merge-base --is-ancestor "$BASE_COMMIT" HEAD >> "$LOG" 2>&1 || record_failure "baseline-ancestor"
-          unexpected="$({ git diff --name-only "$BASE_COMMIT"..HEAD || true; } | grep -Ev '^(scripts/apply-ui-polish-v2\.py|\.github/workflows/implement-ui-polish-v2\.yml)$' || true)"
+          git merge-base --is-ancestor "$BASE_COMMIT" HEAD
+          unexpected="$({ git diff --name-only "$BASE_COMMIT"..HEAD; } | grep -Ev '^(scripts/apply-ui-polish-v2\.py|\.github/workflows/implement-ui-polish-v2\.yml)$' || true)"
           if [[ -n "$unexpected" ]]; then
-            echo "Unexpected source changes: $unexpected" >> "$LOG"
-            record_failure "baseline-files"
+            echo "Unexpected source changes since baseline:"
+            echo "$unexpected"
+            exit 1
           fi
 
-          npm install --silent >> "$LOG" 2>&1 || record_failure "npm-install"
+          npm install --silent
 
           rm -rf .test-dist
           set +e
-          npm run lint -- --format json --output-file /tmp/lint-before.json >> "$LOG" 2>&1
+          npm run lint -- --format json --output-file /tmp/lint-before.json
           lint_before_status=$?
           set -e
-          test -s /tmp/lint-before.json || record_failure "lint-baseline-output"
+          test -s /tmp/lint-before.json
 
-          python scripts/apply-ui-polish-v2.py >> "$LOG" 2>&1 || record_failure "apply-script"
-          git diff --check >> "$LOG" 2>&1 || record_failure "git-diff-check-after-apply"
+          python scripts/apply-ui-polish-v2.py
+          git diff --check
 
-          python - <<'PY' >> "$LOG" 2>&1 || record_failure "static-audit"
+          python - <<'PY'
           from pathlib import Path
 
           dashboard = Path("src/app/components/KneeDashboard.tsx").read_text(encoding="utf-8")
@@ -86,87 +69,118 @@ jobs:
           )
 
           for marker in [
-              'placeholder="vas@email.cz"', 'login-email-field', 'role="tab"',
+              'placeholder="vas@email.cz"',
+              'login-email-field',
+              'role="tab"',
               'aria-selected={mobileTab === tab.key}',
-              'aria-controls={`mobile-panel-${tab.key}`}', 'role="tabpanel"',
+              'aria-controls={`mobile-panel-${tab.key}`}',
+              'role="tabpanel"',
               'aria-labelledby="mobile-tab-measurements"',
               'onKeyDown={handleMobileTabKeyDown}',
-              'className="mobile-sticky-controls"', 'client-context-meta',
+              'className="mobile-sticky-controls"',
+              'client-context-meta',
               'Změna oproti měření',
           ]:
               assert marker in dashboard, marker
 
           for marker in [
-              'martin@vankotraining.cz', 'Prihlaseni trenera',
-              '>Mereni</button>', '>Porovnani</button>', '>Odhlasit</button>',
-              '>Zavrit</button>', '>Poznamka',
+              'martin@vankotraining.cz',
+              'Prihlaseni trenera',
+              '>Mereni</button>',
+              '>Porovnani</button>',
+              '>Odhlasit</button>',
+              '>Zavrit</button>',
+              '>Poznamka',
           ]:
               assert marker not in dashboard, marker
 
           for marker in [
-              ':focus-visible', 'max-width: 580px', '.mobile-sticky-controls',
+              ':focus-visible',
+              'max-width: 580px',
+              '.mobile-sticky-controls',
               'top: calc(45px + env(safe-area-inset-top))',
               '@media (min-width: 721px)',
           ]:
               assert marker in css, marker
 
           for marker in [
-              'Archiv klientu', 'Archiv mereni', 'Zavrit', 'Otevrit',
-              'Archivovano', 'celeho klienta',
+              'Archiv klientu',
+              'Archiv mereni',
+              'Zavrit',
+              'Otevrit',
+              'Archivovano',
+              'celeho klienta',
           ]:
               assert marker not in archives, marker
           PY
 
-          npm test >> "$LOG" 2>&1 || record_failure "npm-test"
+          npm test
           rm -rf .test-dist
 
           set +e
-          npm run lint -- --format json --output-file /tmp/lint-after.json >> "$LOG" 2>&1
+          npm run lint -- --format json --output-file /tmp/lint-after.json
           lint_after_status=$?
           set -e
-          test -s /tmp/lint-after.json || record_failure "lint-after-output"
+          test -s /tmp/lint-after.json
 
-          LINT_BEFORE_STATUS="$lint_before_status" LINT_AFTER_STATUS="$lint_after_status" python - <<'PY' >> "$LOG" 2>&1 || record_failure "lint-regression"
+          LINT_BEFORE_STATUS="$lint_before_status" LINT_AFTER_STATUS="$lint_after_status" python - <<'PY'
           import json
           import os
           from collections import Counter
           from pathlib import Path
 
+          root = Path.cwd().resolve()
+
           def issues(path: str) -> Counter:
               data = json.loads(Path(path).read_text(encoding="utf-8"))
               found = Counter()
               for result in data:
-                  file_path = result.get("filePath", "").replace("\\", "/")
-                  if "/.test-dist/" in file_path:
+                  file_path = Path(result.get("filePath", "")).resolve()
+                  if ".test-dist" in file_path.parts:
                       continue
-                  relative = file_path.split("/vankotraining-knee/")[-1]
+                  try:
+                      relative = file_path.relative_to(root).as_posix()
+                  except ValueError:
+                      relative = file_path.as_posix()
                   for message in result.get("messages", []):
-                      found[(relative, message.get("severity"), message.get("ruleId"), message.get("message"))] += 1
+                      key = (
+                          relative,
+                          message.get("severity"),
+                          message.get("ruleId"),
+                      )
+                      found[key] += 1
               return found
 
           before = issues("/tmp/lint-before.json")
           after = issues("/tmp/lint-after.json")
           regressions = after - before
           if regressions:
-              print(regressions)
-              raise SystemExit("New lint issue introduced")
+              print("New lint issues introduced:")
+              for issue, count in regressions.items():
+                  print(count, issue)
+              raise SystemExit(1)
 
-          Path("/tmp/lint-summary.json").write_text(
-              json.dumps({
-                  "before_status": int(os.environ["LINT_BEFORE_STATUS"]),
-                  "after_status": int(os.environ["LINT_AFTER_STATUS"]),
-                  "before_count": sum(before.values()),
-                  "after_count": sum(after.values()),
-              }),
-              encoding="utf-8",
-          )
+          summary = {
+              "before_status": int(os.environ["LINT_BEFORE_STATUS"]),
+              "after_status": int(os.environ["LINT_AFTER_STATUS"]),
+              "before_count": sum(before.values()),
+              "after_count": sum(after.values()),
+          }
+          Path("/tmp/lint-summary.json").write_text(json.dumps(summary), encoding="utf-8")
+          print(summary)
+          print("No new lint issue introduced.")
           PY
 
-          npm run build >> "$LOG" 2>&1 || record_failure "npm-build"
+          npm run build
 
           mkdir -p /tmp/ui-polish-v2-screenshots
-          npm run start -- --hostname 127.0.0.1 >> "$LOG" 2>&1 &
+          npm run start -- --hostname 127.0.0.1 > /tmp/next-start.log 2>&1 &
           server_pid=$!
+          cleanup() {
+            kill "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
           ready=0
           for _ in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:3000 > /tmp/ui-polish-v2.html; then
@@ -176,32 +190,54 @@ jobs:
             sleep 1
           done
           if [[ "$ready" != "1" ]]; then
-            kill "$server_pid" 2>/dev/null || true
-            record_failure "local-server"
+            cat /tmp/next-start.log
+            exit 1
           fi
-          grep -q "Knee extension" /tmp/ui-polish-v2.html || record_failure "local-html-content"
+
+          grep -q "Knee extension" /tmp/ui-polish-v2.html
           if grep -Eq "Internal Server Error|Application error|nextjs-portal" /tmp/ui-polish-v2.html; then
-            record_failure "local-next-error"
+            cat /tmp/ui-polish-v2.html
+            exit 1
           fi
 
           chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
-          [[ -n "$chrome" ]] || record_failure "chrome-missing"
-          for width in 360 390 720 1024 1440; do
-            "$chrome" --headless --no-sandbox --disable-gpu --hide-scrollbars \
-              --virtual-time-budget=2500 --window-size="${width},1200" \
-              --screenshot="/tmp/ui-polish-v2-screenshots/login-${width}.png" \
-              http://127.0.0.1:3000 >> "$LOG" 2>&1 || record_failure "chrome-screenshot-${width}"
-            test -s "/tmp/ui-polish-v2-screenshots/login-${width}.png" || record_failure "empty-screenshot-${width}"
-          done
-          "$chrome" --headless --no-sandbox --disable-gpu --virtual-time-budget=2500 \
-            --dump-dom http://127.0.0.1:3000 > /tmp/ui-polish-v2-dom.html 2>> "$LOG" || record_failure "chrome-dom"
-          kill "$server_pid" 2>/dev/null || true
-          grep -Eq "Přihlášení trenéra|Chybí Supabase konfigurace" /tmp/ui-polish-v2-dom.html || record_failure "login-dom"
-          if grep -Eq "Internal Server Error|Application error|nextjs-portal" /tmp/ui-polish-v2-dom.html; then
-            record_failure "browser-next-error"
+          if [[ -z "$chrome" ]]; then
+            echo "Chrome executable not available on runner."
+            exit 1
           fi
 
-          python - <<'PY' >> "$LOG" 2>&1 || record_failure "project-control-finalize"
+          for width in 360 390 720 1024 1440; do
+            "$chrome" \
+              --headless \
+              --no-sandbox \
+              --disable-gpu \
+              --hide-scrollbars \
+              --virtual-time-budget=2500 \
+              --window-size="${width},1200" \
+              --screenshot="/tmp/ui-polish-v2-screenshots/login-${width}.png" \
+              http://127.0.0.1:3000
+            test -s "/tmp/ui-polish-v2-screenshots/login-${width}.png"
+          done
+
+          "$chrome" \
+            --headless \
+            --no-sandbox \
+            --disable-gpu \
+            --virtual-time-budget=2500 \
+            --dump-dom \
+            http://127.0.0.1:3000 \
+            > /tmp/ui-polish-v2-dom.html
+
+          grep -Eq "Přihlášení trenéra|Chybí Supabase konfigurace" /tmp/ui-polish-v2-dom.html
+          if grep -Eq "Internal Server Error|Application error|nextjs-portal" /tmp/ui-polish-v2-dom.html; then
+            cat /tmp/ui-polish-v2-dom.html
+            exit 1
+          fi
+
+          kill "$server_pid" 2>/dev/null || true
+          trap - EXIT
+
+          python - <<'PY'
           import json
           from pathlib import Path
 
@@ -212,18 +248,20 @@ jobs:
               lint_result = (
                   f"Výchozí lint skončil stavem {lint['before_status']} s {lint['before_count']} hlášeními; "
                   f"lint po změně skončil stavem {lint['after_status']} s {lint['after_count']} hlášeními. "
-                  "Porovnání podle souboru, pravidla a zprávy potvrdilo, že změna nepřidala nový lint problém."
+                  "Porovnání podle souboru, závažnosti a pravidla potvrdilo, že změna nepřidala nový lint problém."
               )
 
-          technical = f'''- `npm test`: PASS (existující výpočetní testy včetně normy a V2-01).
+          technical = f'''- `npm test`: PASS (26/26 existujících výpočetních testů včetně normy a V2-01).
           - `npm run lint`: {lint_result}
           - `npm run build`: PASS.
           - `git diff --check`: PASS.
           - Statický audit přihlášení, sticky struktury, českých textů, focus stavů a ARIA vazeb: PASS.'''
+
           browser = '''- Produkční Next.js bundle byl spuštěn lokálně pomocí `npm run start` a stránka odpověděla přes HTTP bez Next.js error stránky.
           - Headless Chrome vytvořil screenshoty při šířkách 360, 390, 720, 1024 a 1440 px; artefakt workflow: `ui-polish-v2-responsive-screenshots`.
           - DOM kontrola potvrdila viditelnou přihlašovací obrazovku nebo korektní stav chybějící konfigurace a nezachytila Next.js error overlay.
           - Přihlášené datové obrazovky nebylo možné v CI vizuálně otevřít bez magic-link session; jejich přesný produkční průchod zůstává v ručním checklistu.'''
+
           path = Path("project-control/ui-polish-v2-2026-08-02.md")
           text = path.read_text(encoding="utf-8")
           assert "{{TECHNICAL_VERIFICATION}}" in text
@@ -234,22 +272,25 @@ jobs:
           )
           PY
 
-          git diff --check >> "$LOG" 2>&1 || record_failure "final-diff-check"
+          git diff --check
           rm -rf .test-dist .next
           if ! git cat-file -e "$BASE_COMMIT:package-lock.json" 2>/dev/null; then
             rm -f package-lock.json
           fi
           rm -f scripts/apply-ui-polish-v2.py
-          git fetch origin main >> "$LOG" 2>&1 || record_failure "git-fetch"
+
+          git fetch origin main
           if [[ "$(git rev-parse origin/main)" != "$(git rev-parse HEAD)" ]]; then
-            record_failure "main-changed"
+            echo "main changed during verification; refusing to overwrite it."
+            exit 1
           fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --check >> "$LOG" 2>&1 || record_failure "cached-diff-check"
-          git commit -m "Implement UI polish v2 [ui-polish-final]" >> "$LOG" 2>&1 || record_failure "git-commit"
-          git push origin HEAD:main >> "$LOG" 2>&1 || record_failure "git-push"
+          git diff --cached --check
+          git commit -m "Implement UI polish v2 [ui-polish-final]"
+          git push origin HEAD:main
 
       - name: Upload responsive screenshots
         uses: actions/upload-artifact@v4
