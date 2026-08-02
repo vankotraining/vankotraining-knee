@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import TindeqEnvironmentGuard from "./TindeqEnvironmentGuard";
 import TindeqWorkspace from "./TindeqWorkspace";
 import styles from "./tindeq.module.css";
 
@@ -24,7 +25,9 @@ export default function TindeqPage() {
           Zpět na klienty
         </Link>
       </header>
-      <TindeqWorkspace />
+      <TindeqEnvironmentGuard>
+        <TindeqWorkspace />
+      </TindeqEnvironmentGuard>
     </main>
   );
 }
