@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { buildTindeqDemoReport } from "@/lib/tindeq-report-demo";
+import {
+  TINDEQ_DEMO_ATHLETE_NAME,
+  TINDEQ_DEMO_CONTEXT,
+  TINDEQ_DEMO_SESSION,
+} from "@/lib/tindeq-report-demo";
+import { buildTindeqReportFromStoredSession } from "@/lib/tindeq-report";
 import TindeqReportView from "../../TindeqReportView";
 import styles from "../../tindeq.module.css";
 
@@ -10,7 +15,10 @@ export const metadata: Metadata = {
 };
 
 export default function TindeqDemoReportPage() {
-  const report = buildTindeqDemoReport();
+  const report = buildTindeqReportFromStoredSession(TINDEQ_DEMO_SESSION, {
+    athleteName: TINDEQ_DEMO_ATHLETE_NAME,
+    clinicalContext: TINDEQ_DEMO_CONTEXT,
+  });
 
   return (
     <main className={styles.page}>
