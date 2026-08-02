@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import {
   importTindeqArchive,
   type RepetitionResult,
@@ -18,9 +18,21 @@ import {
   overallTargetAchievement,
   type ResultViewMode,
 } from "@/lib/tindeq-client-view";
+import type { SaveTindeqSessionResult } from "@/lib/tindeq-persistence";
 import styles from "./tindeq.module.css";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
+type SaveState = "idle" | "saving" | "success" | "partial" | "error";
+
+type SelectedAthlete = {
+  id: string;
+  displayName: string;
+};
+
+type TindeqAnalyzerProps = {
+  selectedAthlete: SelectedAthlete | null;
+  onSaveSessions: (sessions: TindeqSession[]) => Promise<SaveTindeqSessionResult[]>;
+};
 
 function formatNumber(value: number | null | undefined, decimals = 1, suffix = "") {
   if (value === null || value === undefined || !Number.isFinite(value)) return "–";
@@ -83,6 +95,23 @@ function toneForStatus(value: string) {
     return styles.good;
   }
   return styles.neutral;
+}
+
+
+function normalizeIdentity(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("cs-CZ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function tagMatchesAthlete(tag: string, athleteName: string) {
+  const normalizedTag = normalizeIdentity(tag);
+  const normalizedAthlete = normalizeIdentity(athleteName);
+  if (!normalizedTag || !normalizedAthlete) return true;
+  return normalizedTag.includes(normalizedAthlete) || normalizedAthlete.includes(normalizedTag);
 }
 
 function medianCurve(curves: Array<Array<number | null>>): Array<number | null> {
@@ -640,12 +669,19 @@ function SessionResult({ session }: { session: TindeqSession }) {
   );
 }
 
-export default function TindeqAnalyzer() {
+export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: TindeqAnalyzerProps) {
   const [state, setState] = useState<LoadState>("idle");
   const [sessions, setSessions] = useState<TindeqSession[]>([]);
   const [errors, setErrors] = useState<Array<{ file: string; error: string }>>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [saveResults, setSaveResults] = useState<Record<string, SaveTindeqSessionResult>>({});
+
+  useEffect(() => {
+    setSaveState("idle");
+    setSaveResults({});
+  }, [selectedAthlete?.id]);
 
   const selected = sessions.find((session) => session.id === selectedId) ?? sessions[0] ?? null;
 
@@ -655,6 +691,8 @@ export default function TindeqAnalyzer() {
     setMessage(null);
     setSessions([]);
     setErrors([]);
+    setSaveState("idle");
+    setSaveResults({});
     try {
       const result = await importTindeqArchive(file);
       if (result.sessions.length === 0) {
@@ -669,6 +707,51 @@ export default function TindeqAnalyzer() {
       setState("error");
     }
   }
+
+  async function handleSave() {
+    if (!selectedAthlete || saveState === "saving") return;
+    const sessionsToSave = sessions.filter((session) => !saveResults[session.id]?.ok);
+    if (sessionsToSave.length === 0) return;
+
+    setSaveState("saving");
+    try {
+      const results = await onSaveSessions(sessionsToSave);
+      setSaveResults((current) => {
+        const next = { ...current };
+        results.forEach((result) => {
+          if (result.sourceSessionId) next[result.sourceSessionId] = result;
+        });
+        return next;
+      });
+      const succeeded = results.filter((result) => result.ok).length;
+      if (succeeded === results.length) setSaveState("success");
+      else if (succeeded > 0) setSaveState("partial");
+      else setSaveState("error");
+    } catch (error) {
+      setSaveState("error");
+      const errorMessage = error instanceof Error ? error.message : "Uložení se nepodařilo.";
+      setSaveResults((current) => ({
+        ...current,
+        ...Object.fromEntries(
+          sessionsToSave.map((session) => [
+            session.id,
+            {
+              ok: false as const,
+              sourceSessionId: session.id,
+              sourceTag: session.metadata.tag,
+              error: errorMessage,
+            },
+          ]),
+        ),
+      }));
+    }
+  }
+
+  const savedCount = sessions.filter((session) => saveResults[session.id]?.ok).length;
+  const remainingCount = sessions.length - savedCount;
+  const mismatchedSessions = selectedAthlete
+    ? sessions.filter((session) => !tagMatchesAthlete(session.metadata.tag, selectedAthlete.displayName))
+    : [];
 
   return (
     <div className={styles.analyzer}>
@@ -686,7 +769,7 @@ export default function TindeqAnalyzer() {
           <small>Jednotlivý export nebo ZIP s více exporty</small>
         </label>
         <p className={styles.privacyNote}>
-          Data zůstávají v zařízení a po obnovení stránky se smažou.
+          ZIP zůstává v zařízení. Strukturovaný výsledek se uloží až po výslovném potvrzení.
         </p>
       </section>
     ) : (
@@ -705,6 +788,75 @@ export default function TindeqAnalyzer() {
     )}
 
     {state === "error" && <div className={styles.errorBox}>{message}</div>}
+
+
+      {sessions.length > 0 && (
+        <section className={styles.savePanel} aria-labelledby="save-tindeq-title">
+          <div className={styles.savePanelHeader}>
+            <div>
+              <p className={styles.eyebrow}>Uložení výsledku</p>
+              <h2 id="save-tindeq-title">Uložit měření ke klientovi</h2>
+              <p>
+                {selectedAthlete
+                  ? `Vybraný klient: ${selectedAthlete.displayName}`
+                  : "Nejprve vyber klienta z databáze."}
+              </p>
+            </div>
+            <button
+              className={styles.saveButton}
+              disabled={!selectedAthlete || saveState === "saving" || remainingCount === 0}
+              onClick={handleSave}
+              type="button"
+            >
+              {saveState === "saving"
+                ? "Ukládám…"
+                : remainingCount === 0
+                  ? "Měření uloženo"
+                  : sessions.length > 1
+                    ? `Uložit ${remainingCount} měření ke klientovi`
+                    : "Uložit měření ke klientovi"}
+            </button>
+          </div>
+
+          {mismatchedSessions.length > 0 ? (
+            <div className={styles.matchWarning} role="status">
+              <strong>Zkontroluj přiřazení klienta.</strong>
+              <p>
+                Tag v exportu ({mismatchedSessions.map((session) => session.metadata.tag).join(", ")})
+                neodpovídá přesně vybranému klientovi. Uložení není blokováno.
+              </p>
+            </div>
+          ) : null}
+
+          <div aria-live="polite" className={styles.saveStatus}>
+            {saveState === "success" && remainingCount === 0 ? (
+              <p className={styles.saveSuccess}>Všechna měření byla bezpečně uložena.</p>
+            ) : null}
+            {saveState === "partial" ? (
+              <p className={styles.savePartial}>
+                Část měření byla uložena. Znovu se odešlou pouze neúspěšné položky.
+              </p>
+            ) : null}
+            {saveState === "error" ? (
+              <p className={styles.saveError}>Uložení selhalo. Analyzovaný výsledek zůstává na obrazovce.</p>
+            ) : null}
+            {Object.keys(saveResults).length > 0 ? (
+              <ul className={styles.saveResultList}>
+                {sessions.map((session) => {
+                  const result = saveResults[session.id];
+                  if (!result) return null;
+                  return (
+                    <li className={result.ok ? styles.saveSuccess : styles.saveError} key={session.id}>
+                      <strong>{session.metadata.tag}:</strong>{" "}
+                      {result.ok ? "uloženo" : result.error}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+          </div>
+        </section>
+      )}
 
       {sessions.length > 1 && (
         <nav className={styles.sessionTabs} aria-label="Importovaná měření">

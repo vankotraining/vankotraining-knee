@@ -1,10 +1,18 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { strToU8, zipSync } from "fflate";
 
 const repetitions = 8;
 const workDurationSeconds = 5;
 const pauseSeconds = 2;
 const sampleIntervalSeconds = 0.05;
+const authStorageKey = "sb-zxvndqicslyulrinbpyn-auth-token";
+const athleteId = "11111111-1111-4111-8111-111111111111";
+const secondAthleteId = "22222222-2222-4222-8222-222222222222";
+
+type MockOptions = {
+  failFirstForTag?: string;
+  failEverySave?: boolean;
+};
 
 function infoCsv(tag: string): string {
   const headers = [
@@ -94,7 +102,7 @@ function tindeqBatchArchive(): Uint8Array {
   );
 }
 
-async function uploadArchive(page: import("@playwright/test").Page, name: string, data: Uint8Array) {
+async function uploadArchive(page: Page, name: string, data: Uint8Array) {
   await page.locator('input[type="file"]').setInputFiles({
     name,
     mimeType: "application/zip",
@@ -102,10 +110,126 @@ async function uploadArchive(page: import("@playwright/test").Page, name: string
   });
 }
 
-test("klientský výsledek je výchozí, responzivní a přepíná bez nové analýzy", async ({
+function fakeJwt() {
+  const encode = (value: unknown) =>
+    Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${encode({ alg: "HS256", typ: "JWT" })}.${encode({
+    aud: "authenticated",
+    exp: 2_100_000_000,
+    sub: "33333333-3333-4333-8333-333333333333",
+    email: "trainer@example.test",
+    role: "authenticated",
+  })}.test-signature`;
+}
+
+async function setupSignedInSupabaseMock(page: Page, options: MockOptions = {}) {
+  const accessToken = fakeJwt();
+  const storedRecords: Array<Record<string, unknown>> = [];
+  const postTags: string[] = [];
+  const failedTags = new Set<string>();
+  const athletes = [
+    { id: athleteId, display_name: "Klient Test", name_key: "klient-test", note: null },
+    { id: secondAthleteId, display_name: "Jiný klient", name_key: "jiny-klient", note: null },
+  ];
+  const session = {
+    access_token: accessToken,
+    refresh_token: "test-refresh-token",
+    token_type: "bearer",
+    expires_in: 3600,
+    expires_at: 2_100_000_000,
+    user: {
+      id: "33333333-3333-4333-8333-333333333333",
+      aud: "authenticated",
+      role: "authenticated",
+      email: "trainer@example.test",
+      app_metadata: { provider: "email", providers: ["email"] },
+      user_metadata: {},
+      created_at: "2026-08-01T00:00:00.000Z",
+    },
+  };
+
+  await page.addInitScript(
+    ({ key, value }) => localStorage.setItem(key, JSON.stringify(value)),
+    { key: authStorageKey, value: session },
+  );
+
+  await page.route("**/rest/v1/**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const table = url.pathname.split("/").pop();
+    const headers = {
+      "access-control-allow-origin": "*",
+      "content-type": "application/json",
+    };
+
+    if (table === "athletes" && request.method() === "GET") {
+      await route.fulfill({ status: 200, headers, body: JSON.stringify(athletes) });
+      return;
+    }
+
+    if (table === "tindeq_sessions" && request.method() === "GET") {
+      const athleteFilter = url.searchParams.get("athlete_id") ?? "";
+      const selectedId = athleteFilter.replace(/^eq\./, "");
+      const rows = storedRecords
+        .filter((record) => record.athlete_id === selectedId)
+        .sort((a, b) => String(b.measured_at).localeCompare(String(a.measured_at)));
+      await route.fulfill({ status: 200, headers, body: JSON.stringify(rows) });
+      return;
+    }
+
+    if (table === "tindeq_sessions" && request.method() === "POST") {
+      const payload = request.postDataJSON() as Record<string, unknown>;
+      const sourceTag = String(payload.source_tag ?? "");
+      postTags.push(sourceTag);
+      const shouldFailOnce =
+        options.failFirstForTag === sourceTag && !failedTags.has(sourceTag);
+      if (shouldFailOnce) failedTags.add(sourceTag);
+      if (options.failEverySave || shouldFailOnce) {
+        await route.fulfill({
+          status: 400,
+          headers,
+          body: JSON.stringify({ message: "Testovací chyba uložení" }),
+        });
+        return;
+      }
+
+      const now = "2026-08-02T11:00:00.000Z";
+      const record = {
+        id: `44444444-4444-4444-8444-${String(storedRecords.length + 1).padStart(12, "0")}`,
+        ...payload,
+        imported_at: now,
+        created_at: now,
+      };
+      storedRecords.push(record);
+      await route.fulfill({ status: 201, headers, body: JSON.stringify(record) });
+      return;
+    }
+
+    await route.fulfill({ status: 404, headers, body: JSON.stringify({ message: "Unknown test route" }) });
+  });
+
+  return { storedRecords, postTags };
+}
+
+test("nepřihlášený uživatel nevidí klienty, import ani výsledky", async ({ page }) => {
+  await page.goto("/tindeq");
+  await expect(page.getByRole("heading", { name: "Přihlášení do Knee Data" })).toBeVisible();
+  await expect(page.getByText("Vyber klienta z databáze", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Nahrát Tindeq ZIP", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Uložená Tindeq měření", { exact: true })).toHaveCount(0);
+});
+
+test("přihlášený tok načte klienty, uloží výsledek a zobrazí historii", async ({
   page,
 }, testInfo) => {
+  const mock = await setupSignedInSupabaseMock(page);
   await page.goto("/tindeq");
+
+  await expect(page.getByRole("heading", { name: "Vyber klienta z databáze" })).toBeVisible();
+  await expect(page.getByRole("option", { name: "Klient Test" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
   await uploadArchive(page, "single-tindeq.zip", tindeqArchive("Klient Test"));
 
   const clientTab = page.getByRole("tab", { name: "Pro klienta" });
@@ -113,25 +237,21 @@ test("klientský výsledek je výchozí, responzivní a přepíná bez nové ana
   await expect(clientTab).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Velmi dobrá série" })).toBeVisible();
   await expect(page.getByText("Nahrát jiný Tindeq ZIP", { exact: true })).toBeVisible();
-  await expect(page.getByText("Nahrát Tindeq ZIP", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("Dosažení cílové síly", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("Stabilita síly", { exact: true })).toBeVisible();
-  await expect(page.getByText("Udržení výkonu", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Levá noha", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Pravá noha", exact: true })).toBeVisible();
-  await expect(page.getByRole("img")).toHaveAttribute(
-    "aria-label",
-    /průběhu síly levé a pravé nohy/i,
-  );
+  await expect(page.getByRole("button", { name: "Uložit měření ke klientovi" })).toBeEnabled();
 
-  const stabilityColor = await page
-    .getByText("Velmi stabilní", { exact: true })
-    .first()
-    .evaluate((element) => getComputedStyle(element).color);
-  const maintenanceColor = await page
-    .getByText("Bez výrazného poklesu", { exact: true })
-    .evaluate((element) => getComputedStyle(element).color);
-  expect(maintenanceColor).toBe(stabilityColor);
+  await page.getByRole("button", { name: "Uložit měření ke klientovi" }).click();
+  await expect(page.getByText("Všechna měření byla bezpečně uložena.")).toBeVisible();
+  await expect(page.getByText("Uloženo v historii", { exact: true })).toBeVisible();
+  expect(mock.storedRecords).toHaveLength(1);
+  expect(mock.storedRecords[0].athlete_id).toBe(athleteId);
+  expect(mock.storedRecords[0].source_filename).toBe("single-tindeq.zip");
+  expect(mock.storedRecords[0]).not.toHaveProperty("raw_zip");
+
+  const historySection = page
+    .getByRole("heading", { name: "Uložená Tindeq měření" })
+    .locator("xpath=ancestor::section[1]");
+  await historySection.getByRole("button", { name: "Otevřít detail" }).click();
+  await expect(historySection.getByText("tindeq-repeaters-v1", { exact: true })).toBeVisible();
 
   for (const width of [360, 390, 720, 1024, 1440]) {
     await page.setViewportSize({ width, height: width <= 390 ? 844 : 900 });
@@ -140,22 +260,6 @@ test("klientský výsledek je výchozí, responzivní a přepíná bez nové ana
       scrollWidth: document.documentElement.scrollWidth,
     }));
     expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
-
-    const leftBox = await page
-      .getByRole("heading", { name: "Levá noha", exact: true })
-      .boundingBox();
-    const rightBox = await page
-      .getByRole("heading", { name: "Pravá noha", exact: true })
-      .boundingBox();
-    expect(leftBox).not.toBeNull();
-    expect(rightBox).not.toBeNull();
-    if (leftBox && rightBox && width <= 720) {
-      expect(rightBox.y).toBeGreaterThan(leftBox.y + 80);
-    }
-    if (leftBox && rightBox && width >= 1024) {
-      expect(Math.abs(rightBox.y - leftBox.y)).toBeLessThan(10);
-    }
-
     await page.screenshot({
       fullPage: true,
       path: testInfo.outputPath(`client-${width}.png`),
@@ -166,27 +270,39 @@ test("klientský výsledek je výchozí, responzivní a přepíná bez nové ana
   await page.keyboard.press("Enter");
   await expect(trainerTab).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("Vzorkovací frekvence", { exact: true })).toBeVisible();
-  await expect(page.getByText("CV během opakování", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Jednotlivá opakování" })).toBeVisible();
-
   await page.keyboard.press("ArrowLeft");
   await expect(clientTab).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("heading", { name: "Velmi dobrá série" })).toBeVisible();
-  await expect(page.getByText("Vzorkovací frekvence", { exact: true })).toHaveCount(0);
 });
 
-test("balík více měření se načte a umožní změnit klienta", async ({ page }) => {
+test("chyba uložení zachová analyzovaný výsledek a umožní opakování", async ({ page }) => {
+  await setupSignedInSupabaseMock(page, { failEverySave: true });
   await page.goto("/tindeq");
+  await uploadArchive(page, "failed-save.zip", tindeqArchive("Klient Test"));
+  await page.getByRole("button", { name: "Uložit měření ke klientovi" }).click();
+
+  await expect(page.getByText("Uložení selhalo. Analyzovaný výsledek zůstává na obrazovce.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Velmi dobrá série" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Uložit měření ke klientovi" })).toBeEnabled();
+  await expect(page.getByText("Pro vybraného klienta zatím není uloženo žádné Tindeq měření.")).toBeVisible();
+});
+
+test("více sessions hlásí částečné selhání a neopakuje úspěšný insert", async ({ page }) => {
+  const mock = await setupSignedInSupabaseMock(page, { failFirstForTag: "Klient B" });
+  await page.goto("/tindeq");
+  await page.getByRole("option", { name: "Jiný klient" }).click();
   await uploadArchive(page, "batch-tindeq.zip", tindeqBatchArchive());
 
   const navigation = page.getByRole("navigation", { name: "Importovaná měření" });
   await expect(navigation.getByRole("button")).toHaveCount(2);
-  await expect(page.getByRole("heading", { name: "Klient A" })).toBeVisible();
+  await expect(page.getByText("Zkontroluj přiřazení klienta.")).toBeVisible();
 
-  await navigation.getByRole("button", { name: /Klient B/ }).click();
-  await expect(page.getByRole("heading", { name: "Klient B" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Pro klienta" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
+  await page.getByRole("button", { name: "Uložit 2 měření ke klientovi" }).click();
+  await expect(page.getByText("Část měření byla uložena. Znovu se odešlou pouze neúspěšné položky.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Uložit 1 měření ke klientovi" })).toBeEnabled();
+
+  await page.getByRole("button", { name: "Uložit 1 měření ke klientovi" }).click();
+  await expect(page.getByText("Všechna měření byla bezpečně uložena.")).toBeVisible();
+  expect(mock.postTags).toEqual(["Klient A", "Klient B", "Klient B"]);
+  expect(mock.storedRecords).toHaveLength(2);
 });

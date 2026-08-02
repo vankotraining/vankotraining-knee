@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import TindeqAnalyzer from "./TindeqAnalyzer";
+import TindeqWorkspace from "./TindeqWorkspace";
 import styles from "./tindeq.module.css";
 
 export const metadata: Metadata = {
   title: "Tindeq Repeaters | Knee Data",
-  description: "Lokální analýza Tindeq Repeaters exportů s klientským a trenérským zobrazením.",
+  description: "Lokální analýza Tindeq Repeaters exportů propojená s historií klienta.",
 };
 
 export default function TindeqPage() {
@@ -16,15 +16,15 @@ export default function TindeqPage() {
           <p className={styles.eyebrow}>knee.vankotraining.cz</p>
           <h1>Tindeq Repeaters</h1>
           <p className={styles.intro}>
-            Nahraj původní ZIP z Tindeq. Výpočet proběhne přímo v prohlížeči a
-            soubor se v této verzi nikam neukládá.
+            Vyber klienta, analyzuj původní Tindeq ZIP lokálně v prohlížeči a až
+            poté výslovně potvrď uložení strukturovaného výsledku.
           </p>
         </div>
         <Link className={styles.backLink} href="/">
           Zpět na klienty
         </Link>
       </header>
-      <TindeqAnalyzer />
+      <TindeqWorkspace />
     </main>
   );
 }
