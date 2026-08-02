@@ -14,6 +14,7 @@
 
 - The result opens in the `Pro klienta` view by default.
 - An accessible tab switch exposes `Pro klienta` and `Detail pro trenéra` without importing or analysing the ZIP again.
+- After a successful import, the large upload panel is replaced by a compact `Nahrát jiný Tindeq ZIP` control so the result remains immediately visible.
 - The client view contains:
   - one plain-language series conclusion,
   - target achievement, force stability and performance maintenance cards,
@@ -23,6 +24,7 @@
   - a maximum two-sentence chart interpretation,
   - plain-language recording warnings,
   - a neutral statement that the result describes only the performed force series.
+- Positive, warning and problem labels use explicit verbal states as well as colour; `Bez výrazného poklesu` is classified as a positive state.
 - The trainer view retains the existing technical domains, side metrics, protocol data, sampling frequency, warnings, normalized chart, repetition table and method note.
 - Existing analytical calculations and heuristic thresholds in `src/lib/tindeq-browser.ts` were not changed.
 - Client wording and layout do not provide a diagnosis, readiness decision or automatic load progression.
@@ -42,7 +44,8 @@
 
 ## Automated verification
 
-Verification run: GitHub Actions `Verify Tindeq client view`, run `30744009684`.
+Code verification commit: `7140e4f20ae11dfb2c16dc8244aee3f6ebc999d2`.
+GitHub Actions workflow: `Verify Tindeq client view`, run `30744363313`.
 
 - `npm test`: passed, 38/38 tests.
 - Added presentation tests cover the default client mode, mode switch, plain-language labels, good result, target miss, instability, performance decline, side-specific output, warnings, missing/non-finite data, presentation-only force conversion and mobile overflow rules.
@@ -52,11 +55,14 @@ Verification run: GitHub Actions `Verify Tindeq client view`, run `30744009684`.
   - individual synthetic bilateral Repeaters ZIP,
   - outer ZIP containing two measurements,
   - default client mode,
+  - compact re-upload control after import,
   - trainer switch and keyboard return,
   - graph accessible name,
+  - positive colour treatment for `Bez výrazného poklesu`,
   - no root horizontal overflow at 360, 390, 720, 1024 and 1440 px,
   - stacked side cards through 720 px and side-by-side cards at desktop widths.
-- Five responsive screenshots are stored in CI artifact `tindeq-client-view-screenshots`, artifact ID `8832263322`.
+- Five responsive screenshots are stored in CI artifact `tindeq-client-view-screenshots`, artifact ID `8832381786`.
+- The 360 px and 1024 px screenshots were visually reviewed after the automated run; the result begins near the top of the page, the mobile cards remain readable and the positive maintenance label is no longer shown as a problem state.
 
 ## Existing parser validation
 
