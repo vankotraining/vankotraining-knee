@@ -69,7 +69,7 @@ export default function ArchivedClients() {
       setArchivedClients([]);
       setMessage(
         isMissingRpcSignature(error)
-          ? "Archiv klientu jeste neni aktivni. Spust migraci archived_clients_restore."
+          ? "Archiv klientů ještě není aktivní. Spusť migraci archived_clients_restore."
           : error.message,
       );
       return;
@@ -103,7 +103,7 @@ export default function ArchivedClients() {
     if (!supabase || restoringId) return;
 
     const confirmed = window.confirm(
-      `Obnovit klienta ${client.display_name}?\n\nKlient se vrati do aktivniho seznamu.`,
+      `Obnovit klienta ${client.display_name}?\n\nKlient se vrátí do aktivního seznamu.`,
     );
 
     if (!confirmed) return;
@@ -130,7 +130,7 @@ export default function ArchivedClients() {
     }
 
     setArchivedClients((current) => current.filter((item) => item.id !== client.id));
-    setMessage("Klient je obnoveny. Stranku obnovim, aby se vratil do seznamu.");
+    setMessage("Klient byl obnoven. Stránku obnovím, aby se vrátil do seznamu.");
     window.location.reload();
   }
 
@@ -138,7 +138,7 @@ export default function ArchivedClients() {
 
   return (
     <section
-      aria-label="Archiv klientu"
+      aria-label="Archiv klientů"
       style={{
         margin: "0 auto 16px",
         maxWidth: "1280px",
@@ -163,28 +163,28 @@ export default function ArchivedClients() {
         >
           <div style={{ minWidth: 0 }}>
             <span style={{ color: "#23604a", display: "block", fontSize: "12px", fontWeight: 800, textTransform: "uppercase" }}>
-              Archiv klientu
+              Archiv klientů
             </span>
             <strong style={{ display: "block" }}>
-              Archivovani klienti
+              Archivovaní klienti
             </strong>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <button className="ghost-button" disabled={isLoading} type="button" onClick={() => void loadArchivedClients()}>
-              {isLoading ? "Nacitam..." : "Obnovit seznam"}
+              {isLoading ? "Načítám..." : "Obnovit seznam"}
             </button>
             <button type="button" onClick={() => setIsOpen((current) => !current)}>
-              {isOpen ? "Zavrit" : `Otevrit (${archivedClients.length})`}
+              {isOpen ? "Zavřít" : `Otevřít (${archivedClients.length})`}
             </button>
           </div>
         </div>
 
-        {message ? <p className={message.includes("neni aktivni") ? "status error" : "status"} style={{ marginTop: "8px" }}>{message}</p> : null}
-        {isLoading ? <p className="status" style={{ marginTop: "8px" }}>Nacitam archiv klientu...</p> : null}
+        {message ? <p className={message.includes("není aktivní") ? "status error" : "status"} style={{ marginTop: "8px" }}>{message}</p> : null}
+        {isLoading ? <p className="status" style={{ marginTop: "8px" }}>Načítám archiv klientů...</p> : null}
 
         {isOpen ? (
           <div style={{ display: "grid", gap: "8px", marginTop: "12px" }}>
-            {archivedClients.length === 0 && !isLoading ? <p className="status">Archiv klientu je prazdny.</p> : null}
+            {archivedClients.length === 0 && !isLoading ? <p className="status">Archiv klientů je prázdný.</p> : null}
             {archivedClients.map((client) => (
               <article
                 key={client.id}
@@ -202,11 +202,11 @@ export default function ArchivedClients() {
                 <div style={{ minWidth: 0 }}>
                   <strong>{client.display_name}</strong>
                   <p className="status" style={{ fontSize: "13px" }}>
-                    Archivovano {formatDate(client.deleted_at)} | archivovana mereni {formatCount(client.archived_measurement_count)}
+                    Archivováno {formatDate(client.deleted_at)} | archivovaná měření {formatCount(client.archived_measurement_count)}
                   </p>
                   {client.delete_reason ? (
                     <p className="status" style={{ fontSize: "12px" }}>
-                      Duvod: {client.delete_reason}
+                      Důvod: {client.delete_reason}
                     </p>
                   ) : null}
                 </div>

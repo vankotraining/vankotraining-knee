@@ -26,12 +26,12 @@ export default function ClientDeletion({ selectedClient }: { selectedClient: Sel
     if (!supabase || !selectedClient || isDeleting) return;
 
     const typedName = window.prompt(
-      `Archivovat celeho klienta ${selectedClient.name}?\n\nToto skryje klienta i jeho knee mereni z aktivniho seznamu. Pro potvrzeni opis presne jmeno klienta:`,
+      `Archivovat celého klienta ${selectedClient.name}?\n\nToto skryje klienta i jeho knee měření z aktivního seznamu. Pro potvrzení opiš přesně jméno klienta:`,
       "",
     );
 
     if (typedName?.trim() !== selectedClient.name) {
-      setMessage("Archivace klienta zrusena. Jmeno nebylo opsane presne.");
+      setMessage("Archivace klienta zrušena. Jméno nebylo opsáno přesně.");
       return;
     }
 
@@ -57,7 +57,7 @@ export default function ClientDeletion({ selectedClient }: { selectedClient: Sel
       return;
     }
 
-    setMessage("Klient je archivovany.");
+    setMessage("Klient byl archivován.");
     window.location.reload();
   }
 

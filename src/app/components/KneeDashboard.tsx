@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   calculateAge,
@@ -147,6 +147,10 @@ function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat("cs-CZ").format(date);
 }
 
+function formatMeasurementCount(count: number) {
+  return `${count} měření`;
+}
+
 function formatNumber(value: number | null | undefined, decimals = 1, suffix = "") {
   if (value === null || value === undefined || Number.isNaN(value)) return "-";
 
@@ -173,9 +177,9 @@ function getAsymmetryClass(value: number | null | undefined) {
 }
 
 function formatSide(value: string | null | undefined) {
-  if (value === "right") return "Prava";
-  if (value === "left") return "Leva";
-  if (value === "none") return "Bez rozdilu";
+  if (value === "right") return "Pravá";
+  if (value === "left") return "Levá";
+  if (value === "none") return "Bez rozdílu";
   return "-";
 }
 
@@ -241,13 +245,13 @@ function getLegNormGaps(test: KneeExtensionTest): LegNormGap[] {
   const legs = [
     {
       key: "left" as const,
-      label: "Leva noha",
+      label: "Levá noha",
       forceKg: test.left_force_kg,
       nmPerKg: test.left_nm_per_kg,
     },
     {
       key: "right" as const,
-      label: "Prava noha",
+      label: "Pravá noha",
       forceKg: test.right_force_kg,
       nmPerKg: test.right_nm_per_kg,
     },
@@ -313,7 +317,7 @@ function buildTestPayload(
   ) {
     return {
       payload: null,
-      error: "Vypln kladne hodnoty pro vahu, bercovou paku a obe strany.",
+      error: "Vyplň kladné hodnoty pro váhu, bércovou páku a obě strany.",
     };
   }
 
@@ -354,7 +358,7 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
         test.asymmetry_pct !== null,
     );
 
-  if (points.length === 0) return <p className="status">Zatim tu neni zadny test pro graf.</p>;
+  if (points.length === 0) return <p className="status">Zatím tu není žádné měření pro graf.</p>;
 
   const width = 560;
   const height = 250;
@@ -398,14 +402,14 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
     setVisibleSeries((current) => ({ ...current, [key]: !current[key] }));
   };
   const seriesToggles = [
-    { key: "left" as const, label: "Leva", color: "var(--accent)" },
-    { key: "right" as const, label: "Prava", color: "var(--blue)" },
+    { key: "left" as const, label: "Levá", color: "var(--accent)" },
+    { key: "right" as const, label: "Pravá", color: "var(--blue)" },
     { key: "asymmetry" as const, label: "Asymetrie", color: "var(--warning)" },
   ];
 
   return (
     <div className="chart-card clean-chart">
-      <div className="chart-legend" aria-label="Zobrazeni grafu">
+      <div className="chart-legend" aria-label="Zobrazení grafu">
         {seriesToggles.map((item) => {
           const isActive = visibleSeries[item.key];
 
@@ -448,7 +452,7 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
         })}
         <span className="legend-item target">Norma</span>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Vyvoj knee extension testu a asymetrie">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Vývoj knee extension měření a asymetrie">
         {[0, NORM_NM_PER_KG, strengthMax].map((value) => (
           <line
             className="chart-grid-line"
@@ -500,7 +504,7 @@ function KneeProgressChart({ tests }: { tests: KneeExtensionTest[] }) {
 }
 
 export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardProps) {
-  const [email, setEmail] = useState("martin@vankotraining.cz");
+  const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [session, setSession] = useState<Session | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("idle");
@@ -669,12 +673,37 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
     setMobileTab("measurements");
   }
 
+  function handleMobileTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    const tabs: MobileTab[] = ["measurements", "compare", "client"];
+    const currentIndex = tabs.indexOf(mobileTab);
+    let nextIndex = currentIndex;
+
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = (currentIndex + 1) % tabs.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = tabs.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    const nextTab = tabs[nextIndex];
+    setMobileTab(nextTab);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`mobile-tab-${nextTab}`)?.focus();
+    });
+  }
+
   async function handleMagicLink() {
     if (!supabase) return;
 
-    setMessage("Posilam prihlasovaci odkaz...");
+    setMessage("Posílám přihlašovací odkaz...");
     const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
-    setMessage(error ? error.message : "Hotovo. Zkontroluj e-mail a klikni na prihlasovaci odkaz.");
+    setMessage(error ? error.message : "Hotovo. Zkontroluj e-mail a klikni na přihlašovací odkaz.");
   }
 
   async function handleSignOut() {
@@ -696,7 +725,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
 
     if (error || !athlete) {
       setIsSavingAthlete(false);
-      setMessage(error?.message ?? "Klienta se nepodarilo zalozit.");
+      setMessage(error?.message ?? "Klienta se nepodařilo založit.");
       return;
     }
 
@@ -725,7 +754,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
     setAthleteForm({ display_name: "", birth_date: "", body_weight_kg: "", shin_length_cm: "33", note: "" });
     setActivePanel(null);
     setMobileTab("measurements");
-    setMessage("Klient je zalozeny.");
+    setMessage("Klient byl založen.");
   }
 
   async function handleCreateTest(event: FormEvent<HTMLFormElement>) {
@@ -734,7 +763,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
 
     const { payload, error: payloadError } = buildTestPayload(testForm, selectedAthlete, true);
     if (!payload) {
-      setMessage(payloadError ?? "Test se nepodarilo pripravit.");
+      setMessage(payloadError ?? "Měření se nepodařilo připravit.");
       return;
     }
 
@@ -750,7 +779,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
     setIsSavingTest(false);
 
     if (error || !data) {
-      setMessage(error?.message ?? "Test se nepodarilo ulozit.");
+      setMessage(error?.message ?? "Měření se nepodařilo uložit.");
       return;
     }
 
@@ -759,7 +788,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
     setTestForm((current) => ({ ...current, test_date: todayIsoDate(), right_force_kg: "", left_force_kg: "", note: "" }));
     setActivePanel(null);
     setMobileTab("measurements");
-    setMessage("Knee extension test je ulozeny.");
+    setMessage("Měření bylo uloženo.");
   }
 
   async function handleUpdateTest(event: FormEvent<HTMLFormElement>) {
@@ -768,7 +797,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
 
     const { payload, error: payloadError } = buildTestPayload(editTestForm, selectedAthlete);
     if (!payload) {
-      setMessage(payloadError ?? "Test se nepodarilo pripravit.");
+      setMessage(payloadError ?? "Měření se nepodařilo připravit.");
       return;
     }
 
@@ -785,7 +814,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
     setIsUpdatingTest(false);
 
     if (error || !data) {
-      setMessage(error?.message ?? "Test se nepodarilo upravit.");
+      setMessage(error?.message ?? "Měření se nepodařilo upravit.");
       return;
     }
 
@@ -793,13 +822,13 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
     setExpandedTestId(editingTestId);
     setEditingTestId(null);
     setMobileTab("measurements");
-    setMessage("Knee extension test je upraveny.");
+    setMessage("Měření bylo upraveno.");
   }
 
   async function handleDeleteTest(test: KneeExtensionTest) {
     if (!supabase) return;
 
-    const confirmed = window.confirm(`Opravdu archivovat pouze toto mereni z ${formatDate(test.test_date)}? Klient zustane aktivni.`);
+    const confirmed = window.confirm(`Opravdu archivovat pouze toto měření z ${formatDate(test.test_date)}? Klient zůstane aktivní.`);
     if (!confirmed) return;
 
     setDeletingTestId(test.id);
@@ -816,22 +845,22 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
     setKneeTests((current) => current.filter((item) => item.id !== test.id));
     if (expandedTestId === test.id) setExpandedTestId(null);
     if (editingTestId === test.id) setEditingTestId(null);
-    setMessage("Knee extension test je archivovany.");
+    setMessage("Měření bylo archivováno.");
   }
 
   function renderAthleteForm() {
     return (
       <form className="stack-form compact-form" onSubmit={handleCreateAthlete}>
-        <label>Jmeno<input value={athleteForm.display_name} onChange={(event) => updateAthleteForm("display_name", event.target.value)} placeholder="Milos Merta" required /></label>
-        <label>Datum narozeni<input type="date" value={athleteForm.birth_date} onChange={(event) => updateAthleteForm("birth_date", event.target.value)} /></label>
+        <label>Jméno<input value={athleteForm.display_name} onChange={(event) => updateAthleteForm("display_name", event.target.value)} placeholder="Miloš Merta" required /></label>
+        <label>Datum narození<input type="date" value={athleteForm.birth_date} onChange={(event) => updateAthleteForm("birth_date", event.target.value)} /></label>
         <div className="form-row">
-          <label>Vaha kg<input inputMode="decimal" value={athleteForm.body_weight_kg} onChange={(event) => updateAthleteForm("body_weight_kg", event.target.value)} placeholder="82" /></label>
-          <label>Bercova paka cm<input inputMode="decimal" value={athleteForm.shin_length_cm} onChange={(event) => updateAthleteForm("shin_length_cm", event.target.value)} placeholder="33" /></label>
+          <label>Váha kg<input inputMode="decimal" value={athleteForm.body_weight_kg} onChange={(event) => updateAthleteForm("body_weight_kg", event.target.value)} placeholder="82" /></label>
+          <label>Bércová páka cm<input inputMode="decimal" value={athleteForm.shin_length_cm} onChange={(event) => updateAthleteForm("shin_length_cm", event.target.value)} placeholder="33" /></label>
         </div>
-        <label>Poznamka<textarea value={athleteForm.note} onChange={(event) => updateAthleteForm("note", event.target.value)} placeholder="Interni poznamka" /></label>
+        <label>Poznámka<textarea value={athleteForm.note} onChange={(event) => updateAthleteForm("note", event.target.value)} placeholder="Interní poznámka" /></label>
         <div className="form-actions">
-          <button disabled={isSavingAthlete}>{isSavingAthlete ? "Ukladam..." : "Zalozit klienta"}</button>
-          <button className="ghost-button" type="button" onClick={() => setActivePanel(null)}>Zrusit</button>
+          <button disabled={isSavingAthlete}>{isSavingAthlete ? "Ukládám..." : "Založit klienta"}</button>
+          <button className="ghost-button" type="button" onClick={() => setActivePanel(null)}>Zrušit</button>
         </div>
       </form>
     );
@@ -858,17 +887,17 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
       <form className="stack-form compact-form test-form" onSubmit={onSubmit}>
         <div className="form-row">
           <label>
-            Datum mereni
+            Datum měření
             <input type="date" value={form.test_date} onChange={(event) => onChange("test_date", event.target.value)} required />
           </label>
           <label>
-            Vaha pri mereni kg
+            Váha při měření kg
             <input inputMode="decimal" value={form.body_weight_kg} onChange={(event) => onChange("body_weight_kg", event.target.value)} required />
           </label>
         </div>
         <div className="form-row">
           <label>
-            Bercova paka cm
+            Bércová páka cm
             <input inputMode="decimal" value={form.shin_length_cm} onChange={(event) => onChange("shin_length_cm", event.target.value)} required />
           </label>
           <label>
@@ -878,21 +907,21 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
         </div>
         <div className="form-row">
           <label>
-            Namerena sila leva kg
+            Naměřená síla – levá noha (kg)
             <input inputMode="decimal" value={form.left_force_kg} onChange={(event) => onChange("left_force_kg", event.target.value)} placeholder="35" required />
           </label>
           <label>
-            Namerena sila prava kg
+            Naměřená síla – pravá noha (kg)
             <input inputMode="decimal" value={form.right_force_kg} onChange={(event) => onChange("right_force_kg", event.target.value)} placeholder="42" required />
           </label>
         </div>
         <label>
-          Poznamka k testu
-          <textarea value={form.note} onChange={(event) => onChange("note", event.target.value)} placeholder="Bolest, setup, poznamka k mereni..." />
+          Poznámka k měření
+          <textarea value={form.note} onChange={(event) => onChange("note", event.target.value)} placeholder="Bolest, nastavení, poznámka k měření..." />
         </label>
         <div className="form-actions">
           <button disabled={isSaving}>{isSaving ? savingLabel : submitLabel}</button>
-          {onCancel ? <button className="ghost-button" type="button" onClick={onCancel}>Zrusit</button> : null}
+          {onCancel ? <button className="ghost-button" type="button" onClick={onCancel}>Zrušit</button> : null}
         </div>
       </form>
     );
@@ -909,8 +938,8 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
         <div>
           <div className="test-detail-header">
             <div>
-              <strong>Upravit mereni {formatDate(test.test_date)}</strong>
-              <p>Odemceno: datum, vaha pri mereni, bercova paka a namerena sila leve/prave nohy.</p>
+              <strong>Upravit měření {formatDate(test.test_date)}</strong>
+              <p>Odemčeno: datum, váha při měření, bércová páka a naměřená síla levé/pravé nohy.</p>
             </div>
             <span className="pill">editace</span>
           </div>
@@ -919,8 +948,8 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
             onChange: updateEditTestForm,
             onSubmit: handleUpdateTest,
             isSaving: isUpdatingTest,
-            submitLabel: "Ulozit zmeny",
-            savingLabel: "Ukladam zmeny...",
+            submitLabel: "Uložit změny",
+            savingLabel: "Ukládám změny...",
             onCancel: closeEditTest,
           })}
         </div>
@@ -931,14 +960,14 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
       <>
         <div className="test-detail-header">
           <div>
-            <strong>Detail testu {formatDate(test.test_date)}</strong>
+            <strong>Detail měření {formatDate(test.test_date)}</strong>
             <p>
               Norma {formatNumber(NORM_NM_PER_KG, 1)} Nm/kg{" · asymetrie "}
               <span className={getAsymmetryClass(test.asymmetry_pct)}>{formatPercent(test.asymmetry_pct)}</span>
-              {deficitLegs.length > 0 ? ` · deficit: ${deficitLegs.map((leg) => leg.label.toLowerCase()).join(", ")}` : " · obe nohy splnuji normu"}
+              {deficitLegs.length > 0 ? ` · deficit: ${deficitLegs.map((leg) => leg.label.toLowerCase()).join(", ")}` : " · obě nohy splňují normu"}
             </p>
           </div>
-          <span className="pill">cil {formatNumber(legGaps[0]?.targetForceKg, 1, " kg")}</span>
+          <span className="pill">cíl {formatNumber(legGaps[0]?.targetForceKg, 1, " kg")}</span>
         </div>
         <div className="test-detail-grid">
           {legGaps.map((leg) => (
@@ -1012,7 +1041,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
             <p className="measurement-change-empty">Předchozí měření není k dispozici.</p>
           )}
         </section>
-        {test.note ? <p className="test-note">Poznamka: {test.note}</p> : null}
+        {test.note ? <p className="test-note">Poznámka: {test.note}</p> : null}
       </>
     );
   }
@@ -1020,9 +1049,9 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
   function renderMeasurementActions(test: KneeExtensionTest, isExpanded: boolean, isEditing: boolean, isDeleting: boolean) {
     return (
       <>
-        <button className="detail-button" type="button" onClick={() => setExpandedTestId(isExpanded && !isEditing ? null : test.id)}>{isExpanded && !isEditing ? "Zavrit" : "Detail"}</button>
-        <button className="detail-button" disabled={isEditing} type="button" onClick={() => openEditTest(test)}>{isEditing ? "Odemceno" : "Upravit"}</button>
-        <button className="detail-button danger-button" disabled={isDeleting} title="Archivuje se pouze toto mereni. Klient zustane aktivni." type="button" onClick={() => handleDeleteTest(test)}>{isDeleting ? "Archivuji..." : "Archivovat mereni"}</button>
+        <button className="detail-button" type="button" onClick={() => setExpandedTestId(isExpanded && !isEditing ? null : test.id)}>{isExpanded && !isEditing ? "Zavřít" : "Detail"}</button>
+        <button className="detail-button" disabled={isEditing} type="button" onClick={() => openEditTest(test)}>{isEditing ? "Odemčeno" : "Upravit"}</button>
+        <button className="detail-button danger-button" disabled={isDeleting} title="Archivuje se pouze toto měření. Klient zůstane aktivní." type="button" onClick={() => handleDeleteTest(test)}>{isDeleting ? "Archivuji..." : "Archivovat měření"}</button>
       </>
     );
   }
@@ -1032,8 +1061,8 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
       <main className="shell">
         <section className="empty-state">
           <p className="eyebrow">Knee Data</p>
-          <h1>Chybi Supabase konfigurace</h1>
-          <p>Ve Vercelu dopln <code>NEXT_PUBLIC_SUPABASE_URL</code> a <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.</p>
+          <h1>Chybí Supabase konfigurace</h1>
+          <p>Ve Vercelu doplň <code>NEXT_PUBLIC_SUPABASE_URL</code> a <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.</p>
         </section>
       </main>
     );
@@ -1046,42 +1075,77 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
           <p className="eyebrow">knee.vankotraining.cz</p>
           <h1>Knee extension</h1>
         </div>
-        {session ? <button className="ghost-button" onClick={handleSignOut}>Odhlasit</button> : null}
+        {session ? <button className="ghost-button" onClick={handleSignOut}>Odhlásit</button> : null}
       </header>
 
       {!session ? (
-        <section className="login-panel">
+        <section className="login-panel" aria-labelledby="login-title">
           <div>
-            <h2>Prihlaseni trenera</h2>
-            <p>Posleme magic link na e-mail s pristupem do Supabase.</p>
+            <h2 id="login-title">Přihlášení trenéra</h2>
+            <p>Pošleme přihlašovací odkaz na e-mail s přístupem do Supabase.</p>
           </div>
           <div className="login-row">
-            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="martin@vankotraining.cz" />
-            <button onClick={handleMagicLink}>Poslat link</button>
+            <label className="login-email-field">
+              E-mail
+              <input
+                autoComplete="email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="vas@email.cz"
+              />
+            </label>
+            <button onClick={handleMagicLink}>Poslat odkaz</button>
           </div>
-          {message ? <p className="status">{message}</p> : null}
+          {message ? <p className="status" aria-live="polite">{message}</p> : null}
         </section>
       ) : (
         <>
           <section className="stats-grid">
-            <div className="metric"><span>Sportovci</span><strong>{athletes.length}</strong></div>
-            <div className="metric"><span>Knee testy</span><strong>{kneeTests.length}</strong></div>
-            <div className="metric"><span>S testem</span><strong>{testedAthleteCount}</strong></div>
-            <div className="metric"><span>Posledni test</span><strong>{formatDate(latestTestDate)}</strong></div>
+            <div className="metric"><span>Klienti</span><strong>{athletes.length}</strong></div>
+            <div className="metric"><span>Měření</span><strong>{kneeTests.length}</strong></div>
+            <div className="metric"><span>S měřením</span><strong>{testedAthleteCount}</strong></div>
+            <div className="metric"><span>Poslední měření</span><strong>{formatDate(latestTestDate)}</strong></div>
           </section>
 
           <section className="mobile-workbench">
             <div className="mobile-client-toolbar">
-              <label className="mobile-search">Hledat<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Jmeno klienta" /></label>
-              <button className="mobile-primary-action" disabled={!selectedAthlete} type="button" onClick={openCreateTest}>+ Mereni</button>
+              <label className="mobile-search">Hledat<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Jméno klienta" /></label>
+              <button className="mobile-primary-action" disabled={!selectedAthlete} type="button" onClick={openCreateTest}>+ Měření</button>
               <button className="mobile-small-action" type="button" onClick={openCreateAthlete}>+ Klient</button>
+            </div>
+
+            <div className="mobile-sticky-controls">
               <label className="mobile-client-select">
                 Klient
                 <select value={selectedAthlete?.id ?? ""} onChange={(event) => setSelectedAthleteId(event.target.value)}>
-                  {filteredAthletes.length === 0 ? <option value="">Zadny vysledek</option> : null}
+                  {filteredAthletes.length === 0 ? <option value="">Žádný výsledek</option> : null}
                   {filteredAthletes.map((athlete) => <option key={athlete.id} value={athlete.id}>{athlete.display_name}</option>)}
                 </select>
               </label>
+
+              <div className="mobile-tabs" role="tablist" aria-label="Mobilní zobrazení">
+                {([
+                  { key: "measurements" as const, label: "Měření" },
+                  { key: "compare" as const, label: "Porovnání" },
+                  { key: "client" as const, label: "Klient" },
+                ]).map((tab) => (
+                  <button
+                    aria-controls={`mobile-panel-${tab.key}`}
+                    aria-selected={mobileTab === tab.key}
+                    className={mobileTab === tab.key ? "mobile-tab active" : "mobile-tab"}
+                    id={`mobile-tab-${tab.key}`}
+                    key={tab.key}
+                    onClick={() => setMobileTab(tab.key)}
+                    onKeyDown={handleMobileTabKeyDown}
+                    role="tab"
+                    tabIndex={mobileTab === tab.key ? 0 : -1}
+                    type="button"
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {selectedAthlete ? (
@@ -1091,41 +1155,35 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
                   <strong>{selectedAthlete.display_name}</strong>
                 </div>
                 <div>
-                  <span>Posledni</span>
+                  <span>Poslední</span>
                   <strong>{formatDate(selectedAthlete.latestTest?.test_date)}</strong>
                 </div>
                 <div>
-                  <span>Asym</span>
+                  <span>Asym.</span>
                   <strong><span className={getAsymmetryClass(selectedAthlete.latestTest?.asymmetry_pct)}>{formatPercent(selectedAthlete.latestTest?.asymmetry_pct)}</span></strong>
                 </div>
                 <div>
-                  <span>Splnění</span>
+                  <span>Splnění normy</span>
                   <strong>{formatNumber(latestNormGap?.completionPct, 1, " %").replace(".", ",")}</strong>
                 </div>
               </div>
             ) : null}
 
-            <div className="mobile-tabs" role="tablist" aria-label="Mobilni zobrazeni">
-              <button className={mobileTab === "measurements" ? "mobile-tab active" : "mobile-tab"} type="button" onClick={() => setMobileTab("measurements")}>Mereni</button>
-              <button className={mobileTab === "compare" ? "mobile-tab active" : "mobile-tab"} type="button" onClick={() => setMobileTab("compare")}>Porovnani</button>
-              <button className={mobileTab === "client" ? "mobile-tab active" : "mobile-tab"} type="button" onClick={() => setMobileTab("client")}>Klient</button>
-            </div>
-
-            {loadState === "idle" ? <p className="status">Nacitam knee data...</p> : null}
+            {loadState === "idle" ? <p className="status">Načítám data...</p> : null}
             {loadState === "error" ? <p className="status error">{message}</p> : null}
-            {loadState === "ready" && filteredAthletes.length === 0 ? <p className="status">Zatim tu neni zadny sportovec pro tento filtr.</p> : null}
+            {loadState === "ready" && filteredAthletes.length === 0 ? <p className="status">Zatím tu není žádný klient pro tento filtr.</p> : null}
 
             {activePanel === "athlete" ? (
               <section className="panel mobile-form-panel">
-                <div className="panel-header"><div><p className="eyebrow">Novy klient</p><h2>Zalozit klienta</h2></div></div>
+                <div className="panel-header"><div><p className="eyebrow">Nový klient</p><h2>Založit klienta</h2></div></div>
                 {renderAthleteForm()}
               </section>
             ) : null}
 
             {activePanel === "test" && selectedAthlete ? (
               <section className="panel mobile-form-panel">
-                <div className="panel-header"><div><p className="eyebrow">Nove mereni</p><h2>{selectedAthlete.display_name}</h2></div></div>
-                {renderTestForm({ form: testForm, onChange: updateTestForm, onSubmit: handleCreateTest, isSaving: isSavingTest, submitLabel: "Ulozit test", savingLabel: "Ukladam...", onCancel: () => setActivePanel(null) })}
+                <div className="panel-header"><div><p className="eyebrow">Nové měření</p><h2>{selectedAthlete.display_name}</h2></div></div>
+                {renderTestForm({ form: testForm, onChange: updateTestForm, onSubmit: handleCreateTest, isSaving: isSavingTest, submitLabel: "Uložit měření", savingLabel: "Ukládám...", onCancel: () => setActivePanel(null) })}
               </section>
             ) : null}
           </section>
@@ -1141,24 +1199,24 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
               </div>
 
               <div className="athlete-picker">
-                <label>Hledat<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Jmeno, poznamka nebo datum" /></label>
+                <label>Hledat<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Jméno, poznámka nebo datum" /></label>
                 <label>
-                  Vybrany klient
+                  Vybraný klient
                   <select value={selectedAthlete?.id ?? ""} onChange={(event) => setSelectedAthleteId(event.target.value)}>
-                    {filteredAthletes.length === 0 ? <option value="">Zadny vysledek</option> : null}
+                    {filteredAthletes.length === 0 ? <option value="">Žádný výsledek</option> : null}
                     {filteredAthletes.map((athlete) => <option key={athlete.id} value={athlete.id}>{athlete.display_name}</option>)}
                   </select>
                 </label>
               </div>
 
-              {loadState === "idle" ? <p className="status">Nacitam knee data...</p> : null}
+              {loadState === "idle" ? <p className="status">Načítám data...</p> : null}
               {loadState === "error" ? <p className="status error">{message}</p> : null}
-              {loadState === "ready" && filteredAthletes.length === 0 ? <p className="status">Zatim tu neni zadny sportovec pro tento filtr.</p> : null}
+              {loadState === "ready" && filteredAthletes.length === 0 ? <p className="status">Zatím tu není žádný klient pro tento filtr.</p> : null}
 
               {selectedAthlete ? (
                 <dl className="selected-athlete-meta">
-                  <div><dt>Testy</dt><dd>{selectedAthlete.tests.length}</dd></div>
-                  <div><dt>Posledni</dt><dd>{formatDate(selectedAthlete.latestTest?.test_date)}</dd></div>
+                  <div><dt>Měření</dt><dd>{selectedAthlete.tests.length}</dd></div>
+                  <div><dt>Poslední</dt><dd>{formatDate(selectedAthlete.latestTest?.test_date)}</dd></div>
                   <div><dt>Asym</dt><dd><span className={getAsymmetryClass(selectedAthlete.latestTest?.asymmetry_pct)}>{formatPercent(selectedAthlete.latestTest?.asymmetry_pct)}</span></dd></div>
                 </dl>
               ) : null}
@@ -1166,55 +1224,62 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
 
             <section className="panel control-panel action-panel desktop-control">
               <div className="panel-header">
-                <div><p className="eyebrow">Pracovni akce</p><h2>Mereni a klienti</h2></div>
+                <div><p className="eyebrow">Pracovní akce</p><h2>Měření a klienti</h2></div>
               </div>
               <div className="quick-actions">
-                <button className={activePanel === "test" ? "" : "ghost-button"} disabled={!selectedAthlete} type="button" onClick={openCreateTest}>+ Nove mereni</button>
-                <button className={activePanel === "athlete" ? "" : "ghost-button"} type="button" onClick={openCreateAthlete}>+ Novy klient</button>
+                <button className={activePanel === "test" ? "" : "ghost-button"} disabled={!selectedAthlete} type="button" onClick={openCreateTest}>+ Nové měření</button>
+                <button className={activePanel === "athlete" ? "" : "ghost-button"} type="button" onClick={openCreateAthlete}>+ Nový klient</button>
               </div>
 
               {activePanel === "athlete" ? renderAthleteForm() : null}
 
               {activePanel === "test" && selectedAthlete
-                ? renderTestForm({ form: testForm, onChange: updateTestForm, onSubmit: handleCreateTest, isSaving: isSavingTest, submitLabel: "Ulozit test", savingLabel: "Ukladam...", onCancel: () => setActivePanel(null) })
+                ? renderTestForm({ form: testForm, onChange: updateTestForm, onSubmit: handleCreateTest, isSaving: isSavingTest, submitLabel: "Uložit měření", savingLabel: "Ukládám...", onCancel: () => setActivePanel(null) })
                 : null}
 
-              {!activePanel ? <p className="status compact-hint">Vyber klienta, pridej mereni a hotova mereni uprav primo v historii.</p> : null}
+              {!activePanel ? <p className="status compact-hint">Vyber klienta, přidej měření a hotová měření uprav přímo v historii.</p> : null}
             </section>
 
             <section className="panel detail-panel">
-              <div className="panel-header">
-                <div><p className="eyebrow">Knee extension</p><h2>{selectedAthlete ? selectedAthlete.display_name : "Vyber klienta"}</h2></div>
-                <span className="pill">{selectedAthlete?.tests.length ?? 0} testu</span>
+              <div className="panel-header client-context-header">
+                <div className="client-context-title">
+                  <p className="eyebrow">Knee extension</p>
+                  <h2 title={selectedAthlete?.display_name}>{selectedAthlete ? selectedAthlete.display_name : "Vyber klienta"}</h2>
+                  {selectedAthlete ? (
+                    <p className="client-context-meta">
+                      {formatMeasurementCount(selectedAthlete.tests.length)} · poslední {formatDate(selectedAthlete.latestTest?.test_date)}
+                    </p>
+                  ) : null}
+                </div>
               </div>
 
               {selectedAthlete ? (
                 <>
-                  <section className={mobileTab === "client" ? "mobile-tab-page client-page is-active" : "mobile-tab-page client-page"}>
+                  <section aria-labelledby="mobile-tab-client" className={mobileTab === "client" ? "mobile-tab-page client-page is-active" : "mobile-tab-page client-page"} id="mobile-panel-client" role="tabpanel" tabIndex={0}>
                     <div className="profile-grid">
-                      <div className="profile-metric"><span>Datum narozeni</span><strong>{formatDate(selectedAthlete.latestProfile?.birth_date)}</strong></div>
-                      <div className="profile-metric"><span>Vaha</span><strong>{formatNumber(selectedAthlete.latestProfile?.body_weight_kg, 1, " kg")}</strong></div>
-                      <div className="profile-metric"><span>Delka berce</span><strong>{formatNumber(selectedAthlete.latestProfile?.shin_length_cm, 1, " cm")}</strong></div>
-                      <div className="profile-metric"><span>Vek v profilu</span><strong>{formatNumber(selectedAthlete.latestProfile?.age, 0)}</strong></div>
+                      <div className="profile-metric"><span>Datum narození</span><strong>{formatDate(selectedAthlete.latestProfile?.birth_date)}</strong></div>
+                      <div className="profile-metric"><span>Váha</span><strong>{formatNumber(selectedAthlete.latestProfile?.body_weight_kg, 1, " kg")}</strong></div>
+                      <div className="profile-metric"><span>Délka bérce</span><strong>{formatNumber(selectedAthlete.latestProfile?.shin_length_cm, 1, " cm")}</strong></div>
+                      <div className="profile-metric"><span>Věk v profilu</span><strong>{formatNumber(selectedAthlete.latestProfile?.age, 0)}</strong></div>
                     </div>
                   </section>
 
-                  <section className={mobileTab === "compare" ? "mobile-tab-page compare-page is-active" : "mobile-tab-page compare-page"}>
+                  <section aria-labelledby="mobile-tab-compare" className={mobileTab === "compare" ? "mobile-tab-page compare-page is-active" : "mobile-tab-page compare-page"} id="mobile-panel-compare" role="tabpanel" tabIndex={0}>
                     {selectedAthlete.latestTest ? (
                       <div className="norm-grid">
-                        <div className="profile-metric highlight"><span>Leva</span><strong>{formatNumber(selectedAthlete.latestTest.left_nm_per_kg, 2)}</strong><small>Nm/kg</small></div>
-                        <div className="profile-metric highlight"><span>Prava</span><strong>{formatNumber(selectedAthlete.latestTest.right_nm_per_kg, 2)}</strong><small>Nm/kg</small></div>
-                        <div className="profile-metric highlight"><span>Asymetrie</span><strong>{formatPercent(selectedAthlete.latestTest.asymmetry_pct)}</strong><small>{formatSide(selectedAthlete.latestTest.weaker_side)} slabsi</small></div>
-                        <div className="profile-metric highlight"><span>Splnění</span><strong>{formatNumber(latestNormGap?.completionPct, 1, " %").replace(".", ",")}</strong><small>{formatNumber(latestNormGap?.missingKg, 1, " kg").replace(".", ",")} na slabsi strane</small></div>
+                        <div className="profile-metric highlight"><span>Levá</span><strong>{formatNumber(selectedAthlete.latestTest.left_nm_per_kg, 2)}</strong><small>Nm/kg</small></div>
+                        <div className="profile-metric highlight"><span>Pravá</span><strong>{formatNumber(selectedAthlete.latestTest.right_nm_per_kg, 2)}</strong><small>Nm/kg</small></div>
+                        <div className="profile-metric highlight"><span>Asymetrie</span><strong>{formatPercent(selectedAthlete.latestTest.asymmetry_pct)}</strong><small>{formatSide(selectedAthlete.latestTest.weaker_side)} slabší</small></div>
+                        <div className="profile-metric highlight"><span>Splnění</span><strong>{formatNumber(latestNormGap?.completionPct, 1, " %").replace(".", ",")}</strong><small>{formatNumber(latestNormGap?.missingKg, 1, " kg").replace(".", ",")} na slabší straně</small></div>
                       </div>
                     ) : null}
 
                     <KneeProgressChart tests={selectedAthlete.tests} />
                   </section>
 
-                  <section className={mobileTab === "measurements" ? "mobile-tab-page measurements-page is-active" : "mobile-tab-page measurements-page"}>
+                  <section aria-labelledby="mobile-tab-measurements" className={mobileTab === "measurements" ? "mobile-tab-page measurements-page is-active" : "mobile-tab-page measurements-page"} id="mobile-panel-measurements" role="tabpanel" tabIndex={0}>
                     <div className="mobile-test-list">
-                      {selectedAthlete.tests.length === 0 ? <p className="status">Zatim tu neni zadne mereni.</p> : null}
+                      {selectedAthlete.tests.length === 0 ? <p className="status">Zatím tu není žádné měření.</p> : null}
                       {selectedAthlete.tests.map((test) => {
                         const legGaps = getLegNormGaps(test);
                         const deficitLegs = legGaps.filter((leg) => leg.isDeficit);
@@ -1226,16 +1291,16 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
                           <article className={isEditing ? "measurement-card editing" : "measurement-card"} key={test.id}>
                             <div className="measurement-card-header">
                               <div>
-                                <span>Mereni</span>
+                                <span>Měření</span>
                                 <strong>{formatDate(test.test_date)}</strong>
                               </div>
                               <span className={getAsymmetryClass(test.asymmetry_pct)}>{formatPercent(test.asymmetry_pct)}</span>
                             </div>
                             <dl className="measurement-values">
-                              <div><dt>Leva kg</dt><dd>{formatNumber(test.left_force_kg, 1)}</dd></div>
-                              <div><dt>Prava kg</dt><dd>{formatNumber(test.right_force_kg, 1)}</dd></div>
-                              <div><dt>Leva Nm/kg</dt><dd>{formatNumber(test.left_nm_per_kg, 2)}</dd></div>
-                              <div><dt>Prava Nm/kg</dt><dd>{formatNumber(test.right_nm_per_kg, 2)}</dd></div>
+                              <div><dt>Levá kg</dt><dd>{formatNumber(test.left_force_kg, 1)}</dd></div>
+                              <div><dt>Pravá kg</dt><dd>{formatNumber(test.right_force_kg, 1)}</dd></div>
+                              <div><dt>Levá Nm/kg</dt><dd>{formatNumber(test.left_nm_per_kg, 2)}</dd></div>
+                              <div><dt>Pravá Nm/kg</dt><dd>{formatNumber(test.right_nm_per_kg, 2)}</dd></div>
                             </dl>
                             <div className="measurement-actions">
                               {renderMeasurementActions(test, isExpanded, isEditing, isDeleting)}
@@ -1253,7 +1318,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
                     <div className="table-wrap desktop-table">
                       <table>
                         <thead>
-                          <tr><th>Datum</th><th>Prava kg</th><th>Leva kg</th><th>Prava Nm/kg</th><th>Leva Nm/kg</th><th>Asym</th><th>Slabsi</th><th>Vek</th><th>Akce</th></tr>
+                          <tr><th>Datum</th><th>Pravá kg</th><th>Levá kg</th><th>Pravá Nm/kg</th><th>Levá Nm/kg</th><th>Asym</th><th>Slabší</th><th>Věk</th><th>Akce</th></tr>
                         </thead>
                         <tbody>
                           {selectedAthlete.tests.map((test) => {
@@ -1293,13 +1358,13 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
                     </div>
                   </section>
                 </>
-              ) : <p className="status">Zatim neni vybran zadny klient.</p>}
+              ) : <p className="status">Zatím není vybrán žádný klient.</p>}
               {message ? <p className="status footer-status">{message}</p> : null}
             </section>
           </section>
 
           {selectedAthlete && activePanel !== "test" ? (
-            <button className="mobile-add-test" type="button" onClick={openCreateTest}>+ Pridat mereni</button>
+            <button className="mobile-add-test" type="button" onClick={openCreateTest}>+ Přidat měření</button>
           ) : null}
         </>
       )}

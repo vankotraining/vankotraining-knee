@@ -4,7 +4,7 @@ import "./mobile-safe-area.css";
 
 export const metadata: Metadata = {
   title: "Knee Data | Vanko Training",
-  description: "Interni databaze knee extension mereni.",
+  description: "Interní databáze knee extension měření.",
 };
 
 export default function RootLayout({

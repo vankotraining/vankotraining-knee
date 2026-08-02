@@ -10,6 +10,7 @@
   --danger: #9b2c2c;
   --blue: #2d6cdf;
   --warning: #a75b12;
+  --focus-ring: rgba(35, 96, 74, 0.42);
 }
 
 html {
@@ -51,6 +52,15 @@ button {
 button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+:where(button, input, select, textarea, a[href], [role="tab"]):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+:where(input, select, textarea):focus-visible {
+  border-color: var(--accent);
 }
 
 .shell {
@@ -155,10 +165,22 @@ button {
   padding: 22px;
 }
 
+.login-panel {
+  width: 100%;
+  max-width: 580px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
 .login-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
+  align-items: end;
+}
+
+.login-email-field {
+  min-width: 0;
 }
 
 .status {
@@ -219,6 +241,21 @@ dt {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
+}
+
+.client-context-title {
+  min-width: 0;
+}
+
+.client-context-title h2 {
+  overflow-wrap: anywhere;
+}
+
+.client-context-meta {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .pill {
@@ -306,9 +343,14 @@ dt {
 
 .mobile-client-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1fr) auto auto;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
   gap: 10px;
   align-items: end;
+}
+
+.mobile-sticky-controls {
+  display: grid;
+  gap: 10px;
 }
 
 .mobile-search {
@@ -835,10 +877,6 @@ th {
     grid-template-columns: minmax(0, 1fr) auto auto;
   }
 
-  .mobile-client-select {
-    grid-column: 1 / -1;
-  }
-
   .test-detail-header,
   .leg-detail-title {
     display: grid;
@@ -859,7 +897,8 @@ th {
     position: sticky;
     top: 0;
     z-index: 30;
-    padding: 10px 12px;
+    min-height: calc(45px + env(safe-area-inset-top));
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
     border-bottom: 1px solid var(--border);
     background: rgba(251, 252, 250, 0.96);
     backdrop-filter: blur(10px);
@@ -880,15 +919,25 @@ th {
   }
 
   .mobile-workbench {
-    position: sticky;
-    top: 45px;
-    z-index: 20;
+    position: static;
     gap: 10px;
     padding: 10px 10px 8px;
     border-right: 0;
     border-left: 0;
     border-radius: 0;
-    background: rgba(251, 252, 250, 0.96);
+    background: transparent;
+  }
+
+  .mobile-sticky-controls {
+    position: sticky;
+    top: calc(45px + env(safe-area-inset-top));
+    z-index: 20;
+    gap: 8px;
+    margin: 0 -10px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: rgba(251, 252, 250, 0.97);
     backdrop-filter: blur(10px);
   }
 
@@ -909,10 +958,6 @@ th {
 
   .mobile-primary-action {
     display: none;
-  }
-
-  .mobile-client-select {
-    grid-column: 1 / -1;
   }
 
   .mobile-small-action {
@@ -972,7 +1017,8 @@ th {
     font-size: 13px;
   }
 
-  .mobile-tab.active {
+  .mobile-tab.active,
+  .mobile-tab[aria-selected="true"] {
     border-color: var(--accent);
     background: var(--accent);
     color: #fff;
@@ -1074,6 +1120,18 @@ th {
 
   .footer-status {
     padding: 0 10px;
+  }
+
+  .login-panel,
+  .empty-state {
+    width: calc(100% - 24px);
+    margin-top: 16px;
+  }
+}
+
+@media (min-width: 721px) {
+  .detail-panel > .panel-header {
+    display: flex;
   }
 }
 

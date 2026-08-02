@@ -72,7 +72,7 @@ export default function ArchivedMeasurements({ selectedClient }: { selectedClien
       setArchivedMeasurements([]);
       setMessage(
         isMissingRpcSignature(error)
-          ? "Archiv obnovy jeste neni aktivni. Spust migraci archived_measurements_restore."
+          ? "Obnova archivu ještě není aktivní. Spusť migraci archived_measurements_restore."
           : error.message,
       );
       return;
@@ -95,7 +95,7 @@ export default function ArchivedMeasurements({ selectedClient }: { selectedClien
     if (!supabase || restoringId) return;
 
     const confirmed = window.confirm(
-      `Obnovit mereni z ${formatDate(measurement.test_date)} pro klienta ${measurement.athlete_display_name}?`,
+      `Obnovit měření z ${formatDate(measurement.test_date)} pro klienta ${measurement.athlete_display_name}?`,
     );
 
     if (!confirmed) return;
@@ -115,7 +115,7 @@ export default function ArchivedMeasurements({ selectedClient }: { selectedClien
     }
 
     setArchivedMeasurements((current) => current.filter((item) => item.id !== measurement.id));
-    setMessage("Mereni je obnovene. Stranku obnovim, aby se vratilo do prehledu.");
+    setMessage("Měření bylo obnoveno. Stránku obnovím, aby se vrátilo do přehledu.");
     window.location.reload();
   }
 
@@ -123,7 +123,7 @@ export default function ArchivedMeasurements({ selectedClient }: { selectedClien
 
   return (
     <section
-      aria-label="Archiv mereni"
+      aria-label="Archiv měření"
       style={{
         margin: "0 auto 56px",
         maxWidth: "1280px",
@@ -148,7 +148,7 @@ export default function ArchivedMeasurements({ selectedClient }: { selectedClien
         >
           <div style={{ minWidth: 0 }}>
             <span style={{ color: "#23604a", display: "block", fontSize: "12px", fontWeight: 800, textTransform: "uppercase" }}>
-              Archiv mereni
+              Archiv měření
             </span>
             <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {selectedClient.name}
@@ -159,17 +159,17 @@ export default function ArchivedMeasurements({ selectedClient }: { selectedClien
               Obnovit seznam
             </button>
             <button type="button" onClick={() => setIsOpen((current) => !current)}>
-              {isOpen ? "Zavrit" : `Otevrit (${archivedMeasurements.length})`}
+              {isOpen ? "Zavřít" : `Otevřít (${archivedMeasurements.length})`}
             </button>
           </div>
         </div>
 
-        {message ? <p className={message.includes("neni aktivni") ? "status error" : "status"} style={{ marginTop: "8px" }}>{message}</p> : null}
-        {isLoading ? <p className="status" style={{ marginTop: "8px" }}>Nacitam archiv...</p> : null}
+        {message ? <p className={message.includes("není aktivní") ? "status error" : "status"} style={{ marginTop: "8px" }}>{message}</p> : null}
+        {isLoading ? <p className="status" style={{ marginTop: "8px" }}>Načítám archiv...</p> : null}
 
         {isOpen ? (
           <div style={{ display: "grid", gap: "8px", marginTop: "12px" }}>
-            {archivedMeasurements.length === 0 && !isLoading ? <p className="status">Pro vybraneho klienta neni zadne archivovane mereni.</p> : null}
+            {archivedMeasurements.length === 0 && !isLoading ? <p className="status">Pro vybraného klienta není žádné archivované měření.</p> : null}
             {archivedMeasurements.map((measurement) => (
               <article
                 key={measurement.id}
@@ -187,10 +187,10 @@ export default function ArchivedMeasurements({ selectedClient }: { selectedClien
                 <div style={{ minWidth: 0 }}>
                   <strong>{formatDate(measurement.test_date)}</strong>
                   <p className="status" style={{ fontSize: "13px" }}>
-                    Leva {formatNumber(measurement.left_force_kg, " kg")} | Prava {formatNumber(measurement.right_force_kg, " kg")} | Asym {formatNumber(measurement.asymmetry_pct, " %")}
+                    Levá {formatNumber(measurement.left_force_kg, " kg")} | Pravá {formatNumber(measurement.right_force_kg, " kg")} | Asym {formatNumber(measurement.asymmetry_pct, " %")}
                   </p>
                   <p className="status" style={{ fontSize: "12px" }}>
-                    Archivovano {formatDate(measurement.deleted_at)}
+                    Archivováno {formatDate(measurement.deleted_at)}
                   </p>
                 </div>
                 <button disabled={restoringId === measurement.id} type="button" onClick={() => void handleRestore(measurement)}>
