@@ -100,8 +100,9 @@ jobs:
           test_path.write_text(text.replace(needle, replacement))
           PY
           rm -rf .github/tindeq-payload
-          rm -f .github/workflows/apply-tindeq-persistence.yml
-          rm -f .github/workflows/export-agent-source.yml
+          git checkout HEAD -- .github/workflows/tindeq-client-view.yml
+          git checkout HEAD -- .github/workflows/apply-tindeq-persistence.yml
+          git checkout HEAD -- .github/workflows/export-agent-source.yml
 
       - name: Commit implementation
         if: steps.guard.outputs.apply == 'true'
