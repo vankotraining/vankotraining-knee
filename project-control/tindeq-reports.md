@@ -4,7 +4,7 @@
 
 - Working branch: `agent/tindeq-results-site`
 - Draft pull request: `#12`
-- Routes: `/tindeq` and `/tindeq/reports`
+- Routes: `/tindeq`, `/tindeq/reports` and `/tindeq/reports/demo`
 - Canonical report version: `tindeq-report-v1`
 - Source: stored normalized `public.tindeq_sessions` results
 - No database migration is required for this report iteration.
@@ -12,7 +12,7 @@
 
 ## Architecture
 
-`src/lib/tindeq-report.ts` is the single pure TypeScript decision layer. It accepts either the current `TindeqSession` object or a stored `StoredTindeqSession` and returns the same `TindeqCanonicalReport` structure. UI, history and a future export must consume this object rather than reimplement report calculations.
+`src/lib/tindeq-report.ts` is the single pure TypeScript decision layer. It accepts either the current `TindeqSession` object or a stored `StoredTindeqSession` and returns the same `TindeqCanonicalReport` structure. UI, history, the anonymous demo and a future export must consume this object rather than reimplement report calculations.
 
 The report contains:
 
@@ -24,6 +24,16 @@ The report contains:
 6. one rule-based recommendation.
 
 Optional knee angle and pain before/during/after are explicit report inputs. Missing values remain `null` and are listed under missing data. In this iteration they are used only for the current report calculation and are not persisted.
+
+## Anonymous demo
+
+`/tindeq/reports/demo` is deliberately available without a Supabase session. It renders a complete report from the static synthetic `StoredTindeqSession` fixture in `src/lib/tindeq-report-demo.ts` through the same `buildTindeqReportFromStoredSession` function as real history.
+
+- The demo does not query Supabase, send a magic link or write data.
+- The athlete name and all measurement values are fictional.
+- The demo includes knee angle and pain context so every report section is visible.
+- The fixture is designed to satisfy the transparent progression rules; it is a UI and logic example, not a clinical reference case.
+- The protected `/tindeq/reports` route and its signed-out behavior remain unchanged.
 
 ## Working rules
 
@@ -72,8 +82,9 @@ Every finding includes the metric value and the rule used. The report does not d
 
 ## Verification plan
 
-- Pure TypeScript unit tests cover progression, missing pain, expected fatigue, technical non-evaluability, technical instability, borderline pain, regression and reconstruction from stored JSON.
+- Pure TypeScript unit tests cover progression, missing pain, expected fatigue, technical non-evaluability, technical instability, borderline pain, regression, reconstruction from stored JSON and the complete anonymous demo fixture.
 - Playwright uses a stubbed Supabase session and synthetic normalized history to verify signed-out gating, history loading and recommendation changes after clinical context entry.
+- A separate Playwright test opens `/tindeq/reports/demo` without a session and verifies the full report, context and recommendation.
 - Final evidence must distinguish implemented, tested and exact-commit preview deployed states.
 
 ## Known auth blocker
