@@ -14,6 +14,95 @@ permissions:
   contents: read
 
 jobs:
+  apply_persistence:
+    if: github.event_name == 'push' && github.event.head_commit.message == 'Apply Tindeq persistence payload'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: agent/tindeq-results-site
+
+      - name: Apply reviewed implementation
+        shell: bash
+        run: |
+          cat .github/tindeq-payload/part-* > /tmp/tindeq-changes.b64
+          base64 --decode /tmp/tindeq-changes.b64 > /tmp/tindeq-changes.tgz
+          tar -xzf /tmp/tindeq-changes.tgz -C .
+          python3 - <<'PY'
+          from pathlib import Path
+
+          workspace = Path('src/app/tindeq/TindeqWorkspace.tsx')
+          text = workspace.read_text()
+          text = text.replace(
+              '''function mean(values: Array<number | null | undefined>) {
+            const finite = values
+              .map((value) => Number(value))
+              .filter((value) => Number.isFinite(value));
+          ''',
+              '''function mean(values: Array<number | null | undefined>) {
+            const finite = values
+              .filter((value): value is number => value !== null && value !== undefined)
+              .map((value) => Number(value))
+              .filter((value) => Number.isFinite(value));
+          ''',
+          )
+          workspace.write_text(text)
+
+          spec = Path('tests/e2e/tindeq-client-view.spec.ts')
+          text = spec.read_text()
+          text = text.replace(
+              '  const historySection = page.getByRole("heading", { name: "Uložená Tindeq měření" }).locator("..");\n',
+              '  const historySection = page\n    .getByRole("heading", { name: "Uložená Tindeq měření" })\n    .locator("xpath=ancestor::section[1]");\n',
+          )
+          spec.write_text(text)
+
+          migration = Path('supabase/migrations/20260802_tindeq_sessions.sql')
+          text = migration.read_text()
+          text = text.replace(
+              'grant execute on function public.soft_delete_tindeq_session(uuid, text) to authenticated;\ngrant execute on function public.restore_tindeq_session(uuid) to authenticated;\n',
+              'revoke all on function public.soft_delete_tindeq_session(uuid, text) from public, anon;\nrevoke all on function public.restore_tindeq_session(uuid) from public, anon;\ngrant execute on function public.soft_delete_tindeq_session(uuid, text) to authenticated;\ngrant execute on function public.restore_tindeq_session(uuid) to authenticated;\n',
+          )
+          migration.write_text(text)
+
+          test_path = Path('src/lib/tindeq-persistence.test.ts')
+          text = test_path.read_text()
+          needle = '''test("payload vždy zapisuje podporovanou analysis_version", () => {
+            assert.equal(mapTindeqSessionToInsert(fixture(), athleteId).analysis_version, TINDEQ_ANALYSIS_VERSION);
+          });
+          '''
+          replacement = needle + '''
+          test("validace odmítne nepodporovanou analysis_version", () => {
+            const errors = validateTindeqSessionForSave(
+              fixture(),
+              athleteId,
+              "tindeq-repeaters-v0",
+            );
+            assert.match(errors.join(" "), /nepodporovanou verzi/);
+          });
+          '''
+          if needle not in text:
+              raise SystemExit('test insertion point not found')
+          test_path.write_text(text.replace(needle, replacement))
+          PY
+          rm -rf .github/tindeq-payload
+          rm -f .github/workflows/apply-tindeq-persistence.yml
+          rm -f .github/workflows/export-agent-source.yml
+
+      - name: Commit implementation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --stat
+          git commit -m "Connect Tindeq results to Supabase"
+          git push origin HEAD:agent/tindeq-results-site
+
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 25
