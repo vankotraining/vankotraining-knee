@@ -19,6 +19,8 @@
     "src/lib/tindeq-browser.ts",
     "src/lib/tindeq-persistence.ts",
     "src/lib/tindeq-persistence.test.ts",
+    "src/lib/tindeq-report.ts",
+    "src/lib/tindeq-report.test.ts",
     "src/types/uint8array-blobpart.d.ts"
   ]
 }
