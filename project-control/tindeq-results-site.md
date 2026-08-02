@@ -6,6 +6,7 @@
 - Base commit reviewed before implementation: `71d6b1f0e67c571c71a53db6248e526704bddabe`
 - Working branch: `agent/tindeq-results-site`
 - Implementation commit verified by automated tests: `e480fc3f8563f158cf406f4464b7b2602f227246`
+- Documentation head after approved migration evidence: `ca59d9341d942dbf1db0b79242f8905d6cfd521c`
 - Draft pull request: `#12`
 - Route: `/tindeq`
 - Shared Supabase project: `zxvndqicslyulrinbpyn`
