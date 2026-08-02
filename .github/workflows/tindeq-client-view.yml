@@ -5,6 +5,9 @@ on:
     branches:
       - agent/tindeq-results-site
       - feature/tindeq-client-view
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
