@@ -124,11 +124,12 @@ jobs:
 
           css = Path("src/app/tindeq/tindeq.module.css")
           text = css.read_text(encoding="utf-8")
-          text = text.replace(
-              ".backLink:focus-visible,\n.uploadLabel:has(input:focus-visible),\n.sessionTabs button:focus-visible,",
-              ".backLink:focus-visible,\n.uploadLabel:has(input:focus-visible),\n.reuploadLabel:has(input:focus-visible),\n.sessionTabs button:focus-visible,",
-              1,
-          )
+          focus_old = ".backLink:focus-visible,\n.uploadLabel:has(input:focus-visible),\n.sessionTabs button:focus-visible,"
+          focus_new = ".backLink:focus-visible,\n.uploadLabel:has(input:focus-visible),\n.reuploadLabel:has(input:focus-visible),\n.sessionTabs button:focus-visible,"
+          if focus_new not in text:
+              if focus_old not in text:
+                  raise SystemExit("focus CSS anchor missing")
+              text = text.replace(focus_old, focus_new, 1)
           privacy = '''.privacyNote {
             margin: 10px 2px 0;
             font-size: 12px;
@@ -185,23 +186,6 @@ jobs:
               if privacy not in text:
                   raise SystemExit("privacy CSS anchor missing")
               text = text.replace(privacy, reupload, 1)
-          mobile = '''  .detailButton {
-            width: 100%;
-          }
-          }'''
-          mobile_new = '''  .reuploadBar {
-            justify-content: stretch;
-          }
-
-          .reuploadLabel,
-          .detailButton {
-            width: 100%;
-          }
-          }'''
-          if mobile in text:
-              text = text.replace(mobile, mobile_new, 1)
-          elif ".reuploadLabel,\n  .detailButton" not in text:
-              raise SystemExit("mobile CSS anchor missing")
           css.write_text(text, encoding="utf-8")
 
           e2e = Path("tests/e2e/tindeq-client-view.spec.ts")
