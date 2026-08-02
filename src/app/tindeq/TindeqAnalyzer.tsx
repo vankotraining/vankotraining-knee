@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { useState, type KeyboardEvent } from "react";
 import {
   importTindeqArchive,
   type RepetitionResult,
@@ -677,11 +677,9 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveResults, setSaveResults] = useState<Record<string, SaveTindeqSessionResult>>({});
-
-  useEffect(() => {
-    setSaveState("idle");
-    setSaveResults({});
-  }, [selectedAthlete?.id]);
+  const [saveAthleteId, setSaveAthleteId] = useState<string | null>(null);
+  const activeSaveState = saveAthleteId === selectedAthlete?.id ? saveState : "idle";
+  const activeSaveResults = saveAthleteId === selectedAthlete?.id ? saveResults : {};
 
   const selected = sessions.find((session) => session.id === selectedId) ?? sessions[0] ?? null;
 
@@ -693,6 +691,7 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
     setErrors([]);
     setSaveState("idle");
     setSaveResults({});
+    setSaveAthleteId(null);
     try {
       const result = await importTindeqArchive(file);
       if (result.sessions.length === 0) {
@@ -709,10 +708,11 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
   }
 
   async function handleSave() {
-    if (!selectedAthlete || saveState === "saving") return;
-    const sessionsToSave = sessions.filter((session) => !saveResults[session.id]?.ok);
+    if (!selectedAthlete || activeSaveState === "saving") return;
+    const sessionsToSave = sessions.filter((session) => !activeSaveResults[session.id]?.ok);
     if (sessionsToSave.length === 0) return;
 
+    setSaveAthleteId(selectedAthlete.id);
     setSaveState("saving");
     try {
       const results = await onSaveSessions(sessionsToSave);
@@ -747,7 +747,7 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
     }
   }
 
-  const savedCount = sessions.filter((session) => saveResults[session.id]?.ok).length;
+  const savedCount = sessions.filter((session) => activeSaveResults[session.id]?.ok).length;
   const remainingCount = sessions.length - savedCount;
   const mismatchedSessions = selectedAthlete
     ? sessions.filter((session) => !tagMatchesAthlete(session.metadata.tag, selectedAthlete.displayName))
@@ -804,11 +804,11 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
             </div>
             <button
               className={styles.saveButton}
-              disabled={!selectedAthlete || saveState === "saving" || remainingCount === 0}
+              disabled={!selectedAthlete || activeSaveState === "saving" || remainingCount === 0}
               onClick={handleSave}
               type="button"
             >
-              {saveState === "saving"
+              {activeSaveState === "saving"
                 ? "Ukládám…"
                 : remainingCount === 0
                   ? "Měření uloženo"
@@ -829,21 +829,21 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
           ) : null}
 
           <div aria-live="polite" className={styles.saveStatus}>
-            {saveState === "success" && remainingCount === 0 ? (
+            {activeSaveState === "success" && remainingCount === 0 ? (
               <p className={styles.saveSuccess}>Všechna měření byla bezpečně uložena.</p>
             ) : null}
-            {saveState === "partial" ? (
+            {activeSaveState === "partial" ? (
               <p className={styles.savePartial}>
                 Část měření byla uložena. Znovu se odešlou pouze neúspěšné položky.
               </p>
             ) : null}
-            {saveState === "error" ? (
+            {activeSaveState === "error" ? (
               <p className={styles.saveError}>Uložení selhalo. Analyzovaný výsledek zůstává na obrazovce.</p>
             ) : null}
-            {Object.keys(saveResults).length > 0 ? (
+            {Object.keys(activeSaveResults).length > 0 ? (
               <ul className={styles.saveResultList}>
                 {sessions.map((session) => {
-                  const result = saveResults[session.id];
+                  const result = activeSaveResults[session.id];
                   if (!result) return null;
                   return (
                     <li className={result.ok ? styles.saveSuccess : styles.saveError} key={session.id}>

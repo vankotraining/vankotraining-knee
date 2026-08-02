@@ -22,10 +22,7 @@ export function useSupabaseSession() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!supabase) {
-      setState("unconfigured");
-      return;
-    }
+    if (!supabase) return;
 
     let active = true;
     supabase.auth.getSession().then(({ data, error: sessionError }) => {

@@ -174,20 +174,20 @@ export default function TindeqWorkspace() {
   const [historyVersion, setHistoryVersion] = useState(0);
 
   useEffect(() => {
-    if (!supabase || !session) {
-      setAthletes([]);
-      setSelectedAthleteId(null);
-      return;
-    }
+    if (!supabase || !session) return;
 
     let active = true;
-    setAthletesState("loading");
-    setAthletesError(null);
-    supabase
-      .from("athletes")
-      .select("id,display_name,name_key,note")
-      .order("display_name")
-      .then(({ data, error }) => {
+    Promise.resolve().then(() => {
+      if (!active) return;
+      setAthletesState("loading");
+      setAthletesError(null);
+      return supabase
+        .from("athletes")
+        .select("id,display_name,name_key,note")
+        .order("display_name");
+    }).then((result) => {
+        if (!result) return;
+        const { data, error } = result;
         if (!active) return;
         if (error) {
           setAthletesState("error");
@@ -225,18 +225,18 @@ export default function TindeqWorkspace() {
   );
 
   useEffect(() => {
-    if (!supabase || !session || !selectedAthleteId) {
-      setHistory([]);
-      setHistoryState("idle");
-      return;
-    }
+    if (!supabase || !session || !selectedAthleteId) return;
 
     let active = true;
-    setHistoryState("loading");
-    setHistoryError(null);
-    loadTindeqHistory(supabase, selectedAthleteId)
+    Promise.resolve()
+      .then(() => {
+        if (!active) return null;
+        setHistoryState("loading");
+        setHistoryError(null);
+        return loadTindeqHistory(supabase, selectedAthleteId);
+      })
       .then((records) => {
-        if (!active) return;
+        if (!active || !records) return;
         setHistory(records);
         setHistoryState("ready");
       })
