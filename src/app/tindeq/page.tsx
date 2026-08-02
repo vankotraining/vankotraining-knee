@@ -21,9 +21,14 @@ export default function TindeqPage() {
             poté výslovně potvrď uložení strukturovaného výsledku.
           </p>
         </div>
-        <Link className={styles.backLink} href="/">
-          Zpět na klienty
-        </Link>
+        <nav aria-label="Navigace Tindeq">
+          <Link className={styles.backLink} href="/tindeq/reports">
+            Otevřít reporty
+          </Link>{" "}
+          <Link className={styles.backLink} href="/">
+            Zpět na klienty
+          </Link>
+        </nav>
       </header>
       <TindeqEnvironmentGuard>
         <TindeqWorkspace />
