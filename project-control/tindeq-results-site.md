@@ -5,15 +5,16 @@
 - Base branch: `main`
 - Base commit reviewed before implementation: `71d6b1f0e67c571c71a53db6248e526704bddabe`
 - Working branch: `agent/tindeq-results-site`
-- Implementation head verified before this documentation update: `adc6e2a8086a0cc87109e1e1b559f4347d3a33db`
+- Implementation commit verified by automated tests: `e480fc3f8563f158cf406f4464b7b2602f227246`
 - Draft pull request: `#12`
 - Route: `/tindeq`
-- Supabase project inspected: `zxvndqicslyulrinbpyn`
+- Shared Supabase project: `zxvndqicslyulrinbpyn`
 
 ## Status vocabulary
 
 - **Implemented** means the change exists on the working branch.
-- **Tested** means automated evidence exists for the exact implementation head.
+- **Tested** means automated evidence exists for the exact implementation commit.
+- **Database applied** means the migration exists in the shared Supabase migration history and post-migration checks passed.
 - **Preview deployed** requires a Vercel deployment whose metadata matches the exact final commit.
 - **Production deployed** requires a production deployment of that exact commit.
 - **Production verified** requires explicit user confirmation after production review.
@@ -54,12 +55,12 @@
 - Each entry shows measured date, source tag/protocol, target force, left/right result, target achievement, stability and maintenance.
 - Saved detail can be opened without reprocessing a ZIP.
 
-## Database migration prepared
+## Database migration applied
 
 Migration file: `supabase/migrations/20260802_tindeq_sessions.sql`.
 Verification queries: `supabase/checks/20260802_tindeq_sessions_checks.sql`.
 
-The migration prepares `public.tindeq_sessions` with:
+The migration created `public.tindeq_sessions` with:
 
 - UUID primary key and UUID foreign key to `athletes(id)` with `on delete cascade`,
 - soft-delete and audit metadata consistent with the knee tables,
@@ -75,22 +76,52 @@ The migration prepares `public.tindeq_sessions` with:
 - existing `set_knee_updated_at()` and `log_knee_table_change()` triggers,
 - athlete-level soft-delete/restore extended to Tindeq rows.
 
+### Application evidence
+
+- User approval received on `2026-08-02`.
+- Applied to shared project `zxvndqicslyulrinbpyn`.
+- Supabase migration history entry: version `20260802124337`, name `tindeq_sessions`.
+- PostgreSQL version at application: `17.6` on Supabase GA.
+- The table existed after application with RLS enabled and zero rows.
+- All expected columns, constraints, indexes, three RLS policies, grants and triggers were present.
+- `anon` has no table `select` or `insert` privilege.
+- `authenticated` has `select` and `insert`; update is limited to soft-delete/audit columns and does not permit changing stored analytical source fields.
+- New Tindeq soft-delete/restore functions are not executable by `PUBLIC` or `anon`; they are executable by `authenticated` and additionally require `auth.uid()` plus `is_knee_admin()`.
+
+### Authenticated transactional smoke test
+
+A database-level smoke test was executed as the existing authenticated knee administrator against an existing active athlete, entirely inside a transaction that was rolled back.
+
+Verified behavior:
+
+- an authenticated administrator can insert a valid normalized Tindeq row,
+- the inserted row is visible through RLS,
+- direct update of `source_filename` is rejected,
+- soft-delete hides the row through RLS,
+- restore makes the row visible again,
+- the transaction rollback completed,
+- `public.tindeq_sessions` contained **0 rows** after the test.
+
+No athlete, profile, knee-extension measurement or persistent Tindeq record was created, updated or deleted by the smoke test.
+
 ### RLS limitation
 
 The current application is effectively a single authorized knee administrator. `is_knee_admin()` currently authorizes the configured administrator email. This is consistent with the inspected knee tables but is not a multi-tenant ownership model. Before multi-user use, rows need explicit owner/organization columns and ownership-scoped RLS.
 
-### Migration application status
+### Advisor findings
 
-- The migration was **not applied**.
-- Only one shared active Supabase project was confirmed; a separate development/preview database was not available.
-- Applying this migration to the shared project requires explicit user approval.
-- No athlete or measurement records were created, updated or deleted during verification.
+Supabase security and performance advisors were run after the migration.
+
+- No missing RLS policy, missing primary key or unindexed foreign-key finding was reported for `tindeq_sessions`.
+- The two new indexes are reported as unused because the table is currently empty; this is expected before real history queries occur.
+- The generic security advisor warns about authenticated access to the two intentional security-definer Tindeq soft-delete/restore functions. Their bodies require a non-null authenticated user and `is_knee_admin()`, and the transactional smoke test verified the intended path.
+- Existing project-wide advisor findings remain outside this migration, including security-definer views, mutable function search paths, and pre-existing athlete/knee RPC execute grants. These should be handled as a separate security-hardening change rather than silently mixed into this feature migration.
 
 ## Automated verification
 
-Verified implementation commit: `adc6e2a8086a0cc87109e1e1b559f4347d3a33db`.
-GitHub Actions workflow: `Verify Tindeq client view`, run `30746969433`.
-Screenshot artifact: `tindeq-client-view-screenshots`, artifact ID `8833200421`.
+Verified implementation commit: `e480fc3f8563f158cf406f4464b7b2602f227246`.
+GitHub Actions workflow: `Verify Tindeq client view`, run `30747106945`.
+Screenshot artifact: `tindeq-client-view-screenshots`, artifact ID `8833240463`.
 
 - `npm test`: passed, **49/49**.
 - Persistence tests cover payload mapping, `athlete_id`, units, `analysis_version`, unsupported version, missing athlete, incomplete analysis, single save, multi-save, transparent partial failure and athlete-filtered history.
@@ -111,29 +142,29 @@ Screenshot artifact: `tindeq-client-view-screenshots`, artifact ID `8833200421`.
 ## Preview deployment
 
 - The exact implementation commit is **not preview deployed**.
-- Both linked Vercel project checks for `adc6e2a...` failed with `build-rate-limit`.
+- Both linked Vercel project checks for `e480fc3f...` failed with `build-rate-limit`.
 - Older successful previews belong to different commits and are not evidence for this implementation.
-- Because the migration is not applied to the shared Supabase database, a real preview persistence smoke test is intentionally pending approval even after Vercel accepts a build.
+- The database prerequisite is now satisfied. A real browser/Data API persistence smoke test remains pending an exact-commit preview.
 
 ## Production
 
 - `main` was not changed or merged.
-- Production remains on commit `71d6b1f0e67c571c71a53db6248e526704bddabe`.
-- The production Supabase schema was not changed.
+- Production application remains on commit `71d6b1f0e67c571c71a53db6248e526704bddabe`.
+- The shared Supabase schema **was changed** by the approved migration described above.
 - Production environment variables were not changed.
-- Production verification by the user has not occurred.
+- No persistent Tindeq measurement data was created during verification.
+- Production application verification by the user has not occurred.
 
 ## Remaining approval gates
 
-1. Explicit approval to apply `20260802_tindeq_sessions.sql` to the shared Supabase project, or provision a separate development/preview branch first.
-2. Database post-migration checks and authenticated smoke test without production athlete modifications.
-3. Exact-commit Vercel preview and browser review when the build-rate limit permits it.
-4. Explicit approval to merge PR `#12` into `main`.
-5. Explicit approval for production deployment, followed by user production verification.
+1. Obtain an exact-commit Vercel preview when the build-rate limit permits it.
+2. Run a real browser/Data API save-and-history smoke test in preview without retaining test data.
+3. Explicit approval to merge PR `#12` into `main`.
+4. Explicit approval for production deployment, followed by user production verification.
 
 ## Known limitations
 
 - ZIP decompression relies on `DecompressionStream('deflate-raw')` for current Chromium-class browsers.
 - Analytical thresholds remain working heuristics, not validated clinical cut-off values.
-- Browser tests use deterministic mocks and synthetic ZIPs; they do not substitute for a post-migration authenticated database smoke test.
+- Browser tests use deterministic mocks and synthetic ZIPs; the database path has been transactionally verified, but end-to-end browser/Data API verification still requires the exact preview.
 - Pain/RPE entry and longitudinal trend modelling remain outside this persistence change.
