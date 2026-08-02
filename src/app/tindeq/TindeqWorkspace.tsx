@@ -259,6 +259,7 @@ export default function TindeqWorkspace() {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
+        shouldCreateUser: false,
         emailRedirectTo: new URL("/tindeq", window.location.origin).toString(),
       },
     });
