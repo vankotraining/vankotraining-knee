@@ -112,6 +112,8 @@ test("klientský výsledek je výchozí, responzivní a přepíná bez nové ana
   const trainerTab = page.getByRole("tab", { name: "Detail pro trenéra" });
   await expect(clientTab).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Velmi dobrá série" })).toBeVisible();
+  await expect(page.getByText("Nahrát jiný Tindeq ZIP", { exact: true })).toBeVisible();
+  await expect(page.getByText("Nahrát Tindeq ZIP", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Dosažení cílové síly", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Stabilita síly", { exact: true })).toBeVisible();
   await expect(page.getByText("Udržení výkonu", { exact: true })).toBeVisible();
@@ -121,6 +123,15 @@ test("klientský výsledek je výchozí, responzivní a přepíná bez nové ana
     "aria-label",
     /průběhu síly levé a pravé nohy/i,
   );
+
+  const stabilityColor = await page
+    .getByText("Velmi stabilní", { exact: true })
+    .first()
+    .evaluate((element) => getComputedStyle(element).color);
+  const maintenanceColor = await page
+    .getByText("Bez výrazného poklesu", { exact: true })
+    .evaluate((element) => getComputedStyle(element).color);
+  expect(maintenanceColor).toBe(stabilityColor);
 
   for (const width of [360, 390, 720, 1024, 1440]) {
     await page.setViewportSize({ width, height: width <= 390 ? 844 : 900 });

@@ -78,6 +78,7 @@
 
 .backLink:focus-visible,
 .uploadLabel:has(input:focus-visible),
+.reuploadLabel:has(input:focus-visible),
 .sessionTabs button:focus-visible,
 .viewSwitch button:focus-visible,
 .chartScroller:focus-visible,
@@ -149,6 +150,46 @@
   margin: 10px 2px 0;
   font-size: 12px;
   text-align: center;
+}
+
+.reuploadBar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.reuploadLabel {
+  position: relative;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--border, #dfe4d8);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--foreground, #161a15);
+  padding: 9px 13px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.reuploadLabel:hover {
+  border-color: var(--accent, #23604a);
+  background: #f6fbf8;
+}
+
+.reuploadLabel input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.reuploadLabel span {
+  color: var(--accent, #23604a);
+  font-size: 20px;
+  line-height: 1;
 }
 
 .errorBox,

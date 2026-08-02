@@ -52,7 +52,17 @@ function formatDate(value: string) {
 function toneForStatus(value: string) {
   const normalized = value.toLocaleLowerCase("cs-CZ");
   if (
-    normalized.includes("výraz") ||
+    normalized.includes("bez výrazného poklesu") ||
+    normalized.includes("bez poklesu")
+  ) {
+    return styles.good;
+  }
+  if (
+    normalized.includes("výrazná odchylka") ||
+    normalized.includes("výraznější odchylka") ||
+    normalized.includes("výrazný pokles") ||
+    normalized.includes("výraznější pokles") ||
+    normalized.includes("výrazně kolísavá") ||
     normalized.includes("nestabil") ||
     normalized.includes("nelze vyhodnotit")
   ) {
@@ -68,9 +78,7 @@ function toneForStatus(value: string) {
   if (
     normalized.includes("dobrá") ||
     normalized.includes("dobře") ||
-    normalized.includes("stabilní") ||
-    normalized.includes("bez výrazného poklesu") ||
-    normalized.includes("bez poklesu")
+    normalized.includes("stabilní")
   ) {
     return styles.good;
   }
@@ -664,6 +672,7 @@ export default function TindeqAnalyzer() {
 
   return (
     <div className={styles.analyzer}>
+      {sessions.length === 0 ? (
       <section className={styles.uploadCard}>
         <label className={styles.uploadLabel}>
           <input
@@ -680,8 +689,22 @@ export default function TindeqAnalyzer() {
           Data zůstávají v zařízení a po obnovení stránky se smažou.
         </p>
       </section>
+    ) : (
+      <div className={styles.reuploadBar}>
+        <label className={styles.reuploadLabel}>
+          <input
+            accept=".zip,application/zip,application/x-zip-compressed"
+            disabled={state === "loading"}
+            onChange={(event) => handleFile(event.target.files?.[0] ?? null)}
+            type="file"
+          />
+          <span aria-hidden="true">↻</span>
+          <strong>Nahrát jiný Tindeq ZIP</strong>
+        </label>
+      </div>
+    )}
 
-      {state === "error" && <div className={styles.errorBox}>{message}</div>}
+    {state === "error" && <div className={styles.errorBox}>{message}</div>}
 
       {sessions.length > 1 && (
         <nav className={styles.sessionTabs} aria-label="Importovaná měření">
