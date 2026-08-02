@@ -167,5 +167,5 @@ test("mockovaná session načte historii a klinický kontext změní doporučen�
 
   await expect(page.getByRole("heading", { name: "progrese" })).toBeVisible();
   await expect(page.getByText("60°", { exact: true })).toBeVisible();
-  await expect(page.getByText("1/10 / 2/10 / 1/10", { exact: true })).toBeVisible();
+  await expect(page.getByText("1/10 / 2/10 / 1/10", { exact: true }).first()).toBeVisible();
 });
