@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type, @typescript-eslint/no-unused-vars */
 // TypeScript's generic Uint8Array<ArrayBufferLike> is not currently accepted as
 // BlobPart even though browsers accept Uint8Array at runtime. Keep this shim
 // isolated until the DOM library types converge.
