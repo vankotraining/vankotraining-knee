@@ -1,11 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import {
   importTindeqArchive,
   type RepetitionResult,
   type TindeqSession,
 } from "@/lib/tindeq-browser";
+import {
+  buildClientChartComment,
+  buildClientSideView,
+  buildClientSummary,
+  clientAccuracyLabel,
+  clientWarnings,
+  DEFAULT_TINDEQ_RESULT_VIEW,
+  overallMaintenance,
+  overallStability,
+  overallTargetAchievement,
+  type ResultViewMode,
+} from "@/lib/tindeq-client-view";
 import styles from "./tindeq.module.css";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
@@ -40,16 +52,29 @@ function formatDate(value: string) {
 function toneForStatus(value: string) {
   const normalized = value.toLocaleLowerCase("cs-CZ");
   if (
+    normalized.includes("výraz") ||
+    normalized.includes("nestabil") ||
+    normalized.includes("nelze vyhodnotit")
+  ) {
+    return styles.problem;
+  }
+  if (
+    normalized.includes("kontrole") ||
+    normalized.includes("mírný") ||
+    normalized.includes("kolísavá")
+  ) {
+    return styles.warning;
+  }
+  if (
     normalized.includes("dobrá") ||
+    normalized.includes("dobře") ||
     normalized.includes("stabilní") ||
+    normalized.includes("bez výrazného poklesu") ||
     normalized.includes("bez poklesu")
   ) {
     return styles.good;
   }
-  if (normalized.includes("kontrole") || normalized.includes("mírný")) {
-    return styles.warning;
-  }
-  return styles.problem;
+  return styles.neutral;
 }
 
 function medianCurve(curves: Array<Array<number | null>>): Array<number | null> {
@@ -82,295 +107,527 @@ function pathForCurve(curve: Array<number | null>, width: number, height: number
     .join(" ");
 }
 
-function OverlayChart({ repetitions }: { repetitions: RepetitionResult[] }) {
+function OverlayChart({
+  repetitions,
+  mode,
+}: {
+  repetitions: RepetitionResult[];
+  mode: ResultViewMode;
+}) {
   const width = 720;
-  const height = 260;
+  const plotHeight = 260;
+  const totalHeight = 300;
   const leftCurves = repetitions.map((repetition) => repetition.curveLeftPct);
   const rightCurves = repetitions.map((repetition) => repetition.curveRightPct);
   const leftMedian = medianCurve(leftCurves);
   const rightMedian = medianCurve(rightCurves);
-  const yFor = (value: number) => height - ((value - 70) / 50) * height;
+  const yFor = (value: number) => plotHeight - ((value - 70) / 50) * plotHeight;
+  const ariaLabel =
+    mode === "client"
+      ? "Graf průběhu síly levé a pravé nohy během jednotlivých opakování vůči nastavenému cíli"
+      : "Normalizované průběhy jednotlivých opakování a jejich mediánové křivky";
 
   return (
     <div className={styles.chartWrap}>
-      <svg
-        aria-label="Normalizované průběhy opakování"
-        className={styles.chart}
-        role="img"
-        viewBox={`0 0 ${width} ${height}`}
-      >
-        <rect
-          className={styles.targetBand}
-          height={yFor(95) - yFor(105)}
-          width={width}
-          x="0"
-          y={yFor(105)}
-        />
-        {[80, 90, 95, 100, 105, 110, 120].map((value) => (
-          <g key={value}>
-            <line
-              className={value === 100 ? styles.targetLine : styles.gridLine}
-              x1="0"
-              x2={width}
-              y1={yFor(value)}
-              y2={yFor(value)}
+      <div className={styles.chartScroller} tabIndex={0} aria-label="Posuvná oblast grafu">
+        <svg
+          aria-label={ariaLabel}
+          className={styles.chart}
+          role="img"
+          viewBox={`0 0 ${width} ${totalHeight}`}
+        >
+          <rect
+            className={styles.targetBand}
+            height={yFor(95) - yFor(105)}
+            width={width}
+            x="0"
+            y={yFor(105)}
+          />
+          {[80, 90, 95, 100, 105, 110, 120].map((value) => (
+            <g key={value}>
+              <line
+                className={value === 100 ? styles.targetLine : styles.gridLine}
+                x1="0"
+                x2={width}
+                y1={yFor(value)}
+                y2={yFor(value)}
+              />
+              <text className={styles.axisText} x="34" y={yFor(value) - 5}>
+                {value} %
+              </text>
+            </g>
+          ))}
+          {leftCurves.map((curve, index) => (
+            <path
+              className={styles.leftCurve}
+              d={pathForCurve(curve, width, plotHeight)}
+              key={`left-${index}`}
             />
-            <text className={styles.axisText} x="6" y={yFor(value) - 5}>
-              {value} %
-            </text>
-          </g>
-        ))}
-        {leftCurves.map((curve, index) => (
-          <path
-            className={styles.leftCurve}
-            d={pathForCurve(curve, width, height)}
-            key={`left-${index}`}
-          />
-        ))}
-        {rightCurves.map((curve, index) => (
-          <path
-            className={styles.rightCurve}
-            d={pathForCurve(curve, width, height)}
-            key={`right-${index}`}
-          />
-        ))}
-        <path className={styles.leftMedian} d={pathForCurve(leftMedian, width, height)} />
-        <path className={styles.rightMedian} d={pathForCurve(rightMedian, width, height)} />
-      </svg>
-      <div className={styles.legend}>
-        <span>
-          <i className={styles.leftLegend} />Levá
-        </span>
-        <span>
-          <i className={styles.rightLegend} />Pravá
-        </span>
-        <span className={styles.bandLegend}>Cílové pásmo 95–105 %</span>
-        <span className={styles.legendNote}>Tenké čáry = opakování, silná = medián</span>
+          ))}
+          {rightCurves.map((curve, index) => (
+            <path
+              className={styles.rightCurve}
+              d={pathForCurve(curve, width, plotHeight)}
+              key={`right-${index}`}
+            />
+          ))}
+          <path className={styles.leftMedian} d={pathForCurve(leftMedian, width, plotHeight)} />
+          <path className={styles.rightMedian} d={pathForCurve(rightMedian, width, plotHeight)} />
+          <text className={styles.regionAbove} textAnchor="end" x="710" y="20">
+            Nad cílem
+          </text>
+          <text className={styles.regionTarget} textAnchor="end" x="710" y={yFor(100) - 8}>
+            V cíli
+          </text>
+          <text className={styles.regionBelow} textAnchor="end" x="710" y="245">
+            Pod cílem
+          </text>
+          <text className={styles.xAxisLabel} textAnchor="middle" x="360" y="292">
+            Průběh opakování
+          </text>
+          <text
+            className={styles.yAxisLabel}
+            textAnchor="middle"
+            transform="rotate(-90 13 130)"
+            x="13"
+            y="130"
+          >
+            Síla vůči cíli
+          </text>
+        </svg>
       </div>
+      <div className={styles.legend} aria-label="Legenda grafu">
+        <span>
+          <i className={styles.leftLegend} />Levá noha
+        </span>
+        <span>
+          <i className={styles.rightLegend} />Pravá noha
+        </span>
+        <span>
+          <i className={styles.thinLegend} />Jednotlivá opakování
+        </span>
+        <span>
+          <i className={styles.typicalLegend} />Typický průběh
+        </span>
+      </div>
+      {mode === "trainer" && (
+        <p className={styles.chartTechnicalNote}>
+          Tenké čáry představují jednotlivá opakování, silné čáry mediánový průběh.
+          Cílové pásmo odpovídá 95–105 % nastavené síly.
+        </p>
+      )}
     </div>
+  );
+}
+
+function ClientSideCard({
+  label,
+  accentClass,
+  target,
+  summary,
+  unit,
+}: {
+  label: string;
+  accentClass: string;
+  target: number | null;
+  summary: TindeqSession["analysis"]["summary"]["left"];
+  unit: string;
+}) {
+  const view = buildClientSideView(target, summary);
+  return (
+    <section className={`${styles.sideCard} ${accentClass}`}>
+      <header className={styles.sideHeader}>
+        <span className={styles.sideDot} aria-hidden="true" />
+        <h4>{label}</h4>
+      </header>
+      <dl className={styles.sideMetricList}>
+        <div>
+          <dt>Cílová síla</dt>
+          <dd>{formatNumber(view.targetForce, 1, ` ${unit}`)}</dd>
+        </div>
+        <div>
+          <dt>Průměrná síla</dt>
+          <dd>{formatNumber(view.averageForce, 1, ` ${unit}`)}</dd>
+        </div>
+        <div>
+          <dt>Dosažení cíle</dt>
+          <dd>{formatNumber(view.targetAchievementPct, 0, " %")}</dd>
+        </div>
+        <div>
+          <dt>Čas v cíli</dt>
+          <dd>{formatNumber(view.timeInTargetPct, 0, " %")}</dd>
+        </div>
+        <div>
+          <dt>Stabilita</dt>
+          <dd className={toneForStatus(view.stability)}>{view.stability}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+function TrainerSideCard({
+  label,
+  accentClass,
+  target,
+  summary,
+  unit,
+}: {
+  label: string;
+  accentClass: string;
+  target: number | null;
+  summary: TindeqSession["analysis"]["summary"]["left"];
+  unit: string;
+}) {
+  return (
+    <section className={`${styles.sideCard} ${accentClass}`}>
+      <header className={styles.sideHeader}>
+        <span className={styles.sideDot} aria-hidden="true" />
+        <h4>{label}</h4>
+      </header>
+      <dl className={styles.sideMetricList}>
+        <div>
+          <dt>Cílová síla</dt>
+          <dd>{formatNumber(target, 1, ` ${unit}`)}</dd>
+        </div>
+        <div>
+          <dt>Průměrné splnění cíle</dt>
+          <dd>{formatNumber(summary.meanPctTarget, 1, " %")}</dd>
+        </div>
+        <div>
+          <dt>Čas v pásmu ±5 %</dt>
+          <dd>{formatNumber(summary.meanTimeIn5Pct, 0, " %")}</dd>
+        </div>
+        <div>
+          <dt>CV během opakování</dt>
+          <dd>{formatNumber(summary.medianWithinRepCvPct, 1, " %")}</dd>
+        </div>
+        <div>
+          <dt>CV mezi opakováními</dt>
+          <dd>{formatNumber(summary.betweenRepCvPct, 1, " %")}</dd>
+        </div>
+        <div>
+          <dt>Trend v sérii</dt>
+          <dd>{formatSignedNumber(summary.trendPctTargetPerRep, 2, " p. b./opak.")}</dd>
+        </div>
+      </dl>
+    </section>
   );
 }
 
 function SessionResult({ session }: { session: TindeqSession }) {
   const { metadata, analysis } = session;
-  const averageTarget = useMemo(() => {
-    const values = [
-      analysis.summary.left.meanPctTarget,
-      analysis.summary.right.meanPctTarget,
-    ].filter((value): value is number => value !== null);
-    return values.length > 0
-      ? values.reduce((sum, value) => sum + value, 0) / values.length
-      : null;
-  }, [analysis.summary]);
+  const [viewMode, setViewMode] = useState<ResultViewMode>(DEFAULT_TINDEQ_RESULT_VIEW);
+  const clientSummary = buildClientSummary(session);
+  const targetAchievement = overallTargetAchievement(session);
+  const stability = overallStability(session);
+  const maintenance = overallMaintenance(session);
+  const graphComment = buildClientChartComment(session);
+  const warnings = clientWarnings(session);
+  const unit = metadata.unit || "kg";
 
-  const sideCards = [
-    {
-      key: "left",
-      label: "Levá noha",
-      accentClass: styles.leftSide,
-      target: analysis.targets.left,
-      summary: analysis.summary.left,
-    },
-    {
-      key: "right",
-      label: "Pravá noha",
-      accentClass: styles.rightSide,
-      target: analysis.targets.right,
-      summary: analysis.summary.right,
-    },
-  ] as const;
+  function selectMode(mode: ResultViewMode) {
+    setViewMode(mode);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`tindeq-${mode}-tab`)?.focus();
+    });
+  }
+
+  function handleTabKey(event: KeyboardEvent<HTMLButtonElement>) {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    if (event.key === "Home" || event.key === "ArrowLeft") selectMode("client");
+    else selectMode("trainer");
+  }
 
   return (
     <article className={styles.result}>
       <section className={styles.resultHeader}>
-        <div>
+        <div className={styles.resultIdentity}>
           <p className={styles.eyebrow}>{metadata.type || "Repeaters"}</p>
           <h2>{metadata.tag}</h2>
-          <p>
-            {formatDate(metadata.measuredAt)} · {metadata.workLevelPct} % MVC ·{" "}
-            {metadata.repetitions} × {metadata.workDurationSeconds} s
+          <p>{formatDate(metadata.measuredAt)}</p>
+        </div>
+        <div className={styles.viewSwitch} role="tablist" aria-label="Zobrazení výsledku">
+          <button
+            aria-controls="tindeq-client-panel"
+            aria-selected={viewMode === "client"}
+            className={viewMode === "client" ? styles.activeViewTab : ""}
+            id="tindeq-client-tab"
+            onClick={() => setViewMode("client")}
+            onKeyDown={handleTabKey}
+            role="tab"
+            tabIndex={viewMode === "client" ? 0 : -1}
+            type="button"
+          >
+            Pro klienta
+          </button>
+          <button
+            aria-controls="tindeq-trainer-panel"
+            aria-selected={viewMode === "trainer"}
+            className={viewMode === "trainer" ? styles.activeViewTab : ""}
+            id="tindeq-trainer-tab"
+            onClick={() => setViewMode("trainer")}
+            onKeyDown={handleTabKey}
+            role="tab"
+            tabIndex={viewMode === "trainer" ? 0 : -1}
+            type="button"
+          >
+            Detail pro trenéra
+          </button>
+        </div>
+      </section>
+
+      {viewMode === "client" ? (
+        <div
+          aria-labelledby="tindeq-client-tab"
+          className={styles.clientPanel}
+          id="tindeq-client-panel"
+          role="tabpanel"
+          tabIndex={0}
+        >
+          <p className={styles.compactProtocol}>
+            {analysis.detectedRepetitions} opakování · {formatNumber(metadata.workDurationSeconds, 0)} sekund ·{" "}
+            {formatNumber(metadata.workLevelPct, 0)} % MVC
           </p>
-        </div>
-        <div className={styles.targetPill}>
-          Průměrné splnění {formatNumber(averageTarget, 1, " %")}
-        </div>
-      </section>
 
-      <section className={styles.domainGrid}>
-        {[
-          ["Splnění cíle", analysis.summary.domains.accuracy],
-          ["Kontrola síly", analysis.summary.domains.control],
-          ["Udržení série", analysis.summary.domains.maintenance],
-        ].map(([label, value]) => (
-          <div className={styles.domainCard} key={label}>
-            <span>{label}</span>
-            <strong className={toneForStatus(value)}>{value}</strong>
-          </div>
-        ))}
-      </section>
+          <section className={`${styles.clientSummary} ${toneForStatus(clientSummary.title)}`}>
+            <p className={styles.eyebrow}>Výsledek série</p>
+            <h3>{clientSummary.title}</h3>
+            <p>{clientSummary.text}</p>
+          </section>
 
-      <section className={styles.section}>
-        <div className={styles.sectionHeading}>
-          <div>
-            <p className={styles.eyebrow}>Souhrn podle strany</p>
-            <h3>Levá a pravá noha</h3>
-          </div>
-          <span>Stejné metriky jsou vždy ve stejném pořadí</span>
-        </div>
+          <section className={styles.clientDomainGrid} aria-label="Tři hlavní výsledky série">
+            <div className={styles.clientMetricCard}>
+              <span>Dosažení cílové síly</span>
+              <small>Jak blízko byla síla nastavenému cíli</small>
+              <strong>{formatNumber(targetAchievement, 0, " %")}</strong>
+              <b className={toneForStatus(clientAccuracyLabel(analysis.summary.domains.accuracy))}>
+                {clientAccuracyLabel(analysis.summary.domains.accuracy)}
+              </b>
+            </div>
+            <div className={styles.clientMetricCard}>
+              <span>Stabilita síly</span>
+              <small>Jak rovnoměrně byla síla během opakování držena</small>
+              <strong className={toneForStatus(stability)}>{stability}</strong>
+            </div>
+            <div className={styles.clientMetricCard}>
+              <span>Udržení výkonu</span>
+              <small>Jak se výkon měnil od začátku do konce série</small>
+              <strong className={toneForStatus(maintenance)}>{maintenance}</strong>
+            </div>
+          </section>
 
-        <div className={styles.sideGrid}>
-          {sideCards.map((side) => (
-            <section className={`${styles.sideCard} ${side.accentClass}`} key={side.key}>
-              <header className={styles.sideHeader}>
-                <span className={styles.sideDot} />
-                <h4>{side.label}</h4>
-              </header>
-              <dl className={styles.sideMetricList}>
-                <div>
-                  <dt>Cílová síla</dt>
-                  <dd>{formatNumber(side.target, 1, ` ${metadata.unit}`)}</dd>
-                </div>
-                <div>
-                  <dt>Průměrné splnění cíle</dt>
-                  <dd>{formatNumber(side.summary.meanPctTarget, 1, " %")}</dd>
-                </div>
-                <div>
-                  <dt>Čas v pásmu ±5 %</dt>
-                  <dd>{formatNumber(side.summary.meanTimeIn5Pct, 0, " %")}</dd>
-                </div>
-                <div>
-                  <dt>Kolísání během opakování</dt>
-                  <dd>{formatNumber(side.summary.medianWithinRepCvPct, 1, " % CV")}</dd>
-                </div>
-                <div>
-                  <dt>Rozdíly mezi opakováními</dt>
-                  <dd>{formatNumber(side.summary.betweenRepCvPct, 1, " % CV")}</dd>
-                </div>
-                <div>
-                  <dt>Trend v sérii</dt>
-                  <dd>
-                    {formatSignedNumber(side.summary.trendPctTargetPerRep, 2, " p. b./opak.")}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-          ))}
-        </div>
-      </section>
+          <section className={styles.section}>
+            <div className={styles.sectionHeading}>
+              <div>
+                <p className={styles.eyebrow}>Výsledek podle strany</p>
+                <h3>Levá a pravá noha</h3>
+              </div>
+            </div>
+            <div className={styles.sideGrid}>
+              <ClientSideCard
+                accentClass={styles.leftSide}
+                label="Levá noha"
+                summary={analysis.summary.left}
+                target={analysis.targets.left}
+                unit={unit}
+              />
+              <ClientSideCard
+                accentClass={styles.rightSide}
+                label="Pravá noha"
+                summary={analysis.summary.right}
+                target={analysis.targets.right}
+                unit={unit}
+              />
+            </div>
+          </section>
 
-      <section className={styles.protocolCard}>
-        <div>
-          <p className={styles.eyebrow}>Technické údaje</p>
-          <h3>Parametry měření</h3>
-        </div>
-        <dl className={styles.protocolGrid}>
-          <div>
-            <dt>Opakování</dt>
-            <dd>
-              {analysis.detectedRepetitions}/{analysis.expectedRepetitions}
-            </dd>
-          </div>
-          <div>
-            <dt>Pracovní interval</dt>
-            <dd>{formatNumber(metadata.workDurationSeconds, 1, " s")}</dd>
-          </div>
-          <div>
-            <dt>Intenzita</dt>
-            <dd>{formatNumber(metadata.workLevelPct, 0, " % MVC")}</dd>
-          </div>
-          <div>
-            <dt>Vzorkování</dt>
-            <dd>{formatNumber(analysis.samplingHz, 1, " Hz")}</dd>
-          </div>
-        </dl>
-      </section>
+          <section className={styles.section}>
+            <div className={styles.clientChartHeading}>
+              <p className={styles.eyebrow}>Průběh série</p>
+              <h3>Jak byla síla držena během opakování</h3>
+              <p>
+                Zelené pásmo ukazuje nastavený cíl. Čím více jsou čáry v zeleném pásmu a blízko u sebe,
+                tím přesněji a stabilněji byla síla držena.
+              </p>
+            </div>
+            <OverlayChart mode="client" repetitions={analysis.repetitions} />
+            <p className={styles.graphComment}>{graphComment}</p>
+          </section>
 
-      {analysis.warnings.length > 0 && (
-        <section className={styles.alert}>
-          <strong>Upozornění</strong>
-          <ul>
-            {analysis.warnings.map((warning) => (
-              <li key={warning}>{warning}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className={styles.section}>
-        <div className={styles.sectionHeading}>
-          <div>
-            <p className={styles.eyebrow}>Průběh série</p>
-            <h3>Opakování normalizovaná na 0–100 %</h3>
-          </div>
-          <span>Cílové pásmo: 95–105 %</span>
-        </div>
-        <OverlayChart repetitions={analysis.repetitions} />
-      </section>
-
-      <section className={styles.section}>
-        <div className={styles.sectionHeading}>
-          <div>
-            <p className={styles.eyebrow}>Detail</p>
-            <h3>Jednotlivá opakování</h3>
-          </div>
-        </div>
-        <div className={styles.tableWrap}>
-          <table>
-            <thead>
-              <tr>
-                <th rowSpan={2} scope="col">
-                  #
-                </th>
-                <th className={styles.leftGroupHeader} colSpan={4} scope="colgroup">
-                  Levá noha
-                </th>
-                <th className={styles.rightGroupHeader} colSpan={4} scope="colgroup">
-                  Pravá noha
-                </th>
-                <th rowSpan={2} scope="col">
-                  Upozornění
-                </th>
-              </tr>
-              <tr>
-                <th scope="col">% cíle</th>
-                <th scope="col">CV</th>
-                <th scope="col">Čas ±5 %</th>
-                <th scope="col">Náběh 95 %</th>
-                <th scope="col">% cíle</th>
-                <th scope="col">CV</th>
-                <th scope="col">Čas ±5 %</th>
-                <th scope="col">Náběh 95 %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {analysis.repetitions.map((repetition) => (
-                <tr key={repetition.repetition}>
-                  <td>{repetition.repetition}</td>
-                  <td>{formatNumber(repetition.left.meanPctTarget, 1, " %")}</td>
-                  <td>{formatNumber(repetition.left.cvPct, 1, " %")}</td>
-                  <td>{formatNumber(repetition.left.timeIn5Pct, 0, " %")}</td>
-                  <td>{formatNumber(repetition.left.timeTo95Seconds, 2, " s")}</td>
-                  <td>{formatNumber(repetition.right.meanPctTarget, 1, " %")}</td>
-                  <td>{formatNumber(repetition.right.cvPct, 1, " %")}</td>
-                  <td>{formatNumber(repetition.right.timeIn5Pct, 0, " %")}</td>
-                  <td>{formatNumber(repetition.right.timeTo95Seconds, 2, " s")}</td>
-                  <td>
-                    {repetition.flags.length > 0
-                      ? repetition.flags.join("; ")
-                      : "–"}
-                  </td>
-                </tr>
+          <section
+            className={`${styles.clientAlert} ${warnings.length === 1 && warnings[0].startsWith("Série proběhla") ? styles.clientAlertNeutral : ""}`}
+          >
+            <h3>Upozornění k záznamu</h3>
+            <ul>
+              {warnings.map((warning) => (
+                <li key={warning}>{warning}</li>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+            </ul>
+          </section>
 
-      <footer className={styles.methodNote}>
-        Výpočet je pracovní analytická verze: 100ms vyhlazení, detekce nad 35 %
-        pracovního rozsahu a stabilní část 25–85 % kontrakce. Prahy nejsou
-        klinicky validované cut-off hodnoty.
-      </footer>
+          <p className={styles.clientDisclaimer}>
+            Výsledek popisuje provedení této silové série.
+          </p>
+          <button
+            className={styles.detailButton}
+            onClick={() => setViewMode("trainer")}
+            type="button"
+          >
+            Zobrazit detail pro trenéra
+          </button>
+        </div>
+      ) : (
+        <div
+          aria-labelledby="tindeq-trainer-tab"
+          className={styles.trainerPanel}
+          id="tindeq-trainer-panel"
+          role="tabpanel"
+          tabIndex={0}
+        >
+          <section className={styles.domainGrid}>
+            {[
+              ["Splnění cíle", analysis.summary.domains.accuracy],
+              ["Kontrola síly", analysis.summary.domains.control],
+              ["Udržení série", analysis.summary.domains.maintenance],
+            ].map(([label, value]) => (
+              <div className={styles.domainCard} key={label}>
+                <span>{label}</span>
+                <strong className={toneForStatus(value)}>{value}</strong>
+              </div>
+            ))}
+          </section>
+
+          <section className={styles.section}>
+            <div className={styles.sectionHeading}>
+              <div>
+                <p className={styles.eyebrow}>Souhrn podle strany</p>
+                <h3>Levá a pravá noha</h3>
+              </div>
+              <span>CV popisuje relativní variabilitu síly.</span>
+            </div>
+            <div className={styles.sideGrid}>
+              <TrainerSideCard
+                accentClass={styles.leftSide}
+                label="Levá noha"
+                summary={analysis.summary.left}
+                target={analysis.targets.left}
+                unit={unit}
+              />
+              <TrainerSideCard
+                accentClass={styles.rightSide}
+                label="Pravá noha"
+                summary={analysis.summary.right}
+                target={analysis.targets.right}
+                unit={unit}
+              />
+            </div>
+          </section>
+
+          <section className={styles.protocolCard}>
+            <div>
+              <p className={styles.eyebrow}>Technické údaje</p>
+              <h3>Parametry měření</h3>
+            </div>
+            <dl className={styles.protocolGrid}>
+              <div>
+                <dt>Opakování</dt>
+                <dd>{analysis.detectedRepetitions}/{analysis.expectedRepetitions}</dd>
+              </div>
+              <div>
+                <dt>Pracovní interval</dt>
+                <dd>{formatNumber(metadata.workDurationSeconds, 1, " s")}</dd>
+              </div>
+              <div>
+                <dt>Intenzita</dt>
+                <dd>{formatNumber(metadata.workLevelPct, 0, " % MVC")}</dd>
+              </div>
+              <div>
+                <dt>Vzorkovací frekvence</dt>
+                <dd>{formatNumber(analysis.samplingHz, 1, " Hz")}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className={styles.alert}>
+            <strong>Technická upozornění</strong>
+            {analysis.warnings.length > 0 ? (
+              <ul>
+                {analysis.warnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>Bez souhrnných technických upozornění.</p>
+            )}
+          </section>
+
+          <section className={styles.section}>
+            <div className={styles.sectionHeading}>
+              <div>
+                <p className={styles.eyebrow}>Průběh série</p>
+                <h3>Opakování normalizovaná na 0–100 % pracovního intervalu</h3>
+              </div>
+              <span>Cílové pásmo: 95–105 %</span>
+            </div>
+            <OverlayChart mode="trainer" repetitions={analysis.repetitions} />
+          </section>
+
+          <section className={styles.section}>
+            <div className={styles.sectionHeading}>
+              <div>
+                <p className={styles.eyebrow}>Detail</p>
+                <h3>Jednotlivá opakování</h3>
+              </div>
+            </div>
+            <div className={styles.tableWrap}>
+              <table>
+                <thead>
+                  <tr>
+                    <th rowSpan={2} scope="col">#</th>
+                    <th className={styles.leftGroupHeader} colSpan={4} scope="colgroup">Levá noha</th>
+                    <th className={styles.rightGroupHeader} colSpan={4} scope="colgroup">Pravá noha</th>
+                    <th rowSpan={2} scope="col">Upozornění</th>
+                  </tr>
+                  <tr>
+                    <th scope="col">% cíle</th>
+                    <th scope="col">CV</th>
+                    <th scope="col">Čas ±5 %</th>
+                    <th scope="col">Náběh 95 %</th>
+                    <th scope="col">% cíle</th>
+                    <th scope="col">CV</th>
+                    <th scope="col">Čas ±5 %</th>
+                    <th scope="col">Náběh 95 %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {analysis.repetitions.map((repetition) => (
+                    <tr key={repetition.repetition}>
+                      <td>{repetition.repetition}</td>
+                      <td>{formatNumber(repetition.left.meanPctTarget, 1, " %")}</td>
+                      <td>{formatNumber(repetition.left.cvPct, 1, " %")}</td>
+                      <td>{formatNumber(repetition.left.timeIn5Pct, 0, " %")}</td>
+                      <td>{formatNumber(repetition.left.timeTo95Seconds, 2, " s")}</td>
+                      <td>{formatNumber(repetition.right.meanPctTarget, 1, " %")}</td>
+                      <td>{formatNumber(repetition.right.cvPct, 1, " %")}</td>
+                      <td>{formatNumber(repetition.right.timeIn5Pct, 0, " %")}</td>
+                      <td>{formatNumber(repetition.right.timeTo95Seconds, 2, " s")}</td>
+                      <td>{repetition.flags.length > 0 ? repetition.flags.join("; ") : "–"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <footer className={styles.methodNote}>
+            Výpočet používá 100ms vyhlazení, detekci nad 35 % pracovního rozsahu a stabilní část
+            25–85 % kontrakce. Prahové hodnoty jsou pracovní analytické hranice, nikoliv validované
+            klinické cut-off hodnoty.
+          </footer>
+        </div>
+      )}
     </article>
   );
 }
@@ -382,8 +639,7 @@ export default function TindeqAnalyzer() {
   const [message, setMessage] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const selected =
-    sessions.find((session) => session.id === selectedId) ?? sessions[0] ?? null;
+  const selected = sessions.find((session) => session.id === selectedId) ?? sessions[0] ?? null;
 
   async function handleFile(file: File | null) {
     if (!file) return;
@@ -401,9 +657,7 @@ export default function TindeqAnalyzer() {
       setSelectedId(result.sessions[0].id);
       setState("ready");
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Soubor se nepodařilo zpracovat.",
-      );
+      setMessage(error instanceof Error ? error.message : "Soubor se nepodařilo zpracovat.");
       setState("error");
     }
   }
@@ -418,10 +672,8 @@ export default function TindeqAnalyzer() {
             onChange={(event) => handleFile(event.target.files?.[0] ?? null)}
             type="file"
           />
-          <span className={styles.uploadIcon}>＋</span>
-          <strong>
-            {state === "loading" ? "Analyzuji soubor…" : "Nahrát Tindeq ZIP"}
-          </strong>
+          <span className={styles.uploadIcon} aria-hidden="true">＋</span>
+          <strong>{state === "loading" ? "Analyzuji soubor…" : "Nahrát Tindeq ZIP"}</strong>
           <small>Jednotlivý export nebo ZIP s více exporty</small>
         </label>
         <p className={styles.privacyNote}>
@@ -435,6 +687,7 @@ export default function TindeqAnalyzer() {
         <nav className={styles.sessionTabs} aria-label="Importovaná měření">
           {sessions.map((session) => (
             <button
+              aria-current={session.id === selected?.id ? "true" : undefined}
               className={session.id === selected?.id ? styles.activeTab : ""}
               key={session.id}
               onClick={() => setSelectedId(session.id)}
@@ -460,7 +713,7 @@ export default function TindeqAnalyzer() {
         </div>
       )}
 
-      {selected && <SessionResult session={selected} />}
+      {selected && <SessionResult key={selected.id} session={selected} />}
     </div>
   );
 }
