@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   implement-and-verify:
-    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, '[ui-polish-diagnostic]') }}
+    if: ${{ github.event_name != 'push' || (!contains(github.event.head_commit.message, '[ui-polish-diagnostic]') && !contains(github.event.head_commit.message, '[ui-polish-final]')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -44,22 +44,11 @@ jobs:
           record_failure() {
             reason="$1"
             set +e
-            git show "HEAD:$WORKFLOW" > "$WORKFLOW" 2>/dev/null || git show "HEAD^:$WORKFLOW" > "$WORKFLOW" 2>/dev/null || true
-            {
-              echo
-              echo "# UI_POLISH_FAILURE_BEGIN"
-              echo "# reason=$reason"
-              echo "# commit=$(git rev-parse HEAD)"
-              tail -n 160 "$LOG" | sed 's/^/# /'
-              echo "# git-status"
-              git status --short | sed 's/^/# /'
-              echo "# UI_POLISH_FAILURE_END"
-            } >> "$WORKFLOW"
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add "$WORKFLOW"
-            git commit -m "Record UI polish v2 verification failure [ui-polish-diagnostic]"
-            git push origin HEAD:main
+            echo "UI_POLISH_FAILURE reason=$reason" >&2
+            echo "--- verification log tail ---" >&2
+            tail -n 200 "$LOG" >&2
+            echo "--- git status ---" >&2
+            git status --short >&2
             exit 1
           }
 
@@ -250,7 +239,7 @@ jobs:
           if ! git cat-file -e "$BASE_COMMIT:package-lock.json" 2>/dev/null; then
             rm -f package-lock.json
           fi
-          rm -f scripts/apply-ui-polish-v2.py "$WORKFLOW"
+          rm -f scripts/apply-ui-polish-v2.py
           git fetch origin main >> "$LOG" 2>&1 || record_failure "git-fetch"
           if [[ "$(git rev-parse origin/main)" != "$(git rev-parse HEAD)" ]]; then
             record_failure "main-changed"
@@ -259,7 +248,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --check >> "$LOG" 2>&1 || record_failure "cached-diff-check"
-          git commit -m "Implement UI polish v2" >> "$LOG" 2>&1 || record_failure "git-commit"
+          git commit -m "Implement UI polish v2 [ui-polish-final]" >> "$LOG" 2>&1 || record_failure "git-commit"
           git push origin HEAD:main >> "$LOG" 2>&1 || record_failure "git-push"
 
       - name: Upload responsive screenshots
