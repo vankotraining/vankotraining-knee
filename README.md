@@ -1,41 +1,29 @@
 # Vanko Training Knee
 
-Samostatny projekt pro `knee.vankotraining.cz`.
+Samostatný projekt pro `knee.vankotraining.cz`.
 
-## Ucel
+## Účel
 
-Projekt drzi kod pro specializovanou knee aplikaci oddelene od:
+Projekt drží kód specializované Knee aplikace odděleně od veřejného webu a tréninkové aplikace. Produkční aplikace používá sdílený Supabase projekt, ale aplikační kód, routing a deployment zůstávají samostatné.
 
-- `vankotraining.cz` - verejny osobni web
-- `app.vankotraining.cz` - treninkova aplikace pro klienty
-- `knee.vankotraining.cz` - koleno, rehabilitacni guidance, testy a framework
-
-Data klientu mohou pozdeji zustat ve spolecne databazi, ale aplikacni kod ma byt
-oddeleny.
-
-## Lokalni spusteni
+## Lokální spuštění
 
 ```bash
 npm install
 npm run dev
 ```
 
-Vychozi adresa:
+Výchozí adresa: `http://localhost:3000`.
 
-```text
-http://localhost:3000
-```
+## Prostředí
 
-## Env
-
-Vytvor `.env.local` podle `.env.example`, pokud bude projekt cist data ze
-Supabase.
+Vytvoř `.env.local` podle `.env.example`:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-## Rizeni projektu
+## Zdroje pravdy projektu
 
-Rizeni, rozhodnuti, domenu a backlog drzime ve slozce `project-control`.
+Začni v [`project-control/README.md`](project-control/README.md). Aktuální stav je pouze v [`project-control/PROJECT_STATE.md`](project-control/PROJECT_STATE.md) a produkční stav pouze v [`project-control/PRODUCTION_STATUS.md`](project-control/PRODUCTION_STATUS.md). Historické checkpointy a feature dokumenty jsou evidence, nikoli aktuální backlog.
