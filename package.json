@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsc -p tsconfig.test.json && node --test .test-dist/src/lib/knee-metrics.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test .test-dist/src/lib/knee-metrics.test.js",
+    "project:check": "node scripts/check-project-control.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",
