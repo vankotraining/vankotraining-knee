@@ -17,14 +17,11 @@ export default function TindeqPage() {
           <p className={styles.eyebrow}>knee.vankotraining.cz</p>
           <h1>Tindeq Repeaters</h1>
           <p className={styles.intro}>
-            Vyber klienta, analyzuj původní Tindeq ZIP lokálně v prohlížeči a až
-            poté výslovně potvrď uložení strukturovaného výsledku.
+            Obecný analyzátor Tindeq ZIP. Pro běžné přidání výsledku vyber klienta
+            na hlavní Knee stránce a použij akci Přidat Tindeq záznam.
           </p>
         </div>
         <nav aria-label="Navigace Tindeq">
-          <Link className={styles.backLink} href="/tindeq/workflow">
-            Klientské workflow
-          </Link>{" "}
           <Link className={styles.backLink} href="/tindeq/reports">
             Otevřít reporty
           </Link>{" "}
