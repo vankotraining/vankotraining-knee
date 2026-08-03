@@ -8,27 +8,30 @@ import {
 import {
   createImportFingerprint,
   evaluateTindeqSessionSide,
-  type ClientMatchMethod,
   type ExerciseSide,
   type PainSnapshot,
-  type PrescriptionSnapshot,
   type SideExerciseEvaluation,
 } from "./tindeq-workflow";
 
-export const TINDEQ_WORKFLOW_HISTORY_SELECT = `${TINDEQ_HISTORY_SELECT},exercise_side,prescription_id,reference_test_id,reference_test_date,reference_force_kg,prescribed_pct,prescribed_target_force_kg,mean_force_kg,best_rep_force_kg,weakest_rep_force_kg,mean_pct_reference,mean_pct_target,consistency_cv_pct,first_to_last_change_pct_points,total_work_seconds,pain_before,pain_during_max,pain_after,source_client_name,client_match_method,import_fingerprint`;
+export const TINDEQ_WORKFLOW_HISTORY_SELECT = `${TINDEQ_HISTORY_SELECT},exercise_side,reference_test_id,reference_test_date,reference_force_kg,prescribed_pct,prescribed_target_force_kg,mean_force_kg,best_rep_force_kg,weakest_rep_force_kg,mean_pct_reference,mean_pct_target,consistency_cv_pct,first_to_last_change_pct_points,total_work_seconds,pain_before,pain_during_max,pain_after,import_fingerprint`;
+
+export type ReferenceSnapshot = {
+  referenceTestId: string;
+  referenceTestDate: string;
+  referenceForceKg: number;
+  prescribedPct: number | null;
+  targetForceKg: number | null;
+};
 
 export type WorkflowSaveContext = {
   athleteId: string;
   side: ExerciseSide;
-  prescription: PrescriptionSnapshot | null;
-  sourceClientName: string | null;
-  matchMethod: ClientMatchMethod;
+  reference: ReferenceSnapshot | null;
   pain: PainSnapshot;
 };
 
 export type WorkflowInsertPayload = ReturnType<typeof mapTindeqSessionToInsert> & {
   exercise_side: ExerciseSide;
-  prescription_id: string | null;
   reference_test_id: string | null;
   reference_test_date: string | null;
   reference_force_kg: number | null;
@@ -45,14 +48,11 @@ export type WorkflowInsertPayload = ReturnType<typeof mapTindeqSessionToInsert> 
   pain_before: number | null;
   pain_during_max: number | null;
   pain_after: number | null;
-  source_client_name: string | null;
-  client_match_method: ClientMatchMethod;
   import_fingerprint: string;
 };
 
 export type StoredWorkflowSession = StoredTindeqSession & {
   exercise_side: ExerciseSide | null;
-  prescription_id: string | null;
   reference_test_id: string | null;
   reference_test_date: string | null;
   reference_force_kg: number | null;
@@ -69,8 +69,6 @@ export type StoredWorkflowSession = StoredTindeqSession & {
   pain_before: number | null;
   pain_during_max: number | null;
   pain_after: number | null;
-  source_client_name: string | null;
-  client_match_method: ClientMatchMethod | null;
   import_fingerprint: string | null;
 };
 
@@ -78,6 +76,38 @@ export type SaveWorkflowSessionResult =
   | { ok: true; duplicate: false; record: StoredWorkflowSession }
   | { ok: false; duplicate: true; existing: StoredWorkflowSession; error: string }
   | { ok: false; duplicate: false; error: string };
+
+function validateReference(reference: ReferenceSnapshot | null) {
+  if (!reference) return;
+  if (
+    !reference.referenceTestId ||
+    !reference.referenceTestDate ||
+    !Number.isFinite(reference.referenceForceKg) ||
+    reference.referenceForceKg <= 0
+  ) {
+    throw new Error("Referenční maximum není úplné nebo platné.");
+  }
+  if (reference.prescribedPct === null) {
+    if (reference.targetForceKg !== null) {
+      throw new Error("Cílová síla nesmí být uložená bez procenta maxima.");
+    }
+    return;
+  }
+  if (
+    !Number.isFinite(reference.prescribedPct) ||
+    reference.prescribedPct <= 0 ||
+    reference.targetForceKg === null ||
+    !Number.isFinite(reference.targetForceKg) ||
+    reference.targetForceKg <= 0
+  ) {
+    throw new Error("Procento a cílová síla musí být kladná čísla.");
+  }
+  const expectedTarget =
+    (reference.referenceForceKg * reference.prescribedPct) / 100;
+  if (Math.abs(expectedTarget - reference.targetForceKg) > 0.0001) {
+    throw new Error("Cílová síla neodpovídá referenčnímu maximu a procentu.");
+  }
+}
 
 function addEvaluation(
   payload: ReturnType<typeof mapTindeqSessionToInsert>,
@@ -88,12 +118,11 @@ function addEvaluation(
   return {
     ...payload,
     exercise_side: context.side,
-    prescription_id: context.prescription?.id ?? null,
-    reference_test_id: context.prescription?.referenceTestId ?? null,
-    reference_test_date: context.prescription?.referenceTestDate ?? null,
-    reference_force_kg: context.prescription?.referenceForceKg ?? null,
-    prescribed_pct: context.prescription?.prescribedPct ?? null,
-    prescribed_target_force_kg: context.prescription?.targetForceKg ?? null,
+    reference_test_id: context.reference?.referenceTestId ?? null,
+    reference_test_date: context.reference?.referenceTestDate ?? null,
+    reference_force_kg: context.reference?.referenceForceKg ?? null,
+    prescribed_pct: context.reference?.prescribedPct ?? null,
+    prescribed_target_force_kg: context.reference?.targetForceKg ?? null,
     mean_force_kg: evaluation.meanForceKg,
     best_rep_force_kg: evaluation.bestRepForceKg,
     weakest_rep_force_kg: evaluation.weakestRepForceKg,
@@ -105,8 +134,6 @@ function addEvaluation(
     pain_before: context.pain.before,
     pain_during_max: context.pain.duringMax,
     pain_after: context.pain.after,
-    source_client_name: context.sourceClientName,
-    client_match_method: context.matchMethod,
     import_fingerprint: fingerprint,
   };
 }
@@ -115,23 +142,18 @@ export async function buildWorkflowInsertPayload(
   session: TindeqSession,
   context: WorkflowSaveContext,
 ): Promise<WorkflowInsertPayload> {
-  if (context.prescription) {
-    const expectedTarget =
-      (context.prescription.referenceForceKg * context.prescription.prescribedPct) / 100;
-    if (
-      !Number.isFinite(expectedTarget) ||
-      Math.abs(expectedTarget - context.prescription.targetForceKg) > 0.0001
-    ) {
-      throw new Error("Snapshot předpisu neodpovídá referenčnímu maximu a procentu.");
-    }
-  }
+  validateReference(context.reference);
   const evaluation = evaluateTindeqSessionSide(
     session,
     context.side,
-    context.prescription?.referenceForceKg ?? null,
-    context.prescription?.prescribedPct ?? null,
+    context.reference?.referenceForceKg ?? null,
+    context.reference?.prescribedPct ?? null,
   );
-  const fingerprint = await createImportFingerprint(session, context.athleteId, context.side);
+  const fingerprint = await createImportFingerprint(
+    session,
+    context.athleteId,
+    context.side,
+  );
   return addEvaluation(
     mapTindeqSessionToInsert(session, context.athleteId),
     context,
@@ -165,6 +187,7 @@ export async function saveWorkflowSession(
         error: "Stejný normalizovaný výsledek už je u tohoto klienta uložen.",
       };
     }
+
     const { data, error } = await supabase
       .from("tindeq_sessions")
       .insert(payload)
@@ -199,7 +222,10 @@ export async function saveWorkflowSession(
     return {
       ok: false,
       duplicate: false,
-      error: error instanceof Error ? error.message : "Výsledek se nepodařilo připravit.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Výsledek se nepodařilo připravit.",
     };
   }
 }
