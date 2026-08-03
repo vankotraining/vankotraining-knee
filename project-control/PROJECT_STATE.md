@@ -10,12 +10,11 @@
 
 ## Aktivní větev a PR
 
-- větev: `agent/tindeq-results-site`;
-- draft PR: `#12` – `Tindeq: klienti, historie a kanonické reporty`;
-- aktuální head: `e368500e8c138930d675e9336d4a02dd70e4c3a8`;
-- base: `main` na `71d6b1f0e67c571c71a53db6248e526704bddabe`.
+- feature větev `agent/tindeq-results-site`, draft PR `#12` – `Tindeq: klienti, historie a kanonické reporty`, head `e368500e8c138930d675e9336d4a02dd70e4c3a8`;
+- project-control větev `agent/project-control-sources-of-truth`, draft PR `#14` – `Zavést kanonické zdroje pravdy projektu`;
+- oba PR mají base `main` na `71d6b1f0e67c571c71a53db6248e526704bddabe`.
 
-PR #12 není součástí `main`.
+PR #12 ani PR #14 nejsou součástí `main`.
 
 ## Produkční runtime commit
 
@@ -31,7 +30,7 @@ PR #12 není součástí `main`.
 
 ## Aktuální fáze
 
-Produkční Knee MVP je v provozní stabilizaci. Tindeq ukládání, historie a reporty jsou implementovány ve větvi PR #12, zatím mimo `main`.
+Produkční Knee MVP je v provozní stabilizaci. Tindeq ukládání, historie a reporty jsou implementovány ve větvi PR #12, zatím mimo `main`. Systém zdrojů pravdy je implementován ve větvi PR #14, zatím mimo `main`.
 
 ## Implementováno v `main`
 
@@ -57,6 +56,8 @@ PR #12 na `agent/tindeq-results-site` obsahuje zejména:
 
 Head `e368500e8c138930d675e9336d4a02dd70e4c3a8` je automatizovaně otestován workflow runem `30762622830` se závěrem `success`.
 
+PR #14 obsahuje pouze projektovou dokumentaci, PR template, kontrolní skript, npm příkaz a CI workflow. Nemění runtime aplikace, Supabase ani Vercel konfiguraci.
+
 ## Nasazeno
 
 - produkčně nasazeno: `main` commit `71d6b1f0e67c571c71a53db6248e526704bddabe`;
@@ -80,4 +81,4 @@ Head `e368500e8c138930d675e9336d4a02dd70e4c3a8` je automatizovaně otestován wo
 
 ## Další krok
 
-- Provést review a sloučit draft PR se systémem zdrojů pravdy do `main`; potom rebasovat PR #12 a vyžádat exact-head preview.
+- Provést review a sloučit draft PR #14 do `main`; potom rebasovat PR #12 a vyžádat exact-head preview.
