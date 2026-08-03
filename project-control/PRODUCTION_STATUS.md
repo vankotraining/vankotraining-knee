@@ -9,18 +9,20 @@
 - nasazený commit: `71d6b1f0e67c571c71a53db6248e526704bddabe` z `main`;
 - stav deploymentu: `READY`.
 
-## Produkční databáze při zahájení práce
+## Produkční databáze
 
-Supabase projekt `zxvndqicslyulrinbpyn` obsahoval aplikovanou migraci `20260802124337 tindeq_sessions`. Relevantní tabulky `athletes`, `athlete_profiles`, `knee_extension_tests` a `tindeq_sessions` měly zapnuté RLS. `tindeq_sessions` měla při kontrole 0 řádků.
+Produkční Supabase projekt `zxvndqicslyulrinbpyn` obsahoval před touto změnou migraci `20260802124337 tindeq_sessions`. Produkční schéma ani data nebyly při zjednodušení PR #15 změněny.
 
-## Stav této změny
+## Stav PR #15
 
-- nové klientské Tindeq workflow není součástí produkčního `main`;
-- produkční runtime nebyl touto větví změněn;
-- připravená migrace `20260803_tindeq_client_workflow.sql` není vydávána za aplikovanou, dokud to nepotvrdí skutečná historie migrací a kontrola schématu;
-- Vercel preview není vydáváno za produkční nasazení;
-- anonymní HTTP odpověď ani READY deployment nejsou vydávány za produkční ověření klientského workflow.
+- přímé přidání Tindeq záznamu je implementováno pouze ve větvi `agent/tindeq-client-workflow`;
+- běžný tok je integrován do hlavní Knee stránky u vybraného klienta;
+- samostatná trasa `/tindeq/workflow` byla odstraněna;
+- obecná `/tindeq` zůstává sekundárním analyzátorem;
+- zúžené schéma bylo aplikováno a ověřeno pouze v bezplatném dev Supabase `twndqnmrvefhwuwuglju`;
+- PR zůstává draft a je navrstvený nad PR #12;
+- Vercel preview není produkční nasazení.
 
 ## Produkčně ověřeno
 
-Toto propojené workflow nebylo produkčně ověřeno. Produkční ověření lze zapsat až po výslovném uživatelském potvrzení autentizovaného toku od klienta a maxima po znovuotevření uloženého Tindeq výsledku.
+Přímý import Tindeq záznamu nebyl produkčně nasazen ani produkčně ověřen. Produkční ověření lze zapsat až po řízeném merge, produkční migraci a výslovném uživatelském potvrzení autentizovaného toku.
