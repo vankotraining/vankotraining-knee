@@ -65,53 +65,58 @@ function fixture(): TindeqSession {
       restTargets: { left: 0, right: 0 },
       detectedRepetitions: 1,
       expectedRepetitions: 1,
-      repetitions: [{
-        repetition: 1,
-        onsetSeconds: 1,
-        endSeconds: 6,
-        durationSeconds: 5,
-        incompleteEnd: false,
-        releaseRecorded: true,
-        rightMinusLeftOnsetSeconds: 0,
-        left: sideMetrics(35),
-        right: sideMetrics(38.5),
-        flags: [],
-        curveLeftPct: [95, 100, 99],
-        curveRightPct: [95, 100, 99],
-      }],
+      repetitions: [
+        {
+          repetition: 1,
+          onsetSeconds: 1,
+          endSeconds: 6,
+          durationSeconds: 5,
+          incompleteEnd: false,
+          releaseRecorded: true,
+          rightMinusLeftOnsetSeconds: 0,
+          left: sideMetrics(35),
+          right: sideMetrics(38.5),
+          flags: [],
+          curveLeftPct: [95, 100, 99],
+          curveRightPct: [95, 100, 99],
+        },
+      ],
       summary: {
         left: summary(),
         right: summary(),
         meanAbsOnsetDifferenceSeconds: 0,
         meanSignedOnsetDifferenceSeconds: 0,
-        domains: { accuracy: "Dobrá", control: "Stabilní", maintenance: "Bez poklesu" },
+        domains: {
+          accuracy: "Dobrá",
+          control: "Stabilní",
+          maintenance: "Bez poklesu",
+        },
       },
       warnings: [],
     },
   };
 }
 
+const reference = {
+  referenceTestId: "33333333-3333-4333-8333-333333333333",
+  referenceTestDate: "2026-07-25",
+  referenceForceKg: 50,
+  prescribedPct: 70,
+  targetForceKg: 35,
+};
+
 const context = {
   athleteId,
   side: "left" as const,
-  prescription: {
-    id: "22222222-2222-4222-8222-222222222222",
-    referenceTestId: "33333333-3333-4333-8333-333333333333",
-    referenceTestDate: "2026-07-25",
-    referenceForceKg: 50,
-    prescribedPct: 70,
-    targetForceKg: 35,
-  },
-  sourceClientName: "Client Name",
-  matchMethod: "exact" as const,
+  reference,
   pain: { before: null, duringMax: 0, after: 1 },
 };
 
-test("workflow payload stores interpretation snapshots and optional pain", async () => {
+test("payload stores client-selected reference, target and optional pain", async () => {
   const payload = await buildWorkflowInsertPayload(fixture(), context);
   assert.equal(payload.athlete_id, athleteId);
   assert.equal(payload.exercise_side, "left");
-  assert.equal(payload.reference_test_id, context.prescription.referenceTestId);
+  assert.equal(payload.reference_test_id, reference.referenceTestId);
   assert.equal(payload.reference_test_date, "2026-07-25");
   assert.equal(payload.reference_force_kg, 50);
   assert.equal(payload.prescribed_pct, 70);
@@ -122,11 +127,37 @@ test("workflow payload stores interpretation snapshots and optional pain", async
   assert.equal(payload.pain_before, null);
   assert.equal(payload.pain_during_max, 0);
   assert.equal(payload.pain_after, 1);
-  assert.equal(payload.client_match_method, "exact");
   assert.match(payload.import_fingerprint, /^[a-f0-9]{64}$/);
 });
 
-test("payload contains normalized repetition results but never ZIP bytes or raw source series", async () => {
+test("reference can be stored without a prescribed percentage", async () => {
+  const payload = await buildWorkflowInsertPayload(fixture(), {
+    ...context,
+    reference: {
+      ...reference,
+      prescribedPct: null,
+      targetForceKg: null,
+    },
+  });
+  assert.equal(payload.reference_force_kg, 50);
+  assert.equal(payload.mean_pct_reference, 70);
+  assert.equal(payload.prescribed_pct, null);
+  assert.equal(payload.prescribed_target_force_kg, null);
+  assert.equal(payload.mean_pct_target, null);
+});
+
+test("record can be stored without any reference", async () => {
+  const payload = await buildWorkflowInsertPayload(fixture(), {
+    ...context,
+    reference: null,
+  });
+  assert.equal(payload.reference_test_id, null);
+  assert.equal(payload.reference_force_kg, null);
+  assert.equal(payload.mean_pct_reference, null);
+  assert.equal(payload.mean_pct_target, null);
+});
+
+test("payload contains normalized results but never ZIP bytes or raw source series", async () => {
   const payload = await buildWorkflowInsertPayload(fixture(), context);
   const serialized = JSON.stringify(payload);
   assert.ok(!("file" in payload));
@@ -137,11 +168,22 @@ test("payload contains normalized repetition results but never ZIP bytes or raw 
   assert.deepEqual(payload.repetitions[0].curveLeftPct, [95, 100, 99]);
 });
 
-test("inconsistent prescription snapshot is rejected", async () => {
-  await assert.rejects(() => buildWorkflowInsertPayload(fixture(), {
-    ...context,
-    prescription: { ...context.prescription, targetForceKg: 36 },
-  }));
+test("inconsistent target snapshot is rejected", async () => {
+  await assert.rejects(() =>
+    buildWorkflowInsertPayload(fixture(), {
+      ...context,
+      reference: { ...reference, targetForceKg: 36 },
+    }),
+  );
+});
+
+test("target cannot exist without prescribed percentage", async () => {
+  await assert.rejects(() =>
+    buildWorkflowInsertPayload(fixture(), {
+      ...context,
+      reference: { ...reference, prescribedPct: null },
+    }),
+  );
 });
 
 test("duplicate precheck prevents a second insert", async () => {
@@ -187,8 +229,12 @@ test("database unique race is returned as duplicate after re-read", async () => 
         select() {
           selectCalls += 1;
           return {
-            eq() { return this; },
-            is() { return this; },
+            eq() {
+              return this;
+            },
+            is() {
+              return this;
+            },
             async maybeSingle() {
               return selectCalls === 1
                 ? { data: null, error: null }
@@ -201,7 +247,10 @@ test("database unique race is returned as duplicate after re-read", async () => 
             select() {
               return {
                 async single() {
-                  return { data: null, error: { code: "23505", message: "unique violation" } };
+                  return {
+                    data: null,
+                    error: { code: "23505", message: "unique violation" },
+                  };
                 },
               };
             },
@@ -213,5 +262,7 @@ test("database unique race is returned as duplicate after re-read", async () => 
   const result = await saveWorkflowSession(client, fixture(), context);
   assert.equal(result.ok, false);
   assert.equal(result.duplicate, true);
-  if (!result.ok && result.duplicate) assert.equal(result.existing.id, "existing-race");
+  if (!result.ok && result.duplicate) {
+    assert.equal(result.existing.id, "existing-race");
+  }
 });
