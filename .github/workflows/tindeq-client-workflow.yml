@@ -1,0 +1,87 @@
+name: Verify Tindeq client workflow
+
+on:
+  push:
+    branches:
+      - agent/tindeq-client-workflow
+  pull_request:
+    branches:
+      - agent/tindeq-results-site
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Compare lint with stacked base
+        shell: bash
+        run: |
+          set +e
+          npm run lint > branch-lint.log 2>&1
+          branch_status=$?
+          set -e
+          cat branch-lint.log
+
+          git fetch origin agent/tindeq-results-site
+          git worktree add ../base-worktree origin/agent/tindeq-results-site
+          pushd ../base-worktree
+          npm install --no-audit --no-fund
+          set +e
+          npm run lint > ../base-lint.log 2>&1
+          base_status=$?
+          set -e
+          popd
+          cat ../base-lint.log
+
+          BRANCH_STATUS="$branch_status" BASE_STATUS="$base_status" python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          def error_count(path: str) -> int:
+              text = Path(path).read_text(encoding="utf-8", errors="replace")
+              match = re.search(r"(\d+) problems? \((\d+) errors?, (\d+) warnings?\)", text)
+              if match:
+                  return int(match.group(2))
+              return len(re.findall(r"\berror\b", text, flags=re.IGNORECASE))
+
+          branch_status = int(os.environ["BRANCH_STATUS"])
+          base_status = int(os.environ["BASE_STATUS"])
+          branch_errors = error_count("branch-lint.log")
+          base_errors = error_count("../base-lint.log")
+          print(f"stacked base lint: status={base_status}, errors={base_errors}")
+          print(f"branch lint: status={branch_status}, errors={branch_errors}")
+          if base_status == 0 and branch_status != 0:
+              raise SystemExit("Branch lint failed while stacked base lint passed.")
+          if branch_errors > base_errors:
+              raise SystemExit("Branch introduces additional lint errors.")
+          PY
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify browser workflows
+        run: npm run test:e2e

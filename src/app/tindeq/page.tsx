@@ -22,6 +22,9 @@ export default function TindeqPage() {
           </p>
         </div>
         <nav aria-label="Navigace Tindeq">
+          <Link className={styles.backLink} href="/tindeq/workflow">
+            Klientské workflow
+          </Link>{" "}
           <Link className={styles.backLink} href="/tindeq/reports">
             Otevřít reporty
           </Link>{" "}

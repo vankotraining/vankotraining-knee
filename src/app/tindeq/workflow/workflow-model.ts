@@ -1,0 +1,16 @@
+import type { TindeqSession } from "@/lib/tindeq-browser";
+import { normalizeClientName, type ExerciseSide, type NameMatchResult } from "@/lib/tindeq-workflow";
+export type Athlete={id:string;display_name:string;name_key:string|null;note:string|null};
+export type Profile={id:string;athlete_id:string;body_weight_kg:number|null;shin_length_cm:number|null};
+export type MaxTest={id:string;athlete_id:string;test_date:string;left_force_kg:number;right_force_kg:number;left_moment_nm:number|null;right_moment_nm:number|null;left_nm_per_kg:number|null;right_nm_per_kg:number|null;asymmetry_pct:number|null;weaker_side:"left"|"right"|"none"|null;body_weight_kg:number|null;shin_length_cm:number|null;created_at:string|null};
+export type Prescription={id:string;athlete_id:string;reference_test_id:string;reference_test_date:string;exercise_side:ExerciseSide;reference_force_kg:number;prescribed_pct:number;target_force_kg:number;created_at:string};
+export type Draft={key:string;session:TindeqSession;candidate:string|null;match:NameMatchResult;athleteId:string;side:ExerciseSide;prescriptionId:string;pain:[string,string,string];confirmed:boolean;status:"ready"|"saving"|"saved"|"duplicate"|"error";message:string|null};
+export const TEST_SELECT="id,athlete_id,test_date,left_force_kg,right_force_kg,left_moment_nm,right_moment_nm,left_nm_per_kg,right_nm_per_kg,asymmetry_pct,weaker_side,body_weight_kg,shin_length_cm,created_at";
+export const RX_SELECT="id,athlete_id,reference_test_id,reference_test_date,exercise_side,reference_force_kg,prescribed_pct,target_force_kg,created_at";
+export const today=()=>new Date().toISOString().slice(0,10);
+export const positive=(v:string,label:string)=>{const n=Number(v.trim().replace(",","."));if(!Number.isFinite(n)||n<=0)throw new Error(`${label} musí být kladné číslo.`);return n};
+export const keyFor=(v:string)=>v.trim().toLocaleLowerCase("cs-CZ").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+export const num=(v:number|null|undefined,d=1,s="")=>v==null||!Number.isFinite(Number(v))?"–":`${Number(v).toFixed(d).replace(".",",")}${s}`;
+export const date=(v:string|null|undefined,time=false)=>{if(!v)return"–";const d=new Date(time?v:`${v}T00:00:00`);return Number.isNaN(d.getTime())?v:new Intl.DateTimeFormat("cs-CZ",time?{dateStyle:"medium",timeStyle:"short"}:{dateStyle:"medium"}).format(d)};
+export const side=(v:ExerciseSide|null|undefined)=>v==="left"?"Levá":v==="right"?"Pravá":"–";
+export const filterAthletes=(items:Athlete[],query:string)=>items.filter(a=>normalizeClientName(a.display_name).includes(normalizeClientName(query)));

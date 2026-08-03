@@ -23,6 +23,10 @@
     "src/lib/tindeq-report.test.ts",
     "src/lib/tindeq-report-demo.ts",
     "src/lib/tindeq-report-demo.test.ts",
+    "src/lib/tindeq-workflow.ts",
+    "src/lib/tindeq-workflow.test.ts",
+    "src/lib/tindeq-workflow-persistence.ts",
+    "src/lib/tindeq-workflow-persistence.test.ts",
     "src/types/uint8array-blobpart.d.ts"
   ]
 }
