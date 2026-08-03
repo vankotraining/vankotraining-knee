@@ -1,59 +1,59 @@
-# Tindeq client workflow implementation evidence
+# Přímé Tindeq záznamy klienta
 
 ## Rozsah
 
-Tato větev rozšiřuje PR #12 z obecného uloženého Tindeq výsledku na propojený pracovní tok klient → maximum → předpis → potvrzený import → reprodukovatelná historie.
+PR #15 přidává Tindeq jako další typ záznamu přímo k vybranému klientovi v hlavní Knee aplikaci. Nevytváří druhou klientskou aplikaci ani samostatný tréninkový plánovač.
 
-## Výpočty maxima
+## Uživatelský tok
 
-Vstupy:
+1. Uživatel vybere klienta v existujícím Knee přehledu.
+2. V sekci `Tindeq záznamy klienta` otevře import.
+3. Nahraje Tindeq ZIP.
+4. Vybere stranu a případně historické maximum klienta.
+5. Volitelně doplní procento maxima a bolest.
+6. Zkontroluje vypočtené metriky a uloží výsledek.
+7. Záznam je ihned dostupný v historii stejného klienta.
 
-- síla vlevo a vpravo v uživatelem zvolené jednotce;
-- tělesná hmotnost v kg;
-- délka bérce v cm.
+Klient je určen před importem. Název souboru ani tag se nepoužívají k automatickému přiřazování.
 
-Normalizace síly probíhá v `src/lib/tindeq-persistence.ts`. Výpočty v `src/lib/tindeq-workflow.ts`:
+## Reference
 
-- moment `Nm = síla_kg × 9,80665 × délka_bérce_m`;
-- relativní moment `Nm/kg = moment_Nm / tělesná_hmotnost_kg`;
-- asymetrie podle existující projektové definice vůči silnější straně;
-- slabší strana podle existující projektové definice.
+Reference má tři povolené stavy:
 
-Zdrojové hodnoty, jednotka i normalizované výsledky se ukládají. Neplatné, nulové, záporné nebo nekonečné vstupy jsou odmítnuty.
+- bez reference: technická analýza bez metrik vůči maximu a cíli;
+- reference bez procenta: procento dosaženého maxima, ale bez cílové síly;
+- reference s procentem: snapshot maxima, procenta a vypočteného cíle.
 
-## Předpis
+Samostatná tabulka `tindeq_prescriptions` není potřebná. Vznikne až v budoucnu, pokud aplikace začne předpis vytvářet před cvičením a následně jej párovat s výsledkem.
 
-`tindeq_prescriptions` ukládá klienta, konkrétní historické maximum, datum reference, stranu, referenční sílu, procento a cílovou sílu. Databázový check ověřuje vzorec `target = reference × pct / 100`.
+## Persistence
 
-## Přesná shoda jména
+Ukládá se normalizovaný výsledek do `public.tindeq_sessions`:
 
-Priorita zdroje jména:
+- zvolená strana;
+- volitelný referenční snapshot;
+- metriky síly, konzistence a únavy;
+- volitelná bolest;
+- SHA-256 fingerprint.
 
-1. podporovaný název `repeaters_YYYY_DD_MM_HH_MM_YYYYMMDD Jméno [číslo].zip`;
-2. Tindeq tag.
+Původní ZIP ani raw časová řada se neukládají. Aktivní duplicita stejného normalizovaného výsledku u stejného klienta je blokována před zápisem i unikátním indexem.
 
-Porovnání ignoruje pouze velikost písmen, krajní mezery a opakované mezery. Diakritika, překlep, část jména ani podobnost se neodhadují. Jedna shoda klienta předvybere; nula, více shod nebo chybějící jméno vyžadují ruční výběr. Uložení vždy vyžaduje potvrzovací checkbox.
+## Bezpečnost
 
-## Uložené metriky cvičení
+- RLS zůstává zapnuté;
+- zápis je povolen pouze oprávněnému přihlášenému uživateli;
+- reference musí patřit stejnému aktivnímu klientovi a odpovídat uloženému datu testu;
+- soft delete a auditní model existujícího Tindeq ukládání zůstávají zachovány.
 
-- strana;
-- reference a předpis jako snapshot;
-- počet analyzovaných opakování;
-- průměrná síla, nejlepší a nejslabší opakování;
-- průměr vůči referenčnímu maximu a cílové síle;
-- CV mezi průměrnými silami opakování;
-- změna prvního vůči poslednímu opakování v procentních bodech cíle;
-- celkový čas pracovních intervalů;
-- normalizované detailní metriky a resamplované procentní křivky z PR #12;
-- volitelná bolest před, maximum během a po;
-- technická upozornění, verze analýzy a SHA-256 import fingerprint.
+## Ověření v bezplatném dev Supabase
 
-Původní ZIP a raw zdrojové časové řady se neukládají.
+Projekt `twndqnmrvefhwuwuglju`:
 
-## Deduplikace
+- odstraněna nadbytečná tabulka předpisů a obsolete vazby;
+- ověřeno RLS;
+- ověřen zápis bez reference;
+- ověřen zápis s referencí bez procenta;
+- ověřen zápis s referencí, procentem, cílem a skutečnou bolestí `0`;
+- acceptance transakce byla vrácena rollbackem.
 
-Otisk je vytvořen z klienta, strany, času měření, datasetu, protokolu, jednotky a normalizovaných sil/délky jednotlivých opakování. Název souboru, bolest a předpis otisk nemění. Pre-check je doplněn unikátním částečným indexem, který řeší i souběžný zápis.
-
-## Testování
-
-Nové testy pokrývají výpočty maxima, neplatné vstupy, přesnou shodu jména, zákaz fuzzy shody, bolest `null` vs `0`, metriky série, chybějící referenci, historický snapshot, stabilní fingerprint, payload bez ZIP/raw dat a oba mechanismy detekce duplicity. Existing parser tests PR #12 nadále pokrývají podporovaný, nepodporovaný a poškozený export.
+Produkční Supabase nebyl změněn.
