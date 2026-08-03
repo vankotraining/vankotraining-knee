@@ -7,46 +7,49 @@
 ## Výchozí stav
 
 - `main`: `71d6b1f0e67c571c71a53db6248e526704bddabe`;
-- Tindeq runtime: draft PR #12, větev `agent/tindeq-results-site`, výchozí head `e368500e8c138930d675e9336d4a02dd70e4c3a8`;
-- kanonické zdroje pravdy: draft PR #14, větev `agent/project-control-sources-of-truth`;
-- aktuální práce: stacked větev `agent/tindeq-client-workflow` založená na headu PR #12.
+- Tindeq runtime: draft PR #12, větev `agent/tindeq-results-site`;
+- aktuální práce: draft PR #15, větev `agent/tindeq-client-workflow`, navrstvená nad PR #12;
+- produkční aplikace a produkční Supabase nebyly touto prací změněny.
 
-## Implementováno ve větvi `agent/tindeq-client-workflow`
+## Schválené zjednodušení PR #15
 
-- nová cesta `/tindeq/workflow` pro klienta, antropometrii, maximum, předpis, import a historii;
-- ruční maximum se zdrojovou jednotkou `kg`, `N` nebo `lb`, normalizací do kg a výpočty Nm, Nm/kg, asymetrie a slabší strany;
-- historické předpisy intenzity podle vybrané strany a konkrétního maxima;
-- přesná shoda jména po trimu, sjednocení opakovaných mezer a ignorování velikosti písmen;
-- explicitní ruční potvrzení klienta před uložením;
-- volitelná bolest před, během a po cvičení;
-- normalizované metriky série a snapshot interpretace;
-- deterministická ochrana proti duplicitě pomocí SHA-256 otisku;
-- aditivní Supabase migrace a kontrolní SQL;
-- jednotkové, persistence a Playwright testy;
-- samostatné GitHub Actions workflow pro stacked větev.
+Původní samostatné šestikrokové workflow bylo nahrazeno přímou akcí u vybraného klienta na hlavní Knee stránce.
+
+Implementováno ve větvi:
+
+- panel `Tindeq záznamy klienta` v hlavní aplikaci;
+- akce `Přidat Tindeq záznam` pouze pro právě vybraného klienta;
+- lokální import podporovaného Tindeq ZIP;
+- volba strany;
+- volitelná historická reference, procento maxima a bolest;
+- uložení normalizovaného výsledku do `tindeq_sessions`;
+- SHA-256 deduplikace;
+- historie Tindeq přímo u klienta;
+- odstranění samostatné trasy `/tindeq/workflow` a duplicitního vytváření klienta, antropometrie, maxima a předpisu;
+- obecná `/tindeq` ponechána jako sekundární analyzátor.
 
 ## Databáze
 
-Aplikováno v produkčním Supabase před touto změnou:
+Produkční Supabase zůstává beze změny.
 
-- `20260802124337 tindeq_sessions`.
+Bezplatný testovací projekt:
 
-Připraveno v této větvi, ale v okamžiku vytvoření dokumentu ještě neaplikováno:
-
-- `supabase/migrations/20260803_tindeq_client_workflow.sql`.
-
-Migrace je aditivní. Doplňuje momenty a zdrojovou jednotku maxima, vytváří `tindeq_prescriptions`, přidává snapshoty a deduplikaci do `tindeq_sessions` a zpřesňuje RLS vazby na klienta, stranu a referenci.
+- název `vankotraining-knee-dev`;
+- project ref `twndqnmrvefhwuwuglju`;
+- aplikována migrace `simplify_tindeq_client_records`;
+- odstraněna nadbytečná tabulka `tindeq_prescriptions` a její vazby;
+- ověřeny tři režimy uložení: bez reference, s referencí bez procenta a s referencí/procentem/cílem;
+- acceptance data byla po testu vrácena rollbackem, tabulka sessions zůstala prázdná.
 
 ## Stavové pojmy
 
 - **implementováno ve větvi**: změna je v `agent/tindeq-client-workflow`;
-- **implementováno v main**: až po merge do `main`;
-- **automatizovaně otestováno**: až po úspěšném příslušném GitHub Actions runu;
-- **databáze aplikována**: až po aplikaci migrace v Supabase a kontrole skutečného schématu/RLS;
-- **preview nasazeno**: pouze READY Vercel preview navázané na přesný head commit;
+- **automatizovaně otestováno**: až po úspěšném exact-head GitHub Actions runu;
+- **databáze aplikována v dev**: migrace a RLS jsou ověřeny pouze v `twndqnmrvefhwuwuglju`;
+- **preview nasazeno**: pouze READY Vercel preview přesného head commitu;
 - **produkčně nasazeno**: pouze production deployment daného commitu;
-- **produkčně ověřeno**: pouze po výslovné uživatelské kontrole autentizovaného workflow.
+- **produkčně ověřeno**: pouze po výslovné uživatelské kontrole.
 
-## Právě jeden další krok
+## Další krok
 
-Po úspěšném CI aplikovat aditivní migraci, ověřit její SQL kontroly a provést autentizovaný acceptance tok na exact-head preview; produkční merge zůstává mimo tento krok.
+Dokončit exact-head CI a následně provést autentizovaný import skutečného ZIP na preview připojeném k bezplatnému dev Supabase. Merge ani produkční migrace nejsou součástí tohoto kroku.
