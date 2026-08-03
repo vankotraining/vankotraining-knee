@@ -182,9 +182,16 @@ export default function TindeqClientRecords({
   }, [selectedClientId, session, supabase]);
 
   useEffect(() => {
-    setDrafts([]);
-    setMessage("");
-    setIsOpen(false);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setDrafts([]);
+      setMessage("");
+      setIsOpen(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedClientId]);
 
   useEffect(() => {
