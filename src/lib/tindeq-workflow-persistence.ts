@@ -1,10 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { TindeqSession } from "./tindeq-browser.js";
+import type { TindeqSession } from "./tindeq-browser";
 import {
   mapTindeqSessionToInsert,
   TINDEQ_HISTORY_SELECT,
   type StoredTindeqSession,
-} from "./tindeq-persistence.js";
+} from "./tindeq-persistence";
 import {
   createImportFingerprint,
   evaluateTindeqSessionSide,
@@ -13,7 +13,7 @@ import {
   type PainSnapshot,
   type PrescriptionSnapshot,
   type SideExerciseEvaluation,
-} from "./tindeq-workflow.js";
+} from "./tindeq-workflow";
 
 export const TINDEQ_WORKFLOW_HISTORY_SELECT = `${TINDEQ_HISTORY_SELECT},exercise_side,prescription_id,reference_test_id,reference_test_date,reference_force_kg,prescribed_pct,prescribed_target_force_kg,mean_force_kg,best_rep_force_kg,weakest_rep_force_kg,mean_pct_reference,mean_pct_target,consistency_cv_pct,first_to_last_change_pct_points,total_work_seconds,pain_before,pain_during_max,pain_after,source_client_name,client_match_method,import_fingerprint`;
 

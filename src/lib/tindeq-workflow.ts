@@ -3,9 +3,9 @@ import {
   forceKgToNmPerKg,
   getWeakerSide,
   GRAVITY,
-} from "./knee-metrics.js";
-import type { TindeqSession } from "./tindeq-browser.js";
-import { forceToKg } from "./tindeq-persistence.js";
+} from "./knee-metrics";
+import type { TindeqSession } from "./tindeq-browser";
+import { forceToKg } from "./tindeq-persistence";
 
 export type ExerciseSide = "left" | "right";
 export type ClientMatchMethod = "exact" | "manual";
