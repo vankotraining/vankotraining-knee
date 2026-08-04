@@ -1,14 +1,38 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ??
-  "https://zxvndqicslyulrinbpyn.supabase.co";
-const legacyAnonKey =
+const PRODUCTION_SUPABASE_URL = "https://zxvndqicslyulrinbpyn.supabase.co";
+const PRODUCTION_LEGACY_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dm5kcWljc2x5dWxyaW5icHluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNjAyODYsImV4cCI6MjA5ODYzNjI4Nn0.46uqGVRE04E5nV7s2BtVotm7ikExkTBX7SftZe42DS8";
-const configuredAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabaseAnonKey = configuredAnonKey?.startsWith("eyJ")
-  ? configuredAnonKey
-  : legacyAnonKey;
+
+const TINDEQ_PREVIEW_HOST =
+  "vankotraining-knee-git-agent-tin-857ca9-vankotrainings-projects.vercel.app";
+const TINDEQ_DEV_SUPABASE_URL = "https://twndqnmrvefhwuwuglju.supabase.co";
+const TINDEQ_DEV_LEGACY_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3bmRxbm1ydmVmaHd1d3VnbGp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NzgzNTksImV4cCI6MjEwMTM1NDM1OX0.57nqPEbbhZVT2iN3itPEMSFdd5kK3-nV7PB2XM7rVuA";
+
+function isTindeqDevPreview() {
+  return typeof window !== "undefined" && window.location.hostname === TINDEQ_PREVIEW_HOST;
+}
+
+function resolveSupabaseConfig() {
+  if (isTindeqDevPreview()) {
+    return {
+      url: TINDEQ_DEV_SUPABASE_URL,
+      anonKey: TINDEQ_DEV_LEGACY_ANON_KEY,
+    };
+  }
+
+  const configuredUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const configuredAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  return {
+    url: configuredUrl ?? PRODUCTION_SUPABASE_URL,
+    anonKey:
+      configuredAnonKey?.startsWith("eyJ") || configuredAnonKey?.startsWith("sb_publishable_")
+        ? configuredAnonKey
+        : PRODUCTION_LEGACY_ANON_KEY,
+  };
+}
 
 function fetchWithActiveAthletesFilter(input: RequestInfo | URL, init?: RequestInit) {
   const method = (
@@ -44,15 +68,18 @@ function fetchWithActiveAthletesFilter(input: RequestInfo | URL, init?: RequestI
 }
 
 export function hasSupabaseConfig() {
-  return Boolean(supabaseUrl && supabaseAnonKey);
+  const { url, anonKey } = resolveSupabaseConfig();
+  return Boolean(url && anonKey);
 }
 
 export function createBrowserSupabaseClient() {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  const { url, anonKey } = resolveSupabaseConfig();
+
+  if (!url || !anonKey) {
     throw new Error("Missing Supabase environment variables.");
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  return createClient(url, anonKey, {
     global: {
       fetch: fetchWithActiveAthletesFilter,
     },
