@@ -89,12 +89,12 @@ jobs:
       - name: Build live acceptance bundle
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://twndqnmrvefhwuwuglju.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_xv4M1xvvYpMWIyy3XvVUhQ_bwVD8qy-
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3bmRxbm1ydmVmaHd1d3VnbGp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NzgzNTksImV4cCI6MjEwMTM1NDM1OX0.57nqPEbbhZVT2iN3itPEMSFdd5kK3-nV7PB2XM7rVuA
         run: npm run build
 
       - name: Verify live authenticated Tindeq import
         env:
           LIVE_TINDEQ_ACCEPTANCE: "1"
           NEXT_PUBLIC_SUPABASE_URL: https://twndqnmrvefhwuwuglju.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_xv4M1xvvYpMWIyy3XvVUhQ_bwVD8qy-
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3bmRxbm1ydmVmaHd1d3VnbGp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NzgzNTksImV4cCI6MjEwMTM1NDM1OX0.57nqPEbbhZVT2iN3itPEMSFdd5kK3-nV7PB2XM7rVuA
         run: npx playwright test tests/e2e/tindeq-live-acceptance.spec.ts
