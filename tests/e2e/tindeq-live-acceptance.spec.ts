@@ -3,8 +3,6 @@ import { strToU8, zipSync } from "fflate";
 
 const devUrl = "https://twndqnmrvefhwuwuglju.supabase.co";
 const devAnonKey =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
-const actualDevAnonKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6InR3bmRxbm1ydmVmaHd1d3VnbGp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NzgzNTksImV4cCI6MjEwMTM1NDM1OX0.57nqPEbbhZVT2iN3itPEMSFdd5kK3-nV7PB2XM7rVuA";
 const temporaryPassword = "Acceptance-20260804-e2e!";
 
@@ -49,8 +47,8 @@ test("live dev Supabase import survives a page reload", async ({ page, request }
 
   const authResponse = await request.post(`${devUrl}/auth/v1/token?grant_type=password`, {
     headers: {
-      apikey: actualDevAnonKey,
-      Authorization: `Bearer ${actualDevAnonKey}`,
+      apikey: devAnonKey,
+      Authorization: `Bearer ${devAnonKey}`,
       "Content-Type": "application/json",
     },
     data: {
@@ -73,7 +71,7 @@ test("live dev Supabase import survives a page reload", async ({ page, request }
     `${devUrl}/rest/v1/athletes?select=id,display_name&deleted_at=is.null&display_name=eq.Acceptance%20Tindeq`,
     {
       headers: {
-        apikey: actualDevAnonKey,
+        apikey: devAnonKey,
         Authorization: `Bearer ${session.access_token}`,
       },
     },
