@@ -7,8 +7,8 @@ const PRODUCTION_LEGACY_ANON_KEY =
 const TINDEQ_PREVIEW_HOST =
   "vankotraining-knee-git-agent-tin-857ca9-vankotrainings-projects.vercel.app";
 const TINDEQ_DEV_SUPABASE_URL = "https://twndqnmrvefhwuwuglju.supabase.co";
-const TINDEQ_DEV_LEGACY_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3bmRxbm1ydmVmaHd1d3VnbGp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NzgzNTksImV4cCI6MjEwMTM1NDM1OX0.57nqPEbbhZVT2iN3itPEMSFdd5kK3-nV7PB2XM7rVuA";
+const TINDEQ_DEV_PUBLISHABLE_KEY =
+  "sb_publishable_xv4M1xvvYpMWIyy3XvVUhQ_bwVD8qy-";
 
 function isTindeqDevPreview() {
   return typeof window !== "undefined" && window.location.hostname === TINDEQ_PREVIEW_HOST;
@@ -18,7 +18,7 @@ function resolveSupabaseConfig() {
   if (isTindeqDevPreview()) {
     return {
       url: TINDEQ_DEV_SUPABASE_URL,
-      anonKey: TINDEQ_DEV_LEGACY_ANON_KEY,
+      anonKey: TINDEQ_DEV_PUBLISHABLE_KEY,
     };
   }
 
