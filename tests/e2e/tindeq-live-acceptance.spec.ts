@@ -66,15 +66,14 @@ test("live dev Supabase import survives a page reload", async ({ page, request }
     token_type: string;
     user: unknown;
   };
+  const authenticatedHeaders = {
+    apikey: devApiKey,
+    Authorization: `Bearer ${session.access_token}`,
+  };
 
   const athletesResponse = await request.get(
     `${devUrl}/rest/v1/athletes?select=id,display_name&deleted_at=is.null&display_name=eq.Acceptance%20Tindeq`,
-    {
-      headers: {
-        apikey: devApiKey,
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    },
+    { headers: authenticatedHeaders },
   );
   const athletesBody = await athletesResponse.text();
   expect(athletesResponse.ok(), athletesBody).toBeTruthy();
@@ -108,9 +107,26 @@ test("live dev Supabase import survives a page reload", async ({ page, request }
   await page.getByLabel("Bolest během max").fill("2");
   await page.getByLabel("Bolest po").fill("1");
   await page.getByRole("button", { name: "Uložit klientovi Acceptance Tindeq" }).click();
-  await expect(
-    page.getByText("Uloženo bez původního ZIPu a raw časové řady."),
-  ).toBeVisible();
+
+  await expect
+    .poll(async () => {
+      const response = await request.get(
+        `${devUrl}/rest/v1/tindeq_sessions?select=pain_before,pain_during_max,pain_after,prescribed_pct,prescribed_target_force_kg,exercise_side&athlete_id=eq.${acceptanceAthleteId}&deleted_at=is.null&order=created_at.desc&limit=1`,
+        { headers: authenticatedHeaders },
+      );
+      if (!response.ok()) return null;
+      return response.json();
+    })
+    .toEqual([
+      {
+        pain_before: 0,
+        pain_during_max: 2,
+        pain_after: 1,
+        prescribed_pct: 70,
+        prescribed_target_force_kg: 35,
+        exercise_side: "left",
+      },
+    ]);
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Historie Tindeq" })).toBeVisible();
