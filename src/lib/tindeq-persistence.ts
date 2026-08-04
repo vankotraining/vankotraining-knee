@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TindeqSession } from "./tindeq-browser.js";
-import * as core from "./tindeq-persistence-core.js";
+import * as core from "./tindeq-persistence-core";
 
 export const TINDEQ_ANALYSIS_VERSION = core.TINDEQ_ANALYSIS_VERSION;
 export const TINDEQ_HISTORY_SELECT = core.TINDEQ_HISTORY_SELECT;
