@@ -4,6 +4,7 @@ import { strToU8, zipSync } from "fflate";
 const devUrl = "https://twndqnmrvefhwuwuglju.supabase.co";
 const devApiKey = "sb_publishable_xv4M1xvvYpMWIyy3XvVUhQ_bwVD8qy-";
 const temporaryPassword = "Acceptance-20260804-e2e!";
+const acceptanceAthleteId = "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa";
 
 function buildArchive() {
   const info = [
@@ -79,7 +80,7 @@ test("live dev Supabase import survives a page reload", async ({ page, request }
   expect(athletesResponse.ok(), athletesBody).toBeTruthy();
   expect(JSON.parse(athletesBody)).toEqual([
     {
-      id: "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa",
+      id: acceptanceAthleteId,
       display_name: "Acceptance Tindeq",
     },
   ]);
@@ -92,7 +93,9 @@ test("live dev Supabase import survives a page reload", async ({ page, request }
   );
   await page.reload();
 
-  await expect(page.getByText("Acceptance Tindeq", { exact: true }).first()).toBeVisible();
+  const acceptanceOption = page.getByRole("option", { name: "Acceptance Tindeq" });
+  await expect(acceptanceOption).toHaveCount(1);
+  await expect(acceptanceOption).toHaveAttribute("value", acceptanceAthleteId);
   await page.getByRole("button", { name: "Přidat Tindeq záznam" }).click();
   await page.getByLabel("Tindeq ZIP").setInputFiles({
     name: "acceptance_tindeq_20260804.zip",
