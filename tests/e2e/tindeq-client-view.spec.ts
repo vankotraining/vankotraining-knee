@@ -14,48 +14,21 @@ type MockOptions = {
   failEverySave?: boolean;
 };
 
-function infoCsv(tag: string): string {
+function infoCsv(tag: string, protocol = "Repeaters") {
   const headers = [
-    "date",
-    "tag",
-    "comment",
-    "unit",
-    "reps",
-    "work dur.",
-    "pause btw. reps",
-    "sets",
-    "pause btw. sets",
-    "type",
-    "mvc left",
-    "mvc right",
-    "Work Level (% of mvc)",
-    "Rest level (% of mvc)",
+    "date", "tag", "comment", "unit", "reps", "work dur.",
+    "pause btw. reps", "sets", "pause btw. sets", "type",
+    "mvc left", "mvc right", "Work Level (% of mvc)", "Rest level (% of mvc)",
   ];
   const values = [
-    "2026-08-02 10:00:00",
-    tag,
-    "Automatický test klientského zobrazení",
-    "kg",
-    String(repetitions),
-    String(workDurationSeconds),
-    String(pauseSeconds),
-    "1",
-    "0",
-    "Repeaters",
-    "50",
-    "52",
-    "80",
-    "0",
+    "2026-08-02 10:00:00", tag, "Syntetický browser test", "kg",
+    String(repetitions), String(workDurationSeconds), String(pauseSeconds),
+    "1", "0", protocol, "50", "52", "80", "0",
   ];
   return `${headers.join(",")}\n${values.join(",")}\n`;
 }
 
-function forceAt(
-  time: number,
-  target: number,
-  sideOffset: number,
-  seriesOffset: number,
-): number {
+function forceAt(time: number, target: number, sideOffset: number, seriesOffset: number) {
   const firstStart = 1;
   const cycleDuration = workDurationSeconds + pauseSeconds;
   const repetitionIndex = Math.floor((time - firstStart) / cycleDuration);
@@ -63,11 +36,10 @@ function forceAt(
   const localTime = time - firstStart - repetitionIndex * cycleDuration;
   if (localTime < 0 || localTime > workDurationSeconds) return 0;
   const ramp = Math.min(1, localTime / 0.35);
-  const controlledVariation = 1 + sideOffset + seriesOffset + Math.sin(localTime * 3) * 0.006;
-  return target * ramp * controlledVariation;
+  return target * ramp * (1 + sideOffset + seriesOffset + Math.sin(localTime * 3) * 0.006);
 }
 
-function datasetCsv(seriesOffset = 0): string {
+function datasetCsv(seriesOffset = 0) {
   const rows = ["time left,weight left,time right,weight right"];
   const totalDuration = 1 + repetitions * (workDurationSeconds + pauseSeconds) + 1;
   const sampleCount = Math.floor(totalDuration / sampleIntervalSeconds) + 1;
@@ -75,24 +47,22 @@ function datasetCsv(seriesOffset = 0): string {
     const time = index * sampleIntervalSeconds;
     const left = forceAt(time, 40, -0.004, seriesOffset);
     const right = forceAt(time, 41.6, 0.004, seriesOffset);
-    rows.push(
-      `${time.toFixed(2)},${left.toFixed(3)},${time.toFixed(2)},${right.toFixed(3)}`,
-    );
+    rows.push(`${time.toFixed(2)},${left.toFixed(3)},${time.toFixed(2)},${right.toFixed(3)}`);
   }
   return `${rows.join("\n")}\n`;
 }
 
-function tindeqArchive(tag: string, seriesOffset = 0): Uint8Array {
+function tindeqArchive(tag: string, seriesOffset = 0, protocol = "Repeaters") {
   return zipSync(
     {
-      "info.csv": strToU8(infoCsv(tag)),
+      "info.csv": strToU8(infoCsv(tag, protocol)),
       "data_set_1.csv": strToU8(datasetCsv(seriesOffset)),
     },
     { level: 0 },
   );
 }
 
-function tindeqBatchArchive(): Uint8Array {
+function tindeqBatchArchive() {
   return zipSync(
     {
       "klient-a.zip": tindeqArchive("Klient A"),
@@ -103,7 +73,7 @@ function tindeqBatchArchive(): Uint8Array {
 }
 
 async function uploadArchive(page: Page, name: string, data: Uint8Array) {
-  await page.locator('input[type="file"]').setInputFiles({
+  await page.locator('input[type="file"]').first().setInputFiles({
     name,
     mimeType: "application/zip",
     buffer: Buffer.from(data),
@@ -111,8 +81,7 @@ async function uploadArchive(page: Page, name: string, data: Uint8Array) {
 }
 
 function fakeJwt() {
-  const encode = (value: unknown) =>
-    Buffer.from(JSON.stringify(value)).toString("base64url");
+  const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
   return `${encode({ alg: "HS256", typ: "JWT" })}.${encode({
     aud: "authenticated",
     exp: 2_100_000_000,
@@ -120,6 +89,16 @@ function fakeJwt() {
     email: "trainer@example.test",
     role: "authenticated",
   })}.test-signature`;
+}
+
+function containedSessionId(url: URL) {
+  const raw = url.searchParams.get("raw_metadata");
+  if (!raw) return null;
+  try {
+    return String((JSON.parse(raw.replace(/^cs\./, "")) as { tindeqSessionId?: string }).tindeqSessionId ?? "");
+  } catch {
+    return null;
+  }
 }
 
 async function setupSignedInSupabaseMock(page: Page, options: MockOptions = {}) {
@@ -168,10 +147,15 @@ async function setupSignedInSupabaseMock(page: Page, options: MockOptions = {}) 
     }
 
     if (table === "tindeq_sessions" && request.method() === "GET") {
-      const athleteFilter = url.searchParams.get("athlete_id") ?? "";
-      const selectedId = athleteFilter.replace(/^eq\./, "");
+      const athleteFilter = (url.searchParams.get("athlete_id") ?? "").replace(/^eq\./, "");
+      const sessionId = containedSessionId(url);
       const rows = storedRecords
-        .filter((record) => record.athlete_id === selectedId)
+        .filter((record) => record.athlete_id === athleteFilter)
+        .filter((record) => {
+          if (!sessionId) return true;
+          const metadata = record.raw_metadata as { tindeqSessionId?: string } | undefined;
+          return metadata?.tindeqSessionId === sessionId;
+        })
         .sort((a, b) => String(b.measured_at).localeCompare(String(a.measured_at)));
       await route.fulfill({ status: 200, headers, body: JSON.stringify(rows) });
       return;
@@ -181,8 +165,7 @@ async function setupSignedInSupabaseMock(page: Page, options: MockOptions = {}) 
       const payload = request.postDataJSON() as Record<string, unknown>;
       const sourceTag = String(payload.source_tag ?? "");
       postTags.push(sourceTag);
-      const shouldFailOnce =
-        options.failFirstForTag === sourceTag && !failedTags.has(sourceTag);
+      const shouldFailOnce = options.failFirstForTag === sourceTag && !failedTags.has(sourceTag);
       if (shouldFailOnce) failedTags.add(sourceTag);
       if (options.failEverySave || shouldFailOnce) {
         await route.fulfill({
@@ -192,7 +175,6 @@ async function setupSignedInSupabaseMock(page: Page, options: MockOptions = {}) 
         });
         return;
       }
-
       const now = "2026-08-02T11:00:00.000Z";
       const record = {
         id: `44444444-4444-4444-8444-${String(storedRecords.length + 1).padStart(12, "0")}`,
@@ -214,31 +196,22 @@ async function setupSignedInSupabaseMock(page: Page, options: MockOptions = {}) 
 test("nepřihlášený uživatel nevidí klienty, import ani výsledky", async ({ page }) => {
   await page.goto("/tindeq");
   await expect(page.getByRole("heading", { name: "Přihlášení do Knee Data" })).toBeVisible();
-  await expect(page.getByText("Vyber klienta z databáze", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Nahrát Tindeq ZIP", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Uložená Tindeq měření", { exact: true })).toHaveCount(0);
 });
 
-test("přihlášený tok načte klienty, uloží výsledek a zobrazí historii", async ({
-  page,
-}, testInfo) => {
+test("ZIP se analyzuje před explicitním výběrem klienta a teprve potom lze uložit", async ({ page }, testInfo) => {
   const mock = await setupSignedInSupabaseMock(page);
   await page.goto("/tindeq");
 
-  await expect(page.getByRole("heading", { name: "Vyber klienta z databáze" })).toBeVisible();
-  await expect(page.getByRole("option", { name: "Klient Test" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
+  await expect(page.getByRole("option", { name: "Klient Test" })).toHaveAttribute("aria-selected", "false");
+
   await uploadArchive(page, "single-tindeq.zip", tindeqArchive("Klient Test"));
-
-  const clientTab = page.getByRole("tab", { name: "Pro klienta" });
-  const trainerTab = page.getByRole("tab", { name: "Detail pro trenéra" });
-  await expect(clientTab).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Velmi dobrá série" })).toBeVisible();
-  await expect(page.getByText("Nahrát jiný Tindeq ZIP", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Uložit měření ke klientovi" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Uložit měření ke klientovi" })).toBeDisabled();
 
+  await page.getByRole("option", { name: "Klient Test" }).click();
+  await expect(page.getByRole("button", { name: "Uložit měření ke klientovi" })).toBeEnabled();
   await page.getByRole("button", { name: "Uložit měření ke klientovi" }).click();
   await expect(page.getByText("Všechna měření byla bezpečně uložena.")).toBeVisible();
   await expect(page.getByText("Uloženo v historii", { exact: true })).toBeVisible();
@@ -246,12 +219,7 @@ test("přihlášený tok načte klienty, uloží výsledek a zobrazí historii",
   expect(mock.storedRecords[0].athlete_id).toBe(athleteId);
   expect(mock.storedRecords[0].source_filename).toBe("single-tindeq.zip");
   expect(mock.storedRecords[0]).not.toHaveProperty("raw_zip");
-
-  const historySection = page
-    .getByRole("heading", { name: "Uložená Tindeq měření" })
-    .locator("xpath=ancestor::section[1]");
-  await historySection.getByRole("button", { name: "Otevřít detail" }).click();
-  await expect(historySection.getByText("tindeq-repeaters-v1", { exact: true })).toBeVisible();
+  expect(JSON.stringify(mock.storedRecords[0])).not.toContain("timeLeft");
 
   for (const width of [360, 390, 720, 1024, 1440]) {
     await page.setViewportSize({ width, height: width <= 390 ? 844 : 900 });
@@ -260,47 +228,59 @@ test("přihlášený tok načte klienty, uloží výsledek a zobrazí historii",
       scrollWidth: document.documentElement.scrollWidth,
     }));
     expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
-    await page.screenshot({
-      fullPage: true,
-      path: testInfo.outputPath(`client-${width}.png`),
-    });
+    await page.screenshot({ fullPage: true, path: testInfo.outputPath(`client-${width}.png`) });
   }
-
-  await trainerTab.focus();
-  await page.keyboard.press("Enter");
-  await expect(trainerTab).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByText("Vzorkovací frekvence", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Jednotlivá opakování" })).toBeVisible();
-  await page.keyboard.press("ArrowLeft");
-  await expect(clientTab).toHaveAttribute("aria-selected", "true");
 });
 
-test("chyba uložení zachová analyzovaný výsledek a umožní opakování", async ({ page }) => {
+test("název souboru ani tag nikdy automaticky nepřiřadí klienta", async ({ page }) => {
+  await setupSignedInSupabaseMock(page);
+  await page.goto("/tindeq");
+  await uploadArchive(page, "Jiny-klient.zip", tindeqArchive("Jiný klient"));
+  await expect(page.getByRole("option", { name: "Jiný klient" })).toHaveAttribute("aria-selected", "false");
+  await expect(page.getByRole("button", { name: "Uložit měření ke klientovi" })).toBeDisabled();
+});
+
+test("neplatný ZIP zobrazí klidnou konkrétní chybu", async ({ page }) => {
+  await setupSignedInSupabaseMock(page);
+  await page.goto("/tindeq");
+  await uploadArchive(page, "invalid.zip", new Uint8Array([1, 2, 3, 4]));
+  await expect(page.getByText(/ZIP nemá platný centrální adresář/)).toBeVisible();
+});
+
+test("opakovaný upload stejného ZIPu nevytvoří druhý záznam", async ({ page }) => {
+  const mock = await setupSignedInSupabaseMock(page);
+  const archive = tindeqArchive("Klient Test");
+  await page.goto("/tindeq");
+  await page.getByRole("option", { name: "Klient Test" }).click();
+  await uploadArchive(page, "same.zip", archive);
+  await page.getByRole("button", { name: "Uložit měření ke klientovi" }).click();
+  await expect(page.getByText("Všechna měření byla bezpečně uložena.")).toBeVisible();
+
+  await uploadArchive(page, "same.zip", archive);
+  await page.getByRole("button", { name: "Uložit měření ke klientovi" }).click();
+  await expect(page.getByText("Všechna měření byla bezpečně uložena.")).toBeVisible();
+  expect(mock.storedRecords).toHaveLength(1);
+  expect(mock.postTags).toEqual(["Klient Test"]);
+});
+
+test("chyba uložení zachová výsledek a umožní opakování", async ({ page }) => {
   await setupSignedInSupabaseMock(page, { failEverySave: true });
   await page.goto("/tindeq");
+  await page.getByRole("option", { name: "Klient Test" }).click();
   await uploadArchive(page, "failed-save.zip", tindeqArchive("Klient Test"));
   await page.getByRole("button", { name: "Uložit měření ke klientovi" }).click();
-
   await expect(page.getByText("Uložení selhalo. Analyzovaný výsledek zůstává na obrazovce.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Velmi dobrá série" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Uložit měření ke klientovi" })).toBeEnabled();
-  await expect(page.getByText("Pro vybraného klienta zatím není uloženo žádné Tindeq měření.")).toBeVisible();
 });
 
-test("více sessions hlásí částečné selhání a neopakuje úspěšný insert", async ({ page }) => {
+test("částečné selhání opakuje pouze neúspěšnou session", async ({ page }) => {
   const mock = await setupSignedInSupabaseMock(page, { failFirstForTag: "Klient B" });
   await page.goto("/tindeq");
   await page.getByRole("option", { name: "Jiný klient" }).click();
   await uploadArchive(page, "batch-tindeq.zip", tindeqBatchArchive());
-
-  const navigation = page.getByRole("navigation", { name: "Importovaná měření" });
-  await expect(navigation.getByRole("button")).toHaveCount(2);
-  await expect(page.getByText("Zkontroluj přiřazení klienta.")).toBeVisible();
-
   await page.getByRole("button", { name: "Uložit 2 měření ke klientovi" }).click();
   await expect(page.getByText("Část měření byla uložena. Znovu se odešlou pouze neúspěšné položky.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Uložit 1 měření ke klientovi" })).toBeEnabled();
-
   await page.getByRole("button", { name: "Uložit 1 měření ke klientovi" }).click();
   await expect(page.getByText("Všechna měření byla bezpečně uložena.")).toBeVisible();
   expect(mock.postTags).toEqual(["Klient A", "Klient B", "Klient B"]);

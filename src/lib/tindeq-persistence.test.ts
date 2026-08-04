@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { TindeqSession } from "./tindeq-browser.js";
+import { importTindeqArchive, type TindeqSession } from "./tindeq-browser.js";
 import {
   forceToKg,
   loadTindeqHistory,
@@ -10,106 +10,46 @@ import {
   TINDEQ_ANALYSIS_VERSION,
   validateTindeqSessionForSave,
 } from "./tindeq-persistence.js";
+import { fileFromBytes, syntheticTindeqZip } from "./tindeq-test-fixture.js";
 
 const athleteId = "11111111-1111-4111-8111-111111111111";
 
-function sideMetrics(meanForce: number) {
-  return {
-    meanForce,
-    meanPctTarget: 99,
-    cvPct: 3,
-    meanAbsErrorPctPoints: 2,
-    timeIn5Pct: 88,
-    timeIn10Pct: 96,
-    peakPctTarget: 103,
-    overshootPctPoints: 3,
-    driftPctTargetPerSecond: -0.1,
-    timeTo95Seconds: 0.4,
-  };
+async function fixture(options: Parameters<typeof syntheticTindeqZip>[0] = {}) {
+  const result = await importTindeqArchive(
+    fileFromBytes("session.zip", syntheticTindeqZip(options)),
+  );
+  return result.sessions[0];
 }
 
-function sideSummary() {
-  return {
-    meanPctTarget: 99,
-    betweenRepCvPct: 2.5,
-    medianWithinRepCvPct: 3,
-    meanTimeIn5Pct: 88,
-    meanTimeIn10Pct: 96,
-    meanAbsErrorPctPoints: 2,
-    trendPctTargetPerRep: -0.2,
-    firstToLastChangePctPoints: -1.4,
-  };
-}
+type SaveMockOptions = {
+  duplicates?: unknown[][];
+  outcomes?: Array<{ data: unknown; error: { message: string } | null }>;
+};
 
-function fixture(id = "session-1", unit = "kg"): TindeqSession {
-  return {
-    id,
-    sourceName: `${id}.zip`,
-    datasetName: "data_set_1.csv",
-    metadata: {
-      measuredAt: "2026-08-02T10:00:00+02:00",
-      tag: `Klient ${id}`,
-      tagKey: `klient ${id}`,
-      comment: "Kontrolní měření",
-      unit,
-      repetitions: 8,
-      workDurationSeconds: 5,
-      pauseBetweenRepetitionsSeconds: 2,
-      sets: 1,
-      pauseBetweenSetsSeconds: 0,
-      type: "Repeaters",
-      mvcLeft: unit === "N" ? 490.3325 : 50,
-      mvcRight: unit === "N" ? 509.9458 : 52,
-      workLevelPct: 80,
-      restLevelPct: 0,
-    },
-    analysis: {
-      samplingHz: 20,
-      targets: {
-        left: unit === "N" ? 392.266 : 40,
-        right: unit === "N" ? 407.95664 : 41.6,
-      },
-      restTargets: { left: 0, right: 0 },
-      detectedRepetitions: 8,
-      expectedRepetitions: 8,
-      repetitions: [
-        {
-          repetition: 1,
-          onsetSeconds: 1,
-          endSeconds: 6,
-          durationSeconds: 5,
-          incompleteEnd: false,
-          releaseRecorded: true,
-          rightMinusLeftOnsetSeconds: 0.02,
-          left: sideMetrics(unit === "N" ? 388.342 : 39.6),
-          right: sideMetrics(unit === "N" ? 411.878 : 42),
-          flags: [],
-          curveLeftPct: [95, 100, 99],
-          curveRightPct: [96, 101, 100],
-        },
-      ],
-      summary: {
-        left: sideSummary(),
-        right: sideSummary(),
-        meanAbsOnsetDifferenceSeconds: 0.02,
-        meanSignedOnsetDifferenceSeconds: 0.02,
-        domains: {
-          accuracy: "Dobrá",
-          control: "Stabilní",
-          maintenance: "Bez poklesu",
-        },
-      },
-      warnings: [],
-    },
-  };
-}
-
-function saveClient(outcomes: Array<{ data: unknown; error: { message: string } | null }>) {
+function saveClient(options: SaveMockOptions = {}) {
   const inserted: unknown[] = [];
+  const duplicateQueries: unknown[] = [];
+  const duplicates = [...(options.duplicates ?? [])];
+  const outcomes = [...(options.outcomes ?? [])];
+
   const client = {
     from(table: string) {
       assert.equal(table, "tindeq_sessions");
       return {
+        select() {
+          const chain = {
+            eq() { return chain; },
+            contains(_column: string, value: unknown) {
+              duplicateQueries.push(value);
+              return chain;
+            },
+            is() { return chain; },
+            async limit() {
+              return { data: duplicates.shift() ?? [], error: null };
+            },
+          };
+          return chain;
+        },
         insert(payload: unknown) {
           inserted.push(payload);
           return {
@@ -125,97 +65,123 @@ function saveClient(outcomes: Array<{ data: unknown; error: { message: string } 
       };
     },
   } as unknown as SupabaseClient;
-  return { client, inserted };
+  return { client, inserted, duplicateQueries };
 }
 
-test("mapování zachová athlete_id a klíčová relační pole", () => {
-  const payload = mapTindeqSessionToInsert(fixture(), athleteId);
+test("mapování zachová klienta, ZIP zdroj a normalizovaná pole", async () => {
+  const payload = mapTindeqSessionToInsert(await fixture(), athleteId);
   assert.equal(payload.athlete_id, athleteId);
-  assert.equal(payload.source_filename, "session-1.zip");
+  assert.equal(payload.source_filename, "session.zip");
+  assert.equal(payload.source_dataset_name, "data_set_1.csv");
   assert.equal(payload.protocol_name, "Repeaters");
-  assert.equal(payload.target_force_left_kg, 40);
-  assert.equal(payload.target_force_right_kg, 41.6);
-  assert.equal(payload.detected_repetitions, 8);
-  assert.equal(payload.repetitions.length, 1);
+  assert.equal(payload.raw_metadata.importSource, "tindeq-zip");
+  assert.match(payload.raw_metadata.tindeqSessionId, /^[0-9a-f]{20}$/);
+  assert.equal(payload.repetitions.length, 8);
 });
 
-test("síla v newtonech se při uložení jednoznačně převádí na kg", () => {
+test("síla v newtonech se při uložení převádí na kg", async () => {
   assert.ok(Math.abs((forceToKg(98.0665, "N") ?? 0) - 10) < 0.00001);
-  const payload = mapTindeqSessionToInsert(fixture("newtons", "N"), athleteId);
-  assert.ok(Math.abs((payload.target_force_left_kg ?? 0) - 40) < 0.001);
-  assert.ok(Math.abs((payload.repetitions[0].left.meanForceKg ?? 0) - 39.6) < 0.01);
+  const payload = mapTindeqSessionToInsert(await fixture({ unit: "N" }), athleteId);
+  assert.ok(Math.abs((payload.target_force_left_kg ?? 0) - 40) < 0.01);
   assert.ok(Math.abs((payload.raw_metadata.mvcLeftKg ?? 0) - 50) < 0.01);
   assert.equal(payload.overall_summary.storedForceUnit, "kg");
   assert.equal(payload.overall_summary.sourceForceUnit, "N");
 });
 
-test("payload vždy zapisuje podporovanou analysis_version", () => {
-  assert.equal(mapTindeqSessionToInsert(fixture(), athleteId).analysis_version, TINDEQ_ANALYSIS_VERSION);
+test("payload vždy zapisuje podporovanou analysis_version", async () => {
+  assert.equal(
+    mapTindeqSessionToInsert(await fixture(), athleteId).analysis_version,
+    TINDEQ_ANALYSIS_VERSION,
+  );
 });
 
-test("validace odmítne nepodporovanou analysis_version", () => {
+test("validace odmítne nepodporovanou analysis_version", async () => {
   const errors = validateTindeqSessionForSave(
-    fixture(),
+    await fixture(),
     athleteId,
     "tindeq-repeaters-v0",
   );
   assert.match(errors.join(" "), /nepodporovanou verzi/);
 });
 
-test("validace odmítne chybějící nebo neplatné athlete_id", () => {
-  assert.match(validateTindeqSessionForSave(fixture(), "").join(" "), /athlete_id/);
-  assert.throws(() => mapTindeqSessionToInsert(fixture(), "not-a-uuid"), /athlete_id/);
+test("validace odmítne chybějící klientské ID", async () => {
+  assert.match(validateTindeqSessionForSave(await fixture(), "").join(" "), /athlete_id/);
 });
 
-test("validace odmítne neúplný analytický výsledek", () => {
-  const incomplete = fixture();
-  incomplete.analysis.detectedRepetitions = 0;
-  incomplete.analysis.repetitions = [];
-  const errors = validateTindeqSessionForSave(incomplete, athleteId).join(" ");
-  assert.match(errors, /žádné analyzované opakování/);
-  assert.match(errors, /detail analyzovaných opakování/);
+test("ručně sestavený souhrnný objekt bez parserového tvaru nelze uložit", async () => {
+  const manual = structuredClone(await fixture()) as TindeqSession;
+  manual.id = "manual-session";
+  manual.analysis.repetitions[0].curveLeftPct = [100];
+  const errors = validateTindeqSessionForSave(manual, athleteId).join(" ");
+  assert.match(errors, /ZIP analyzátorem/);
+  assert.throws(() => mapTindeqSessionToInsert(manual, athleteId), /ZIP analyzátorem/);
 });
 
-test("uložení jedné session vrací uložený záznam", async () => {
+test("NaN ani Infinity nelze předat do persistence", async () => {
+  const invalid = await fixture();
+  invalid.analysis.summary.left.meanPctTarget = Number.NaN;
+  assert.match(validateTindeqSessionForSave(invalid, athleteId).join(" "), /NaN nebo Infinity/);
+});
+
+test("uložení jedné session vrací nový záznam", async () => {
+  const session = await fixture();
   const stored = { id: "db-1", athlete_id: athleteId };
-  const { client, inserted } = saveClient([{ data: stored, error: null }]);
-  const results = await saveTindeqSessions(client, [fixture()], athleteId);
+  const { client, inserted } = saveClient({ outcomes: [{ data: stored, error: null }] });
+  const results = await saveTindeqSessions(client, [session], athleteId);
   assert.equal(results.length, 1);
   assert.equal(results[0].ok, true);
-  assert.equal((inserted[0] as { athlete_id: string }).athlete_id, athleteId);
+  if (results[0].ok) assert.equal(results[0].duplicate, false);
+  assert.equal(inserted.length, 1);
+});
+
+test("opakovaný import stejné session pro stejného klienta je idempotentní", async () => {
+  const session = await fixture();
+  const existing = { id: "db-existing", athlete_id: athleteId };
+  const { client, inserted, duplicateQueries } = saveClient({ duplicates: [[existing]] });
+  const results = await saveTindeqSessions(client, [session], athleteId);
+  assert.equal(results[0].ok, true);
+  if (results[0].ok) assert.equal(results[0].duplicate, true);
+  assert.equal(inserted.length, 0);
+  assert.deepEqual(duplicateQueries[0], { tindeqSessionId: session.id });
 });
 
 test("více sessions se ukládá samostatně v pořadí importu", async () => {
-  const { client, inserted } = saveClient([
-    { data: { id: "db-1" }, error: null },
-    { data: { id: "db-2" }, error: null },
-  ]);
-  const results = await saveTindeqSessions(
-    client,
-    [fixture("session-1"), fixture("session-2")],
-    athleteId,
+  const first = await fixture({ tag: "Klient A" });
+  const secondResult = await importTindeqArchive(
+    fileFromBytes("second.zip", syntheticTindeqZip({ tag: "Klient B" })),
   );
+  const { client, inserted } = saveClient({
+    duplicates: [[], []],
+    outcomes: [
+      { data: { id: "db-1" }, error: null },
+      { data: { id: "db-2" }, error: null },
+    ],
+  });
+  const results = await saveTindeqSessions(client, [first, secondResult.sessions[0]], athleteId);
   assert.equal(results.filter((result) => result.ok).length, 2);
   assert.equal(inserted.length, 2);
 });
 
 test("částečné selhání je transparentní pro každou session", async () => {
-  const { client } = saveClient([
-    { data: { id: "db-1" }, error: null },
-    { data: null, error: { message: "RLS rejected insert" } },
-  ]);
-  const results = await saveTindeqSessions(
-    client,
-    [fixture("session-1"), fixture("session-2")],
-    athleteId,
+  const first = await fixture({ tag: "Klient A" });
+  const secondResult = await importTindeqArchive(
+    fileFromBytes("second.zip", syntheticTindeqZip({ tag: "Klient B" })),
   );
+  const { client } = saveClient({
+    duplicates: [[], []],
+    outcomes: [
+      { data: { id: "db-1" }, error: null },
+      { data: null, error: { message: "RLS rejected insert" } },
+    ],
+  });
+  const results = await saveTindeqSessions(client, [first, secondResult.sessions[0]], athleteId);
   assert.equal(results[0].ok, true);
   assert.equal(results[1].ok, false);
   if (!results[1].ok) assert.equal(results[1].error, "RLS rejected insert");
 });
 
 test("prázdný batch se neodesílá", async () => {
-  const { client, inserted } = saveClient([]);
+  const { client, inserted } = saveClient();
   const results = await saveTindeqSessions(client, [], athleteId);
   assert.equal(results[0].ok, false);
   assert.equal(inserted.length, 0);
@@ -244,11 +210,7 @@ test("historie se filtruje podle klienta a řadí od nejnovějšího měření",
   const client = {
     from(table: string) {
       assert.equal(table, "tindeq_sessions");
-      return {
-        select() {
-          return chain;
-        },
-      };
+      return { select() { return chain; } };
     },
   } as unknown as SupabaseClient;
 

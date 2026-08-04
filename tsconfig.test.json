@@ -6,9 +6,7 @@
     "rootDir": ".",
     "strict": true,
     "target": "ES2022",
-    "types": [
-      "node"
-    ]
+    "types": ["node"]
   },
   "include": [
     "src/lib/knee-metrics.ts",
@@ -17,6 +15,9 @@
     "src/lib/tindeq-client-view.ts",
     "src/lib/tindeq-client-view.test.ts",
     "src/lib/tindeq-browser.ts",
+    "src/lib/tindeq-browser.test.ts",
+    "src/lib/tindeq-test-fixture.ts",
+    "src/lib/tindeq-persistence-core.ts",
     "src/lib/tindeq-persistence.ts",
     "src/lib/tindeq-persistence.test.ts",
     "src/lib/tindeq-report.ts",

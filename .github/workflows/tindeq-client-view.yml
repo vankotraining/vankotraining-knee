@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - agent/tindeq-results-site
-      - feature/tindeq-client-view
   pull_request:
     branches:
       - main
@@ -16,12 +15,18 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
-      - name: Checkout branch
+      - name: Checkout exact source commit
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+
+      - name: Record exact head
+        run: |
+          echo "VERIFIED_HEAD=$(git rev-parse HEAD)" | tee -a "$GITHUB_ENV"
+          git status --short
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -31,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Run tests
+      - name: Run unit tests
         run: npm test
 
       - name: Compare lint with current main
@@ -59,19 +64,19 @@ jobs:
           import re
           from pathlib import Path
 
-          def error_count(path: str) -> int:
+          def counts(path: str) -> tuple[int, int]:
               text = Path(path).read_text(encoding="utf-8", errors="replace")
               match = re.search(r"(\d+) problems? \((\d+) errors?, (\d+) warnings?\)", text)
               if match:
-                  return int(match.group(2))
-              return len(re.findall(r"\berror\b", text, flags=re.IGNORECASE))
+                  return int(match.group(2)), int(match.group(3))
+              return len(re.findall(r"\berror\b", text, flags=re.IGNORECASE)), 0
 
           branch_status = int(os.environ["BRANCH_STATUS"])
           main_status = int(os.environ["MAIN_STATUS"])
-          branch_errors = error_count("branch-lint.log")
-          main_errors = error_count("../main-lint.log")
-          print(f"main lint: status={main_status}, errors={main_errors}")
-          print(f"branch lint: status={branch_status}, errors={branch_errors}")
+          branch_errors, branch_warnings = counts("branch-lint.log")
+          main_errors, main_warnings = counts("../main-lint.log")
+          print(f"main lint: status={main_status}, errors={main_errors}, warnings={main_warnings}")
+          print(f"branch lint: status={branch_status}, errors={branch_errors}, warnings={branch_warnings}")
           if main_status == 0 and branch_status != 0:
               raise SystemExit("Branch lint failed while current main lint passed.")
           if branch_errors > main_errors:
@@ -80,6 +85,20 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
+
+      - name: Run project control check when available
+        shell: bash
+        run: |
+          if npm run | grep -q "project:check"; then
+            npm run project:check
+          else
+            echo "project:check is not defined on this branch."
+          fi
+
+      - name: Verify patch whitespace
+        run: |
+          git fetch origin main
+          git diff --check origin/main...HEAD
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
@@ -91,7 +110,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tindeq-client-view-screenshots
+          name: tindeq-client-view-screenshots-${{ env.VERIFIED_HEAD }}
           path: test-results/**/*.png
           if-no-files-found: ignore
           retention-days: 7

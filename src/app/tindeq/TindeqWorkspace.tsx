@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { TindeqSession } from "@/lib/tindeq-browser";
 import {
@@ -31,36 +32,12 @@ function normalizeSearch(value: string) {
 
 function formatDate(value: string) {
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value || "–";
-  return new Intl.DateTimeFormat("cs-CZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(parsed);
-}
-
-function formatNumber(value: number | null | undefined, decimals = 1, suffix = "") {
-  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "–";
-  return `${Number(value).toFixed(decimals).replace(".", ",")}${suffix}`;
-}
-
-function mean(values: Array<number | null | undefined>) {
-  const finite = values
-    .filter((value): value is number => value !== null && value !== undefined)
-    .map((value) => Number(value))
-    .filter((value) => Number.isFinite(value));
-  return finite.length > 0
-    ? finite.reduce((sum, value) => sum + value, 0) / finite.length
-    : null;
+  return Number.isNaN(parsed.getTime())
+    ? value || "–"
+    : new Intl.DateTimeFormat("cs-CZ", { dateStyle: "medium", timeStyle: "short" }).format(parsed);
 }
 
 function HistoryCard({ session }: { session: StoredTindeqSession }) {
-  const [expanded, setExpanded] = useState(false);
-  const targetAchievement = mean([
-    session.left_summary.meanPctTarget,
-    session.right_summary.meanPctTarget,
-  ]);
-  const domains = session.overall_summary.domains;
-
   return (
     <article className={styles.historyCard}>
       <div className={styles.historyCardHeader}>
@@ -69,92 +46,14 @@ function HistoryCard({ session }: { session: StoredTindeqSession }) {
           <h3>{session.source_tag || session.protocol_name || "Tindeq měření"}</h3>
           <p>{formatDate(session.measured_at)}</p>
         </div>
-        <button
-          aria-expanded={expanded}
-          className={styles.historyDetailButton}
-          onClick={() => setExpanded((current) => !current)}
-          type="button"
-        >
-          {expanded ? "Skrýt detail" : "Otevřít detail"}
-        </button>
       </div>
-
       <dl className={styles.historySummaryGrid}>
-        <div>
-          <dt>Protokol</dt>
-          <dd>{session.protocol_name || "–"}</dd>
-        </div>
-        <div>
-          <dt>Cíl levá / pravá</dt>
-          <dd>
-            {formatNumber(session.target_force_left_kg, 1, " kg")} /{" "}
-            {formatNumber(session.target_force_right_kg, 1, " kg")}
-          </dd>
-        </div>
-        <div>
-          <dt>Dosažení cíle</dt>
-          <dd>{formatNumber(targetAchievement, 0, " %")}</dd>
-        </div>
-        <div>
-          <dt>Stabilita</dt>
-          <dd>{domains.control}</dd>
-        </div>
-        <div>
-          <dt>Udržení výkonu</dt>
-          <dd>{domains.maintenance}</dd>
-        </div>
+        <div><dt>Protokol</dt><dd>{session.protocol_name || "–"}</dd></div>
+        <div><dt>Opakování</dt><dd>{session.detected_repetitions}/{session.expected_repetitions}</dd></div>
+        <div><dt>Kontrola</dt><dd>{session.overall_summary.domains.control}</dd></div>
+        <div><dt>Udržení</dt><dd>{session.overall_summary.domains.maintenance}</dd></div>
+        <div><dt>Analýza</dt><dd>{session.analysis_version}</dd></div>
       </dl>
-
-      {expanded ? (
-        <div className={styles.historyDetail}>
-          <dl className={styles.historyDetailGrid}>
-            <div>
-              <dt>Opakování</dt>
-              <dd>{session.detected_repetitions}/{session.expected_repetitions}</dd>
-            </div>
-            <div>
-              <dt>Vzorkování</dt>
-              <dd>{formatNumber(session.sampling_rate_hz, 1, " Hz")}</dd>
-            </div>
-            <div>
-              <dt>Levá: čas v cíli</dt>
-              <dd>{formatNumber(session.left_summary.meanTimeIn5Pct, 0, " %")}</dd>
-            </div>
-            <div>
-              <dt>Pravá: čas v cíli</dt>
-              <dd>{formatNumber(session.right_summary.meanTimeIn5Pct, 0, " %")}</dd>
-            </div>
-            <div>
-              <dt>Levá: CV mezi opakováními</dt>
-              <dd>{formatNumber(session.left_summary.betweenRepCvPct, 1, " %")}</dd>
-            </div>
-            <div>
-              <dt>Pravá: CV mezi opakováními</dt>
-              <dd>{formatNumber(session.right_summary.betweenRepCvPct, 1, " %")}</dd>
-            </div>
-            <div>
-              <dt>Verze analýzy</dt>
-              <dd>{session.analysis_version}</dd>
-            </div>
-            <div>
-              <dt>Importováno</dt>
-              <dd>{formatDate(session.imported_at)}</dd>
-            </div>
-          </dl>
-          <div className={styles.historyWarnings}>
-            <strong>Technická upozornění</strong>
-            {session.warnings.length > 0 ? (
-              <ul>
-                {session.warnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-            ) : (
-              <p>Bez souhrnných technických upozornění.</p>
-            )}
-          </div>
-        </div>
-      ) : null}
     </article>
   );
 }
@@ -175,38 +74,30 @@ export default function TindeqWorkspace() {
 
   useEffect(() => {
     if (!supabase || !session) return;
-
     let active = true;
-    Promise.resolve().then(() => {
+    void (async () => {
+      await Promise.resolve();
       if (!active) return;
       setAthletesState("loading");
       setAthletesError(null);
-      return supabase
+      const { data, error } = await supabase
         .from("athletes")
         .select("id,display_name,name_key,note")
         .order("display_name");
-    }).then((result) => {
-        if (!result) return;
-        const { data, error } = result;
-        if (!active) return;
-        if (error) {
-          setAthletesState("error");
-          setAthletesError(error.message);
-          return;
-        }
-        const nextAthletes = (data ?? []) as Athlete[];
-        setAthletes(nextAthletes);
-        setSelectedAthleteId((current) =>
-          current && nextAthletes.some((athlete) => athlete.id === current)
-            ? current
-            : nextAthletes[0]?.id ?? null,
-        );
-        setAthletesState("ready");
-      });
-
-    return () => {
-      active = false;
-    };
+      if (!active) return;
+      if (error) {
+        setAthletesState("error");
+        setAthletesError(error.message);
+        return;
+      }
+      const records = (data ?? []) as Athlete[];
+      setAthletes(records);
+      setSelectedAthleteId((current) =>
+        current && records.some((athlete) => athlete.id === current) ? current : null,
+      );
+      setAthletesState("ready");
+    })();
+    return () => { active = false; };
   }, [session, supabase]);
 
   const filteredAthletes = useMemo(() => {
@@ -225,31 +116,31 @@ export default function TindeqWorkspace() {
   );
 
   useEffect(() => {
-    if (!supabase || !session || !selectedAthleteId) return;
-
+    if (!supabase || !session || !selectedAthleteId) {
+      setHistory([]);
+      setHistoryState("idle");
+      setHistoryError(null);
+      return;
+    }
     let active = true;
-    Promise.resolve()
-      .then(() => {
-        if (!active) return null;
-        setHistoryState("loading");
-        setHistoryError(null);
-        return loadTindeqHistory(supabase, selectedAthleteId);
-      })
-      .then((records) => {
-        if (!active || !records) return;
+    void (async () => {
+      await Promise.resolve();
+      if (!active) return;
+      setHistoryState("loading");
+      setHistoryError(null);
+      try {
+        const records = await loadTindeqHistory(supabase, selectedAthleteId);
+        if (!active) return;
         setHistory(records);
         setHistoryState("ready");
-      })
-      .catch((error) => {
+      } catch (error) {
         if (!active) return;
         setHistory([]);
         setHistoryState("error");
         setHistoryError(error instanceof Error ? error.message : "Historii se nepodařilo načíst.");
-      });
-
-    return () => {
-      active = false;
-    };
+      }
+    })();
+    return () => { active = false; };
   }, [historyVersion, selectedAthleteId, session, supabase]);
 
   async function handleMagicLink(event: FormEvent<HTMLFormElement>) {
@@ -263,22 +154,16 @@ export default function TindeqWorkspace() {
         emailRedirectTo: new URL("/tindeq", window.location.origin).toString(),
       },
     });
-    setAuthMessage(
-      error
-        ? error.message
-        : "Hotovo. Zkontroluj e-mail a klikni na přihlašovací odkaz.",
-    );
+    setAuthMessage(error ? error.message : "Hotovo. Zkontroluj e-mail a klikni na přihlašovací odkaz.");
   }
 
-  async function handleSave(
-    sessionsToSave: TindeqSession[],
-  ): Promise<SaveTindeqSessionResult[]> {
+  async function handleSave(sessionsToSave: TindeqSession[]): Promise<SaveTindeqSessionResult[]> {
     if (!supabase || !selectedAthlete) {
       return sessionsToSave.map((item) => ({
         ok: false as const,
         sourceSessionId: item.id,
         sourceTag: item.metadata.tag,
-        error: "Před uložením vyber klienta.",
+        error: "Před uložením explicitně vyber klienta.",
       }));
     }
     const results = await saveTindeqSessions(supabase, sessionsToSave, selectedAthlete.id);
@@ -286,35 +171,17 @@ export default function TindeqWorkspace() {
     return results;
   }
 
-  if (authState === "loading") {
-    return <div className={styles.authState} role="status">Ověřuji přihlášení…</div>;
-  }
-
-  if (authState === "unconfigured") {
-    return <div className={styles.errorBox}>Chybí Supabase konfigurace.</div>;
-  }
-
-  if (authState === "error") {
-    return <div className={styles.errorBox}>{authError || "Přihlášení se nepodařilo ověřit."}</div>;
-  }
-
+  if (authState === "loading") return <div className={styles.authState} role="status">Ověřuji přihlášení…</div>;
+  if (authState === "unconfigured") return <div className={styles.errorBox}>Chybí Supabase konfigurace.</div>;
+  if (authState === "error") return <div className={styles.errorBox}>{authError || "Přihlášení se nepodařilo ověřit."}</div>;
   if (authState === "signed-out") {
     return (
       <section className={styles.authCard} aria-labelledby="tindeq-login-title">
         <p className={styles.eyebrow}>Chráněný přístup</p>
         <h2 id="tindeq-login-title">Přihlášení do Knee Data</h2>
-        <p>Pro klienty, import i historii Tindeq použij stejné přihlášení jako v hlavní aplikaci.</p>
+        <p>Magic link se vrátí na stejnou Knee doménu a trasu /tindeq.</p>
         <form className={styles.authForm} onSubmit={handleMagicLink}>
-          <label>
-            E-mail
-            <input
-              autoComplete="email"
-              onChange={(event) => setEmail(event.target.value)}
-              required
-              type="email"
-              value={email}
-            />
-          </label>
+          <label>E-mail<input autoComplete="email" onChange={(event) => setEmail(event.target.value)} required type="email" value={email} /></label>
           <button type="submit">Poslat přihlašovací odkaz</button>
         </form>
         <p aria-live="polite" className={styles.authMessage}>{authMessage}</p>
@@ -324,94 +191,65 @@ export default function TindeqWorkspace() {
 
   return (
     <div className={styles.workspace}>
-      <section className={styles.athletePicker} aria-labelledby="athlete-picker-title">
-        <div className={styles.pickerHeading}>
-          <div>
-            <p className={styles.eyebrow}>1. Klient</p>
-            <h2 id="athlete-picker-title">Vyber klienta z databáze</h2>
-          </div>
-          <button className={styles.signOutButton} onClick={() => supabase?.auth.signOut()} type="button">
-            Odhlásit
-          </button>
-        </div>
-        <label className={styles.athleteSearch}>
-          Hledat podle jména
-          <input
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Začni psát jméno klienta"
-            type="search"
-            value={query}
-          />
-        </label>
-
-        {athletesState === "loading" ? <p role="status">Načítám klienty…</p> : null}
-        {athletesState === "error" ? <div className={styles.errorBox}>{athletesError}</div> : null}
-        {athletesState === "ready" && athletes.length === 0 ? (
-          <p>V databázi není žádný aktivní klient.</p>
-        ) : null}
-        {athletesState === "ready" && athletes.length > 0 ? (
-          <div className={styles.athletePickerGrid}>
-            <div className={styles.athleteList} role="listbox" aria-label="Aktivní klienti">
-              {filteredAthletes.length > 0 ? (
-                filteredAthletes.map((athlete) => (
-                  <button
-                    aria-selected={athlete.id === selectedAthleteId}
-                    className={athlete.id === selectedAthleteId ? styles.selectedAthleteButton : ""}
-                    key={athlete.id}
-                    onClick={() => setSelectedAthleteId(athlete.id)}
-                    role="option"
-                    type="button"
-                  >
-                    {athlete.display_name}
-                  </button>
-                ))
-              ) : (
-                <p>Žádný klient neodpovídá hledání.</p>
-              )}
-            </div>
-            <div className={styles.selectedAthleteCard} aria-live="polite">
-              <span>Aktuálně vybraný klient</span>
-              <strong>{selectedAthlete?.display_name || "Nikdo"}</strong>
-              <small>Uložení není možné bez platného athlete_id.</small>
-            </div>
-          </div>
-        ) : null}
-      </section>
-
       <section className={styles.analysisSection} aria-labelledby="new-analysis-title">
         <div className={styles.sectionTitleBlock}>
-          <p className={styles.eyebrow}>2. Import a kontrola</p>
+          <p className={styles.eyebrow}>1. ZIP import, analýza a kontrola</p>
           <h2 id="new-analysis-title">Nově analyzováno</h2>
-          <p>ZIP se analyzuje lokálně. Do Supabase se odešle až po potvrzení pouze strukturovaný výsledek.</p>
+          <p>Podporovaný vstup je pouze ZIP exportovaný z Tindeq. Analýza probíhá lokálně; původní ZIP ani nezpracovaná časová řada se neukládají.</p>
         </div>
         <TindeqAnalyzer
           onSaveSessions={handleSave}
-          selectedAthlete={
-            selectedAthlete
-              ? { id: selectedAthlete.id, displayName: selectedAthlete.display_name }
-              : null
-          }
+          selectedAthlete={selectedAthlete ? { id: selectedAthlete.id, displayName: selectedAthlete.display_name } : null}
         />
+      </section>
+
+      <section className={styles.athletePicker} aria-labelledby="athlete-picker-title">
+        <div className={styles.pickerHeading}>
+          <div>
+            <p className={styles.eyebrow}>2. Explicitní přiřazení klienta</p>
+            <h2 id="athlete-picker-title">Vyber klienta z databáze</h2>
+          </div>
+          <button className={styles.signOutButton} onClick={() => supabase?.auth.signOut()} type="button">Odhlásit</button>
+        </div>
+        <p>Klient se nikdy neurčuje podle názvu souboru ani tagu. Bez ručního výběru zůstává uložení zablokované.</p>
+        <label className={styles.athleteSearch}>Hledat podle jména<input onChange={(event) => setQuery(event.target.value)} placeholder="Začni psát jméno klienta" type="search" value={query} /></label>
+        {athletesState === "loading" ? <p role="status">Načítám klienty…</p> : null}
+        {athletesState === "error" ? <div className={styles.errorBox}>{athletesError}</div> : null}
+        {athletesState === "ready" && athletes.length === 0 ? <p>V databázi není žádný aktivní klient.</p> : null}
+        {athletesState === "ready" && athletes.length > 0 ? (
+          <div className={styles.athletePickerGrid}>
+            <div className={styles.athleteList} role="listbox" aria-label="Aktivní klienti">
+              {filteredAthletes.length > 0 ? filteredAthletes.map((athlete) => (
+                <button
+                  aria-selected={athlete.id === selectedAthleteId}
+                  className={athlete.id === selectedAthleteId ? styles.selectedAthleteButton : ""}
+                  key={athlete.id}
+                  onClick={() => setSelectedAthleteId(athlete.id)}
+                  role="option"
+                  type="button"
+                >{athlete.display_name}</button>
+              )) : <p>Žádný klient neodpovídá hledání.</p>}
+            </div>
+            <div className={styles.selectedAthleteCard} aria-live="polite">
+              <span>Potvrzený klient pro uložení</span>
+              <strong>{selectedAthlete?.display_name || "Nikdo"}</strong>
+              <small>Výběr je vždy ruční a lze jej před uložením změnit.</small>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className={styles.historySection} aria-labelledby="history-title">
         <div className={styles.sectionTitleBlock}>
-          <p className={styles.eyebrow}>3. Historie</p>
+          <p className={styles.eyebrow}>3. Historie a report</p>
           <h2 id="history-title">Uložená Tindeq měření</h2>
-          <p>{selectedAthlete ? `Klient: ${selectedAthlete.display_name}` : "Nejprve vyber klienta."}</p>
+          <p>{selectedAthlete ? `Klient: ${selectedAthlete.display_name}` : "Nejprve ručně vyber klienta."}</p>
+          <p><Link href="/tindeq/reports">Otevřít kanonické reporty</Link></p>
         </div>
-        <div aria-live="polite">
-          {historyState === "loading" ? <p role="status">Načítám historii…</p> : null}
-          {historyState === "error" ? <div className={styles.errorBox}>{historyError}</div> : null}
-          {historyState === "ready" && history.length === 0 ? (
-            <div className={styles.emptyHistory}>Pro vybraného klienta zatím není uloženo žádné Tindeq měření.</div>
-          ) : null}
-        </div>
-        {history.length > 0 ? (
-          <div className={styles.historyList}>
-            {history.map((record) => <HistoryCard key={record.id} session={record} />)}
-          </div>
-        ) : null}
+        {historyState === "loading" ? <p role="status">Načítám historii…</p> : null}
+        {historyState === "error" ? <div className={styles.errorBox}>{historyError}</div> : null}
+        {historyState === "ready" && history.length === 0 ? <div className={styles.emptyHistory}>Pro vybraného klienta zatím není uloženo žádné Tindeq měření.</div> : null}
+        {history.length > 0 ? <div className={styles.historyList}>{history.map((record) => <HistoryCard key={record.id} session={record} />)}</div> : null}
       </section>
     </div>
   );

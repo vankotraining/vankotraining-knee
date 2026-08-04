@@ -1,171 +1,254 @@
-# Tindeq results site
+# Tindeq results site — PR #12 ZIP-only source of truth
 
-## Source of truth
+Stav auditu: **4. 8. 2026**
 
+## Identifikace
+
+- Repository: `vankotraining/vankotraining-knee`
 - Base branch: `main`
-- Base commit reviewed before implementation: `71d6b1f0e67c571c71a53db6248e526704bddabe`
+- Ověřený base SHA: `71d6b1f0e67c571c71a53db6248e526704bddabe`
 - Working branch: `agent/tindeq-results-site`
-- Implementation commit verified by automated tests: `e480fc3f8563f158cf406f4464b7b2602f227246`
-- Migration evidence commit: `ca59d9341d942dbf1db0b79242f8905d6cfd521c`
-- Draft pull request: `#12`
-- Route: `/tindeq`
-- Shared Supabase project: `zxvndqicslyulrinbpyn`
+- Draft PR: `#12`
+- Head před konsolidací: `e368500e8c138930d675e9336d4a02dd70e4c3a8`
+- Produkční doména: `knee.vankotraining.cz`
+- Produkční Vercel projekt: `vankotraining-knee` (`prj_WLfkUldcNfXn43KmsXpJAClaKOsI`)
+- Produkční Supabase: `zxvndqicslyulrinbpyn`
+- Dev Supabase: `twndqnmrvefhwuwuglju`
 
-## Status vocabulary
+Git commit nemůže obsahovat vlastní SHA. Autoritativní exact-head SHA, CI run a Vercel deployment se proto po každém finálním commitu zapisují do popisu PR #12. Tento dokument eviduje auditovaný base/head a stabilní produktová pravidla.
 
-- **Implemented** means the change exists on the working branch.
-- **Tested** means automated evidence exists for the exact implementation commit.
-- **Database applied** means the migration exists in the shared Supabase migration history and post-migration checks passed.
-- **Preview deployed** requires a Vercel deployment whose metadata matches the exact final commit.
-- **Production deployed** requires a production deployment of that exact commit.
-- **Production verified** requires explicit user confirmation after production review.
+## Stavová terminologie
 
-## Implemented
+- **Implementováno**: změna existuje na pracovní větvi.
+- **Preview nasazeno**: READY preview má metadata přesného aktuálního head SHA.
+- **Produkčně nasazeno**: přesný commit je deploymentem připojen k produkční doméně.
+- **Produkčně ověřeno**: uživatel po produkčním nasazení změnu výslovně zkontroloval a potvrdil.
 
-### Authentication and athlete selection
+Automatizovaný test ani READY deployment nejsou produkční ověření.
 
-- `/tindeq` uses the existing browser Supabase client, current session and `onAuthStateChange` subscription.
-- Signed-out users see the same magic-link authentication model as the main application.
-- Athletes, imported results and history are not rendered without a valid session.
-- Active athletes are loaded from `public.athletes`, ordered by `display_name` and searchable by name.
-- A result cannot be saved without a valid selected `athlete_id`.
-- The Tindeq export tag is shown only as supporting information. A non-matching tag produces a non-blocking warning; no automatic or fuzzy athlete matching is performed.
+## Závazný rozsah
 
-### Local analysis and explicit save
+Jediný podporovaný vstup skutečných Tindeq dat je **ZIP exportovaný z Tindeq**.
 
-- ZIP parsing and analysis remain local in the browser.
-- `src/lib/tindeq-browser.ts`, its analytical model and heuristic thresholds were not changed.
-- Client and trainer views continue to use the same already calculated `TindeqSession` object.
-- The user sees the analysed result before save and must explicitly select `Uložit měření ke klientovi`.
-- The original ZIP and raw time-series samples are not uploaded to Supabase Storage or the database.
-- Multi-session archives are saved as one database row per analysed session in import order.
-- Partial failure is reported per session. A retry sends only failed sessions and retains the analysed result on screen.
+Podporovaný tok:
 
-### Persistence mapping
+`File` → validace ZIP → lokální rozbalení `info.csv` a `data_set_*.csv` → normalizovaná `TindeqSession` → kontrolní náhled → explicitní výběr klienta → explicitní uložení → historie → klientský/trenérský pohled → kanonický report.
 
-- Analysis version: `tindeq-repeaters-v1`.
-- Relational columns include athlete, measured/imported timestamps, source filename and dataset, source tag, protocol, left/right target force in kg, sampling rate and repetition counts.
-- Detailed side summaries, overall summary, repetitions, warnings and normalized metadata are stored as validated `jsonb`.
-- Supported force units are normalized to kg before storage (`kg`, `N`, `lb`). Unsupported units are rejected.
-- Stored analytical values are not editable through the application. Correction is by soft-delete and re-import.
+### Non-goals
 
-### Athlete history
+PR #12 nesmí obsahovat ani znovu zavést:
 
-- History is filtered by selected athlete and ordered by `measured_at desc, created_at desc`.
-- It has loading, empty and error states and is visually separated from the current unsaved analysis.
-- Each entry shows measured date, source tag/protocol, target force, left/right result, target achievement, stability and maintenance.
-- Saved detail can be opened without reprocessing a ZIP.
+- ruční session bez analyzovaného ZIPu,
+- formulář jako náhradu ZIPu,
+- samostatné „Přidat Tindeq záznam“,
+- Bluetooth/live měření,
+- automatické přiřazení klienta z názvu souboru nebo tagu,
+- ukládání původního ZIPu,
+- ukládání celé raw časové řady,
+- Tindeq plánovač nebo paralelní workflow.
 
-## Database migration applied
+PR #15 `agent/tindeq-client-workflow` byl uzavřen bez merge a vzdálená větev odstraněna. Tento směr je ukončený a nesmí se obnovit pod jiným názvem.
 
-Migration file: `supabase/migrations/20260802_tindeq_sessions.sql`.
-Verification queries: `supabase/checks/20260802_tindeq_sessions_checks.sql`.
+## Audit změněných oblastí PR #12
 
-The migration created `public.tindeq_sessions` with:
+| Oblast | Hlavní soubory | Hodnocení pro ZIP-only merge |
+|---|---|---|
+| ZIP parser a analýza | `src/lib/tindeq-browser.ts` | **Nutné.** Jediný runtime vstup, lokální čtení ZIP, `info.csv`, `data_set_*.csv`, normalizace a stabilní session ID. |
+| Tindeq datové typy | `src/lib/tindeq-browser.ts`, `src/lib/tindeq-persistence*.ts` | **Nutné.** Sdílený normalizovaný model pro UI, persistence i report. |
+| Výpočetní metriky | `tindeq-browser.ts`, `tindeq-client-view.ts`, `tindeq-report.ts` | **Nutné / zachovat.** Standardní knee-extension metriky se touto konsolidací nemění. |
+| Klientský pohled | `TindeqAnalyzer.tsx`, `tindeq-client-view.ts` | **Nutné.** Zobrazuje klidný souhrn nad stejnou session jako trenér. |
+| Trenérský pohled | `TindeqAnalyzer.tsx` | **Užitečné a již koherentní.** Neobsahuje druhý výpočetní systém; zachováno. |
+| Historie a persistence | `TindeqWorkspace.tsx`, `tindeq-persistence*.ts` | **Nutné.** Explicitní klient, normalizovaný payload, partial retry a historie. |
+| Kanonický report | `tindeq-report.ts`, `TindeqReportView.tsx`, `/reports` | **Užitečné, ne minimální podmínka importu.** Logika je centralizovaná a testovaná, proto zůstává v PR #12. |
+| Demo report | `tindeq-report-demo.ts`, `/reports/demo` | **Užitečné, ne nutné.** Zachováno pouze jako jasně označené anonymní read-only demo bez Supabase. |
+| Autentizace a redirect | `TindeqEnvironmentGuard.tsx`, `TindeqWorkspace.tsx`, `use-supabase-session.ts` | **Nutné.** Redirect používá aktuální origin a pevnou trasu `/tindeq`; reálný e-mail je stále ruční gate. |
+| Supabase integrace | `tindeq-persistence*.ts`, session hook | **Nutné.** Používá stávající browser client a RLS. |
+| SQL/migrace | `20260802_tindeq_sessions.sql`, checks | **Nutné jako již aplikovaný základ.** Konsolidace nevyžaduje novou produkční migraci. |
+| Testy | unit + Playwright | **Nutné.** Pokrývají parser, ZIP-only guard, persistence, report, auth source a browser workflow. |
+| CI | `.github/workflows/tindeq-client-view.yml` | **Nutné.** Exact checkout, unit, lint baseline, build, optional project check, diff check a browser testy. |
+| Dokumentace | `project-control/*`, PR body | **Nutné.** PR body je exact-head evidence ledger; project-control drží stabilní pravidla a gate. |
+| Odkaz z hlavní stránky | `src/app/page.tsx` | **Užitečné, ne kritické.** Pouze navigace; nevytváří alternativní vstup. |
 
-- UUID primary key and UUID foreign key to `athletes(id)` with `on delete cascade`,
-- soft-delete and audit metadata consistent with the knee tables,
-- active-history index on `(athlete_id, measured_at desc, created_at desc)`,
-- analysis-version index,
-- positive-value, JSON shape and required-text constraints,
-- RLS enabled,
-- authenticated `select`/`insert` and column-limited soft-delete `update` grants,
-- policies using the existing `public.is_knee_admin()` authorization model,
-- insert validation that the referenced athlete exists and is active,
-- no ordinary table delete grant,
-- guarded security-definer functions for soft-delete/restore with `PUBLIC` and `anon` execution revoked,
-- existing `set_knee_updated_at()` and `log_knee_table_change()` triggers,
-- athlete-level soft-delete/restore extended to Tindeq rows.
+Audit runtime importů a props nenašel v PR #12 produkční formulář, query parametr, localStorage cestu, mockovací tlačítko ani skryté alternativní UI, které by vytvářelo skutečnou session bez ZIPu.
 
-### Application evidence
+## Výsledný ZIP-only workflow
 
-- User approval received on `2026-08-02`.
-- Applied to shared project `zxvndqicslyulrinbpyn`.
-- Supabase migration history entry: version `20260802124337`, name `tindeq_sessions`.
-- PostgreSQL version at application: `17.6` on Supabase GA.
-- The table existed after application with RLS enabled and zero rows.
-- All expected columns, constraints, indexes, three RLS policies, grants and triggers were present.
-- `anon` has no table `select` or `insert` privilege.
-- `authenticated` has `select` and `insert`; update is limited to soft-delete/audit columns and does not permit changing stored analytical source fields.
-- New Tindeq soft-delete/restore functions are not executable by `PUBLIC` or `anon`; they are executable by `authenticated` and additionally require `auth.uid()` plus `is_knee_admin()`.
+### 1. Nahrání
 
-### Authenticated transactional smoke test
+- vstupní prvek přijímá `.zip`,
+- podporuje jeden Tindeq export nebo vnější ZIP obsahující více Tindeq ZIPů,
+- neplatný nebo poškozený soubor vrací konkrétní chybu.
 
-A database-level smoke test was executed as the existing authenticated knee administrator against an existing active athlete, entirely inside a transaction that was rolled back.
+### 2. Lokální analýza
 
-Verified behavior:
+- ZIP se čte a rozbaluje v prohlížeči,
+- původní ZIP se neposílá na server ani do Storage,
+- raw časové řady se používají jen pro výpočet a nejsou součástí DB payloadu,
+- session ID je deterministický zkrácený SHA-256 nad archivem a názvem datasetu.
 
-- an authenticated administrator can insert a valid normalized Tindeq row,
-- the inserted row is visible through RLS,
-- direct update of `source_filename` is rejected,
-- soft-delete hides the row through RLS,
-- restore makes the row visible again,
-- the transaction rollback completed,
-- `public.tindeq_sessions` contained **0 rows** after the test.
+### 3. Kontrola
 
-No athlete, profile, knee-extension measurement or persistent Tindeq record was created, updated or deleted by the smoke test.
+Před uložením jsou dostupné:
 
-### RLS limitation
+- nalezené sessions/datasety,
+- protokol a metadata,
+- počet očekávaných a detekovaných opakování,
+- levá/pravá cílová síla a metriky,
+- technická varování a neúplnost.
 
-The current application is effectively a single authorized knee administrator. `is_knee_admin()` currently authorizes the configured administrator email. This is consistent with the inspected knee tables but is not a multi-tenant ownership model. Before multi-user use, rows need explicit owner/organization columns and ownership-scoped RLS.
+Chybějící nebo nehodnotitelná data se nezaměňují za nulu.
 
-### Advisor findings
+### 4. Explicitní klient
 
-Supabase security and performance advisors were run after the migration.
+- po načtení klientů není nikdo automaticky vybraný,
+- název ZIPu ani Tindeq tag klienta nepřiřazuje,
+- uložení je blokované, dokud uživatel ručně nevybere klienta,
+- tag slouží pouze jako kontrolní upozornění.
 
-- No missing RLS policy, missing primary key or unindexed foreign-key finding was reported for `tindeq_sessions`.
-- The two new indexes are reported as unused because the table is currently empty; this is expected before real history queries occur.
-- The generic security advisor warns about authenticated access to the two intentional security-definer Tindeq soft-delete/restore functions. Their bodies require a non-null authenticated user and `is_knee_admin()`, and the transactional smoke test verified the intended path.
-- Existing project-wide advisor findings remain outside this migration, including security-definer views, mutable function search paths, and pre-existing athlete/knee RPC execute grants. These should be handled as a separate security-hardening change rather than silently mixed into this feature migration.
+### 5. Persistence
 
-## Automated verification
+Před uložením se znovu validuje parserový tvar:
 
-Verified implementation commit: `e480fc3f8563f158cf406f4464b7b2602f227246`.
-GitHub Actions workflow: `Verify Tindeq client view`, run `30747106945`.
-Screenshot artifact: `tindeq-client-view-screenshots`, artifact ID `8833240463`.
+- 20znakové hex session ID,
+- zdrojový název `.zip`,
+- dataset `data_set_N.csv`,
+- vypočtená opakování s normalizovanými 101bodovými křivkami,
+- žádné `NaN` ani `Infinity`,
+- podporovaná `analysis_version`, jednotka a klientské UUID.
 
-- `npm test`: passed, **49/49**.
-- Persistence tests cover payload mapping, `athlete_id`, units, `analysis_version`, unsupported version, missing athlete, incomplete analysis, single save, multi-save, transparent partial failure and athlete-filtered history.
-- `npm run lint`: working branch and current `main` both retain the same existing baseline, **3 errors + 1 warning** in pre-existing archive/dashboard components. No new lint errors are introduced.
-- `npm run build`: passed; `/tindeq` is statically generated and performs session/data checks client-side.
-- Playwright: passed, **4/4**.
-  - signed-out authentication gate,
-  - signed-in mocked Supabase client and athlete loading,
-  - athlete search/selection,
-  - ZIP import and result display,
-  - explicit save and history refresh,
-  - result preservation after save failure,
-  - client/trainer switch,
-  - multi-session archive handling,
-  - root overflow checks at 360, 390, 720, 1024 and 1440 px.
-- Test fixtures are synthetic and contain no production personal data.
+Payload ukládá jen normalizované metadata, souhrny, opakování, warnings a auditní údaje. `raw_metadata.importSource = "tindeq-zip"` eviduje povolený zdroj. Původní ZIP ani raw časová řada se neukládají.
 
-## Preview deployment
+### Částečná chyba a retry
 
-- The exact implementation commit is **not preview deployed**.
-- Both linked Vercel project checks for `e480fc3f...` failed with `build-rate-limit`.
-- Older successful previews belong to different commits and are not evidence for this implementation.
-- The database prerequisite is now satisfied. A real browser/Data API persistence smoke test remains pending an exact-commit preview.
+- každá session se ukládá samostatně v pořadí importu,
+- výsledek každé položky je transparentní,
+- úspěšné položky zůstávají označené jako uložené,
+- retry odesílá pouze neúspěšné položky.
 
-## Production
+### Duplicita
 
-- `main` was not changed or merged.
-- Production application remains on commit `71d6b1f0e67c571c71a53db6248e526704bddabe`.
-- The shared Supabase schema **was changed** by the approved migration described above.
-- Production environment variables were not changed.
-- No persistent Tindeq measurement data was created during verification.
-- Production application verification by the user has not occurred.
+Před insert se pro stejného klienta a `analysis_version` hledá aktivní řádek se stejným `raw_metadata.tindeqSessionId`.
 
-## Remaining approval gates
+- nalezený záznam se považuje za již uložený,
+- nový řádek se nevytvoří,
+- není vyžadována nová produkční migrace.
 
-1. Obtain an exact-commit Vercel preview when the build-rate limit permits it.
-2. Run a real browser/Data API save-and-history smoke test in preview without retaining test data.
-3. Explicit approval to merge PR `#12` into `main`.
-4. Explicit approval for production deployment, followed by user production verification.
+Toto je aplikační idempotence, nikoli databázově atomická unikátnost. Dva přesně souběžné inserty mohou teoreticky závodit. DB unikátní index je vhodný až v samostatně schválené migraci, pokud se ukáže reálná potřeba.
 
-## Known limitations
+## Klientský a trenérský pohled
 
-- ZIP decompression relies on `DecompressionStream('deflate-raw')` for current Chromium-class browsers.
-- Analytical thresholds remain working heuristics, not validated clinical cut-off values.
-- Browser tests use deterministic mocks and synthetic ZIPs; the database path has been transactionally verified, but end-to-end browser/Data API verification still requires the exact preview.
-- Pain/RPE entry and longitudinal trend modelling remain outside this persistence change.
+Oba pohledy přijímají stejnou normalizovanou `TindeqSession` a sdílené helpery. Rozdíl je pouze v detailu zobrazení:
+
+- klient: jednoduchý souhrn výsledku série,
+- trenér: jednotlivá opakování, cílové pásmo, variabilita, trend a technické flagy.
+
+Výpočty se neduplikují v oddělených UI systémech.
+
+## Kanonický report
+
+- verze: `tindeq-report-v1`,
+- jediná rozhodovací vrstva: `src/lib/tindeq-report.ts`,
+- stejný builder pro aktuální, uloženou i demo session,
+- každé zjištění uvádí metriku a pravidlo,
+- `null` zůstává `null`, včetně chybějící bolesti,
+- pracovní prahy jsou transparentní heuristiky, ne diagnostické cut-off hodnoty,
+- technicky nehodnotitelný záznam negeneruje jistou progresi/regresi.
+
+Report je pro první merge zachován, protože je centralizovaný a nepřidává alternativní vstup ani persistence cestu. Rozšíření klinických dat a dlouhodobých trendů patří do následného PR.
+
+## Databázový audit
+
+### Produkční Supabase `zxvndqicslyulrinbpyn`
+
+Audit 4. 8. 2026:
+
+- `public.tindeq_sessions` existuje,
+- 0 celkových a 0 aktivních Tindeq řádků,
+- RLS je zapnuté,
+- vazba na `athletes(id)` a soft-delete/auditní sloupce existují,
+- produkční migrace PR #12 je v historii,
+- současné schéma bezpečně podporuje normalizovaný ZIP-only payload,
+- **žádná další produkční migrace není pro konsolidaci nutná ani povolená bez schválení**.
+
+### Dev Supabase `twndqnmrvefhwuwuglju`
+
+Audit 4. 8. 2026:
+
+- projekt je technicky zdravý,
+- `tindeq_sessions` je prázdná,
+- projekt nemá auth uživatele ani klienty pro acceptance,
+- schéma obsahuje pozůstatky uzavřeného PR #15 (dodatečná pole a fingerprint index),
+- dev prostředí proto **není acceptance-ready**.
+
+Před ručním acceptance je nutné dev projekt cíleně srovnat se schváleným PR #12 schématem a vytvořit pouze schválená testovací data. Produkční data se k acceptance nepoužijí. Tato konsolidace dev databázi automaticky nemění.
+
+## Magic-link redirect
+
+Implementovaný požadavek:
+
+- `emailRedirectTo = new URL("/tindeq", window.location.origin)`,
+- `shouldCreateUser: false`,
+- žádný `next` query parametr se nepoužívá,
+- environment guard povoluje jen Knee produkci, localhost a hostname projektu `vankotraining-knee-*` na `/tindeq`.
+
+Automatizované testy ověřují zdrojovou logiku a session callback. Nenahrazují reálný test doručeného magic-link e-mailu. Preview a produkční návrat z e-mailu jsou ruční approval gate; dočasný produkční auth uživatel se bez schválení nevytváří.
+
+## CI a exact-head evidence
+
+Workflow pro exact source commit provádí:
+
+1. checkout přesného PR head/push SHA,
+2. `npm test`,
+3. porovnání lint chyb s aktuálním `main`,
+4. `npm run build`,
+5. `npm run project:check`, pokud script existuje,
+6. `git diff --check origin/main...HEAD`,
+7. `npm run test:e2e`,
+8. upload screenshot artifactu označeného head SHA.
+
+Konkrétní final head, unit/Playwright počty, lint baseline, run ID a deployment ID se zapisují až po doběhnutí do PR body. Starší SHA/run/deployment nejsou exact-head evidence.
+
+## Nevyřešená rizika a merge gates
+
+1. Dev Supabase musí být srovnaný a bezpečně připravený pro acceptance.
+2. Exact-head GitHub Actions musí projít.
+3. Musí existovat READY preview přesného commitu se schváleným dev Supabase.
+4. Uživatel musí ověřit skutečný magic link a návrat na stejný preview hostname.
+5. Uživatel musí dokončit ruční ZIP acceptance níže.
+6. Aplikační deduplikace není atomická proti souběžnému závodu; pro běžný ruční import je chování definované.
+7. Kryptografický důkaz původu bez odeslání ZIPu není možný; persistence proto validuje parserový tvar a důvěřuje lokálnímu analyzátoru v chráněném runtime.
+8. PR zůstává draft, dokud nejsou gate splněné.
+
+## Ruční acceptance checklist
+
+- [ ] Otevřít exact-head preview uvedené v PR body.
+- [ ] Odeslat magic link z tohoto preview.
+- [ ] Kliknout na doručený e-mail a potvrdit návrat na stejný preview hostname a `/tindeq`.
+- [ ] Nahrát jeden skutečný ZIP exportovaný z Tindeq.
+- [ ] Ověřit rozpoznaný protokol.
+- [ ] Ověřit počet nalezených sessions.
+- [ ] Ověřit levé a pravé hodnoty/strany.
+- [ ] Ověřit hlavní metriky a technická upozornění.
+- [ ] Potvrdit, že před ručním výběrem není zvolen klient a save je blokovaný.
+- [ ] Ručně vybrat správného testovacího klienta.
+- [ ] Explicitně uložit.
+- [ ] Reloadnout stránku.
+- [ ] Ověřit historii vybraného klienta.
+- [ ] Ověřit klientský pohled.
+- [ ] Ověřit trenérský detail.
+- [ ] Ověřit `tindeq-report-v1`.
+- [ ] Nahrát neplatný/poškozený ZIP a ověřit konkrétní chybu.
+- [ ] Nahrát stejný ZIP znovu a potvrdit, že nevznikl druhý aktivní řádek.
+- [ ] Ověřit mobilní zobrazení.
+- [ ] Ověřit desktopové zobrazení.
+- [ ] Potvrdit, že nikde není jiný vstup skutečných Tindeq dat než ZIP.
+- [ ] Odstranit všechna acceptance testovací data z dev prostředí.
+
+## Produkční stav
+
+Konsolidace PR #12:
+
+- nemění `main`, dokud nedojde k řízenému merge,
+- nespouští produkční deployment,
+- nespouští produkční migraci,
+- neoznačuje nic jako produkčně ověřené bez explicitního potvrzení uživatele.
