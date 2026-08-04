@@ -89,12 +89,12 @@ jobs:
       - name: Build live acceptance bundle
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://twndqnmrvefhwuwuglju.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.TINDEQ_DEV_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_xv4M1xvvYpMWIyy3XvVUhQ_bwVD8qy-
         run: npm run build
 
       - name: Verify live authenticated Tindeq import
         env:
           LIVE_TINDEQ_ACCEPTANCE: "1"
           NEXT_PUBLIC_SUPABASE_URL: https://twndqnmrvefhwuwuglju.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.TINDEQ_DEV_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_xv4M1xvvYpMWIyy3XvVUhQ_bwVD8qy-
         run: npx playwright test tests/e2e/tindeq-live-acceptance.spec.ts
