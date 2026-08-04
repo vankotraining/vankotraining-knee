@@ -98,11 +98,11 @@ Po ověření byl jednorázový E2E test odstraněn a syntetický klient, profil
 
 ## Finální čistý head
 
-Commit `74d846e635afa59e48f01f606dc0c89e949da283`:
+Commit `8b4d1c003fda4f773a7514a0fda386d334b222ca`:
 
-- GitHub Actions run `30877999256`: `success`;
+- GitHub Actions run `30878141558`: `success`;
 - unit testy `90/90`;
 - lint nepřidává chyby proti stacked base;
 - Next.js production build a TypeScript: prošlo;
 - Playwright `9/9`;
-- Vercel preview `dpl_26VQ1pZyD1H42EU1yhhUeB5tuikR`: `READY`.
+- Vercel preview `dpl_ErCdC6QzwPsU7uzmbEAfw8Jn5c5F`: `READY`.
