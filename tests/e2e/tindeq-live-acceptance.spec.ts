@@ -3,7 +3,9 @@ import { strToU8, zipSync } from "fflate";
 
 const devUrl = "https://twndqnmrvefhwuwuglju.supabase.co";
 const devAnonKey =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3bmRxbm1ydmVmaHd1d3VnbGp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NzgzNTksImV4cCI6MjEwMTM1NDM1OX0.57nqPEbbhZVT2iN3itPEMSFdd5kK3-nV7PB2XM7rVuA";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
+const actualDevAnonKey =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6InR3bmRxbm1ydmVmaHd1d3VnbGp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NzgzNTksImV4cCI6MjEwMTM1NDM1OX0.57nqPEbbhZVT2iN3itPEMSFdd5kK3-nV7PB2XM7rVuA";
 const temporaryPassword = "Acceptance-20260804-e2e!";
 
 function buildArchive() {
@@ -47,8 +49,8 @@ test("live dev Supabase import survives a page reload", async ({ page, request }
 
   const authResponse = await request.post(`${devUrl}/auth/v1/token?grant_type=password`, {
     headers: {
-      apikey: devAnonKey,
-      Authorization: `Bearer ${devAnonKey}`,
+      apikey: actualDevAnonKey,
+      Authorization: `Bearer ${actualDevAnonKey}`,
       "Content-Type": "application/json",
     },
     data: {
@@ -58,14 +60,40 @@ test("live dev Supabase import survives a page reload", async ({ page, request }
   });
   const authBody = await authResponse.text();
   expect(authResponse.ok(), authBody).toBeTruthy();
-  const session = JSON.parse(authBody);
+  const session = JSON.parse(authBody) as {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+    expires_at?: number;
+    token_type: string;
+    user: unknown;
+  };
 
-  await page.addInitScript(
+  const athletesResponse = await request.get(
+    `${devUrl}/rest/v1/athletes?select=id,display_name&deleted_at=is.null&display_name=eq.Acceptance%20Tindeq`,
+    {
+      headers: {
+        apikey: actualDevAnonKey,
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    },
+  );
+  const athletesBody = await athletesResponse.text();
+  expect(athletesResponse.ok(), athletesBody).toBeTruthy();
+  expect(JSON.parse(athletesBody)).toEqual([
+    {
+      id: "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa",
+      display_name: "Acceptance Tindeq",
+    },
+  ]);
+
+  await page.goto("/");
+  await page.evaluate(
     ({ value }) =>
       localStorage.setItem("sb-twndqnmrvefhwuwuglju-auth-token", JSON.stringify(value)),
     { value: session },
   );
-  await page.goto("/");
+  await page.reload();
 
   await expect(page.getByText("Acceptance Tindeq", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "Přidat Tindeq záznam" }).click();
