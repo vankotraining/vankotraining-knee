@@ -116,12 +116,7 @@ export default function TindeqWorkspace() {
   );
 
   useEffect(() => {
-    if (!supabase || !session || !selectedAthleteId) {
-      setHistory([]);
-      setHistoryState("idle");
-      setHistoryError(null);
-      return;
-    }
+    if (!supabase || !session || !selectedAthleteId) return;
     let active = true;
     void (async () => {
       await Promise.resolve();
@@ -142,6 +137,13 @@ export default function TindeqWorkspace() {
     })();
     return () => { active = false; };
   }, [historyVersion, selectedAthleteId, session, supabase]);
+
+  function handleAthleteSelection(athleteId: string) {
+    setSelectedAthleteId(athleteId);
+    setHistory([]);
+    setHistoryState("idle");
+    setHistoryError(null);
+  }
 
   async function handleMagicLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -224,7 +226,7 @@ export default function TindeqWorkspace() {
                   aria-selected={athlete.id === selectedAthleteId}
                   className={athlete.id === selectedAthleteId ? styles.selectedAthleteButton : ""}
                   key={athlete.id}
-                  onClick={() => setSelectedAthleteId(athlete.id)}
+                  onClick={() => handleAthleteSelection(athlete.id)}
                   role="option"
                   type="button"
                 >{athlete.display_name}</button>
@@ -246,10 +248,10 @@ export default function TindeqWorkspace() {
           <p>{selectedAthlete ? `Klient: ${selectedAthlete.display_name}` : "Nejprve ručně vyber klienta."}</p>
           <p><Link href="/tindeq/reports">Otevřít kanonické reporty</Link></p>
         </div>
-        {historyState === "loading" ? <p role="status">Načítám historii…</p> : null}
-        {historyState === "error" ? <div className={styles.errorBox}>{historyError}</div> : null}
-        {historyState === "ready" && history.length === 0 ? <div className={styles.emptyHistory}>Pro vybraného klienta zatím není uloženo žádné Tindeq měření.</div> : null}
-        {history.length > 0 ? <div className={styles.historyList}>{history.map((record) => <HistoryCard key={record.id} session={record} />)}</div> : null}
+        {selectedAthlete && historyState === "loading" ? <p role="status">Načítám historii…</p> : null}
+        {selectedAthlete && historyState === "error" ? <div className={styles.errorBox}>{historyError}</div> : null}
+        {selectedAthlete && historyState === "ready" && history.length === 0 ? <div className={styles.emptyHistory}>Pro vybraného klienta zatím není uloženo žádné Tindeq měření.</div> : null}
+        {selectedAthlete && history.length > 0 ? <div className={styles.historyList}>{history.map((record) => <HistoryCard key={record.id} session={record} />)}</div> : null}
       </section>
     </div>
   );
