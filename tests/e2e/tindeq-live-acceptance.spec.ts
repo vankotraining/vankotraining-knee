@@ -3,9 +3,8 @@ import { strToU8, zipSync } from "fflate";
 
 const devUrl = "https://twndqnmrvefhwuwuglju.supabase.co";
 const devAnonKey =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
-const actualDevAnonKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6InR3bmRxbm1ydmVmaHd1d3VnbGp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NzgzNTksImV4cCI6MjEwMTM1NDM1OX0.57nqPEbbhZVT2iN3itPEMSFdd5kK3-nV7PB2XM7rVuA";
+const temporaryPassword = "Acceptance-20260804-e2e!";
 
 function buildArchive() {
   const info = [
@@ -22,12 +21,17 @@ function buildArchive() {
     if (phase >= 0.5 && phase < 1) {
       force = 5 + ((phase - 0.5) / 0.5) * 29.5;
     } else if (phase >= 1 && phase < 5) {
-      force = 34.5 - repetition * 0.25 + 0.5 * Math.sin(((phase - 1) * 2 * Math.PI) / 1.6);
+      force =
+        34.5 -
+        repetition * 0.25 +
+        0.5 * Math.sin(((phase - 1) * 2 * Math.PI) / 1.6);
     } else if (phase >= 5 && phase < 5.5) {
       force = 5 + ((5.5 - phase) / 0.5) * (29.5 - repetition * 0.25);
     }
     rows.push(
-      `${time.toFixed(3)},${force.toFixed(3)},${time.toFixed(3)},${(force * 1.08).toFixed(3)}`,
+      `${time.toFixed(3)},${force.toFixed(3)},${time.toFixed(3)},${(
+        force * 1.08
+      ).toFixed(3)}`,
     );
   }
   return Buffer.from(
@@ -40,21 +44,20 @@ function buildArchive() {
 
 test("live dev Supabase import survives a page reload", async ({ page, request }) => {
   test.skip(process.env.LIVE_TINDEQ_ACCEPTANCE !== "1", "One-off live acceptance only");
-  const commit = process.env.GITHUB_SHA;
-  if (!commit) throw new Error("GITHUB_SHA is required for the temporary password.");
 
   const authResponse = await request.post(`${devUrl}/auth/v1/token?grant_type=password`, {
     headers: {
-      apikey: actualDevAnonKey,
+      apikey: devAnonKey,
       "Content-Type": "application/json",
     },
     data: {
       email: "martin@vankotraining.cz",
-      password: `Acceptance-${commit}`,
+      password: temporaryPassword,
     },
   });
-  expect(authResponse.ok(), await authResponse.text()).toBeTruthy();
-  const session = await authResponse.json();
+  const authBody = await authResponse.text();
+  expect(authResponse.ok(), authBody).toBeTruthy();
+  const session = JSON.parse(authBody);
 
   await page.addInitScript(
     ({ value }) =>
@@ -76,7 +79,9 @@ test("live dev Supabase import survives a page reload", async ({ page, request }
   await page.getByLabel("Bolest během max").fill("2");
   await page.getByLabel("Bolest po").fill("1");
   await page.getByRole("button", { name: "Uložit klientovi Acceptance Tindeq" }).click();
-  await expect(page.getByText("Uloženo bez původního ZIPu a raw časové řady.")).toBeVisible();
+  await expect(
+    page.getByText("Uloženo bez původního ZIPu a raw časové řady."),
+  ).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Historie Tindeq" })).toBeVisible();
