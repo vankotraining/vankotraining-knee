@@ -96,9 +96,9 @@ Důkaz:
 
 Po ověření byl jednorázový E2E test odstraněn a syntetický klient, profil, maximum, Tindeq session, Auth účet i identity byly z dev projektu smazány. Kontrolní počty všech položek jsou `0`.
 
-## Finální čistý head
+## Ověřený aplikační stav
 
-Commit `8b4d1c003fda4f773a7514a0fda386d334b222ca`:
+Commit `8b4d1c003fda4f773a7514a0fda386d334b222ca` obsahoval stejný aplikační stav jako následné dokumentační commity a byl ověřen takto:
 
 - GitHub Actions run `30878141558`: `success`;
 - unit testy `90/90`;
@@ -106,3 +106,5 @@ Commit `8b4d1c003fda4f773a7514a0fda386d334b222ca`:
 - Next.js production build a TypeScript: prošlo;
 - Playwright `9/9`;
 - Vercel preview `dpl_ErCdC6QzwPsU7uzmbEAfw8Jn5c5F`: `READY`.
+
+Každý následný exact head se ověřuje samostatným standardním CI; dokumentační změny nemění aplikační ani databázový rozsah.
