@@ -22,6 +22,7 @@
     "src/lib/tindeq-persistence-core.ts",
     "src/lib/tindeq-persistence.ts",
     "src/lib/tindeq-persistence.test.ts",
+    "src/lib/tindeq-persistence-race.test.ts",
     "src/lib/tindeq-report.ts",
     "src/lib/tindeq-report.test.ts",
     "src/lib/tindeq-report-demo.ts",
