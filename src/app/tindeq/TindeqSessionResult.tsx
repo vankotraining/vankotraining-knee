@@ -19,7 +19,6 @@ import TindeqResultChart from "./TindeqResultChart";
 import {
   formatTindeqDate,
   formatTindeqNumber,
-  formatTindeqSignedNumber,
   tindeqToneClass,
 } from "./tindeq-presentation";
 import styles from "./tindeq.module.css";
