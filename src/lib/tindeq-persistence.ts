@@ -167,6 +167,19 @@ export async function saveTindeqSessions(
         .insert(payload)
         .select(TINDEQ_HISTORY_SELECT)
         .single();
+      if (error?.code === "23505") {
+        const racedDuplicate = await findDuplicate(supabase, session, athleteId);
+        if (racedDuplicate) {
+          results.push({
+            ok: true,
+            duplicate: true,
+            sourceSessionId: session.id,
+            sourceTag: session.metadata.tag,
+            record: racedDuplicate,
+          });
+          continue;
+        }
+      }
       if (error || !data) {
         results.push({
           ok: false,
