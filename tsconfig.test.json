@@ -12,6 +12,8 @@
     "src/lib/knee-metrics.ts",
     "src/lib/knee-metrics.test.ts",
     "src/lib/tindeq-auth-flow.test.ts",
+    "src/lib/tindeq-environment.ts",
+    "src/lib/tindeq-environment.test.ts",
     "src/lib/tindeq-client-view.ts",
     "src/lib/tindeq-client-view.test.ts",
     "src/lib/tindeq-browser.ts",

@@ -5,6 +5,7 @@ import test from "node:test";
 const workspaceSource = readFileSync("src/app/tindeq/TindeqWorkspace.tsx", "utf8");
 const guardSource = readFileSync("src/app/tindeq/TindeqEnvironmentGuard.tsx", "utf8");
 const sessionSource = readFileSync("src/lib/use-supabase-session.ts", "utf8");
+const supabaseSource = readFileSync("src/lib/supabase-browser.ts", "utf8");
 
 test("Tindeq magic link uses the current browser origin and fixed /tindeq path", () => {
   assert.match(
@@ -24,11 +25,18 @@ test("Tindeq auth source does not hardcode Workout or one preview hostname", () 
   assert.doesNotMatch(workspaceSource, /https:\/\/[^\s"']+\.vercel\.app/);
 });
 
-test("environment guard permits only Knee production, localhost and Knee previews on /tindeq", () => {
-  assert.match(guardSource, /hostname === "knee\.vankotraining\.cz"/);
-  assert.match(guardSource, /hostname\.startsWith\("vankotraining-knee-"\)/);
-  assert.match(guardSource, /pathname === "\/tindeq" \|\| pathname\.startsWith\("\/tindeq\/"\)/);
-  assert.match(guardSource, /isTindeqPath && \(isProduction \|\| isLocal \|\| isVercelPreview\)/);
+test("environment guard validates both Knee location and configured Supabase project before rendering workspace", () => {
+  assert.match(guardSource, /validateTindeqEnvironment\(href, getConfiguredSupabaseUrl\(\)\)/);
+  assert.match(guardSource, /if \(!validation\.allowed\)/);
+  assert.match(guardSource, /modul nenačítá klienty ani neumožní zápis Tindeq dat/);
+});
+
+test("browser Supabase config has no hardcoded production URL or legacy anon-key fallback", () => {
+  assert.doesNotMatch(supabaseSource, /zxvndqicslyulrinbpyn\.supabase\.co/);
+  assert.doesNotMatch(supabaseSource, /legacyAnonKey/);
+  assert.match(supabaseSource, /NEXT_PUBLIC_SUPABASE_URL/);
+  assert.match(supabaseSource, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.match(supabaseSource, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);
 });
 
 test("session callback updates protected-route state and unsubscribes", () => {

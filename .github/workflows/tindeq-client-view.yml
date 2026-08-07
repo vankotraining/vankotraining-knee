@@ -16,6 +16,10 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://twndqnmrvefhwuwuglju.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: test-only-browser-key
+      NEXT_PUBLIC_SUPABASE_AUTH_STORAGE_KEY: sb-zxvndqicslyulrinbpyn-auth-token
     steps:
       - name: Checkout exact source commit
         uses: actions/checkout@v4
