@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsc -p tsconfig.test.json && node --test .test-dist/src/lib/knee-metrics.test.js",
+    "test": "node scripts/run-tests.mjs",
+    "test:e2e": "playwright test",
     "project:check": "node scripts/check-project-control.mjs"
   },
   "dependencies": {
@@ -17,11 +18,13 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "fflate": "^0.8.2",
     "typescript": "^5"
   }
 }

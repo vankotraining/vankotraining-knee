@@ -1,0 +1,116 @@
+name: Verify Tindeq client view
+
+on:
+  push:
+    branches:
+      - agent/tindeq-results-site
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Record exact head
+        run: |
+          echo "VERIFIED_HEAD=$(git rev-parse HEAD)" | tee -a "$GITHUB_ENV"
+          git status --short
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Compare lint with current main
+        shell: bash
+        run: |
+          set +e
+          npm run lint > branch-lint.log 2>&1
+          branch_status=$?
+          set -e
+          cat branch-lint.log
+
+          git fetch origin main
+          git worktree add ../main-worktree origin/main
+          pushd ../main-worktree
+          npm install --no-audit --no-fund
+          set +e
+          npm run lint > ../main-lint.log 2>&1
+          main_status=$?
+          set -e
+          popd
+          cat ../main-lint.log
+
+          BRANCH_STATUS="$branch_status" MAIN_STATUS="$main_status" python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          def counts(path: str) -> tuple[int, int]:
+              text = Path(path).read_text(encoding="utf-8", errors="replace")
+              match = re.search(r"(\d+) problems? \((\d+) errors?, (\d+) warnings?\)", text)
+              if match:
+                  return int(match.group(2)), int(match.group(3))
+              return len(re.findall(r"\berror\b", text, flags=re.IGNORECASE)), 0
+
+          branch_status = int(os.environ["BRANCH_STATUS"])
+          main_status = int(os.environ["MAIN_STATUS"])
+          branch_errors, branch_warnings = counts("branch-lint.log")
+          main_errors, main_warnings = counts("../main-lint.log")
+          print(f"main lint: status={main_status}, errors={main_errors}, warnings={main_warnings}")
+          print(f"branch lint: status={branch_status}, errors={branch_errors}, warnings={branch_warnings}")
+          if main_status == 0 and branch_status != 0:
+              raise SystemExit("Branch lint failed while current main lint passed.")
+          if branch_errors > main_errors:
+              raise SystemExit("Branch introduces additional lint errors compared with current main.")
+          PY
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Run project control check when available
+        shell: bash
+        run: |
+          if npm run | grep -q "project:check"; then
+            npm run project:check
+          else
+            echo "project:check is not defined on this branch."
+          fi
+
+      - name: Verify patch whitespace
+        run: |
+          git fetch origin main
+          git diff --check origin/main...HEAD
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify Tindeq in browser
+        run: npm run test:e2e
+
+      - name: Upload responsive screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tindeq-client-view-screenshots-${{ env.VERIFIED_HEAD }}
+          path: test-results/**/*.png
+          if-no-files-found: ignore
+          retention-days: 7
