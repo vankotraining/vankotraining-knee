@@ -748,6 +748,10 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
   }
 
   const savedCount = sessions.filter((session) => activeSaveResults[session.id]?.ok).length;
+  const duplicateCount = sessions.filter((session) => {
+    const result = activeSaveResults[session.id];
+    return result?.ok === true && result.duplicate;
+  }).length;
   const remainingCount = sessions.length - savedCount;
   const mismatchedSessions = selectedAthlete
     ? sessions.filter((session) => !tagMatchesAthlete(session.metadata.tag, selectedAthlete.displayName))
@@ -811,7 +815,9 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
               {activeSaveState === "saving"
                 ? "Ukládám…"
                 : remainingCount === 0
-                  ? "Měření uloženo"
+                  ? duplicateCount === sessions.length
+                    ? "Měření již uloženo"
+                    : "Měření uloženo"
                   : sessions.length > 1
                     ? `Uložit ${remainingCount} měření ke klientovi`
                     : "Uložit měření ke klientovi"}
@@ -830,7 +836,13 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
 
           <div aria-live="polite" className={styles.saveStatus}>
             {activeSaveState === "success" && remainingCount === 0 ? (
-              <p className={styles.saveSuccess}>Všechna měření byla bezpečně uložena.</p>
+              <p className={styles.saveSuccess}>
+                {duplicateCount === sessions.length
+                  ? "Všechna měření už byla dříve uložena. Nevznikl žádný nový záznam."
+                  : duplicateCount > 0
+                    ? `${sessions.length - duplicateCount} měření bylo nově uloženo, ${duplicateCount} už bylo v databázi.`
+                    : "Všechna měření byla bezpečně uložena."}
+              </p>
             ) : null}
             {activeSaveState === "partial" ? (
               <p className={styles.savePartial}>
@@ -848,7 +860,11 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
                   return (
                     <li className={result.ok ? styles.saveSuccess : styles.saveError} key={session.id}>
                       <strong>{session.metadata.tag}:</strong>{" "}
-                      {result.ok ? "uloženo" : result.error}
+                      {result.ok
+                        ? result.duplicate
+                          ? "již dříve uloženo – nevytvořen nový záznam"
+                          : "uloženo"
+                        : result.error}
                     </li>
                   );
                 })}
