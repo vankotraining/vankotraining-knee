@@ -83,7 +83,9 @@ Po migraci dev odpovídá kanonickému Tindeq DB modelu:
 
 Post-migration security advisor nadále hlásí preexisting warningy na authenticated-executable `SECURITY DEFINER` soft-delete/restore funkce a vypnutou leaked-password protection. Performance advisor hlásí nepoužitý `tindeq_sessions_analysis_version_idx`. Tyto body nebyly fází 4 nově zavedeny a nejsou v této fázi měněny.
 
-## Fáze 4 – DB-aware environment guard
+## Aktuální fáze
+
+**Fáze 4 – srovnání dev Supabase a DB-aware environment guard.**
 
 Fáze 4 odstranila implicitní produkční fallback z browser Supabase konfigurace a zavedla fail-closed kontrolu skutečného Supabase project ref před mountem Tindeq workspace.
 
@@ -162,4 +164,4 @@ Tindeq změny z PR #12 nejsou produkčně nasazené ani produkčně ověřené. 
 
 ## Další krok
 
-**Fáze 5:** navrhnout DB-level deduplikaci jako explicitní databázový invariant proti souběžným insertům. Produkční DDL se nesmí aplikovat bez samostatného výslovného schválení uživatele. Součástí návrhu musí být migration SQL, pre-check, post-check, dopad na existující řádky a rollback/mitigation postup.
+- **Fáze 5:** navrhnout DB-level deduplikaci jako explicitní databázový invariant proti souběžným insertům; produkční DDL se nesmí aplikovat bez samostatného výslovného schválení uživatele a návrh musí obsahovat migration SQL, pre-check, post-check, dopad na existující řádky a rollback/mitigation postup.
