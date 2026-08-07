@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-04 10:04 CEST` (Europe/Prague).
+`2026-08-07 12:25 CEST` (Europe/Prague).
 
 ## Produkční URL
 
@@ -28,14 +28,14 @@ Vercel team ID: `team_alNcbbTIb9p5enXHSpEJZpLt`.
 - READY: `2026-08-02 11:48:50 CEST`;
 - target: `production`;
 - stav: `READY`;
-- aliasy: `knee.vankotraining.cz`, `vankotraining-knee.vercel.app` a kanonické main aliasy;
+- aliasy zahrnují `knee.vankotraining.cz`, `vankotraining-knee.vercel.app` a kanonické main aliasy;
 - alias error: žádný.
 
 `READY` znamená pouze produkčně nasazeno, nikoli produkčně ověřeno.
 
 ## Databázové migrace použité produkční aplikací
 
-Supabase projekt: `zxvndqicslyulrinbpyn` (sdílený projekt).
+Supabase projekt: `zxvndqicslyulrinbpyn` (sdílený projekt), stav `ACTIVE_HEALTHY`, PostgreSQL `17.6`.
 
 Aktuální záznamy v historii migrací při kontrole:
 
@@ -47,20 +47,21 @@ Aktuální záznamy v historii migrací při kontrole:
 - `20260710095416 restrict_workout_item_editor_functions`;
 - `20260802124337 tindeq_sessions`.
 
-Relevantní databázový audit `2026-08-04`:
+Relevantní databázový audit `2026-08-07`:
 
-- PostgreSQL `17.6`;
-- `public.athletes`: `66` aktivních klientů;
-- `public.tindeq_sessions`: `0` celkových a `0` aktivních řádků;
+- `public.athletes`: `67` celkem / `66` aktivních klientů;
+- `auth.users`: `1`;
+- `public.tindeq_sessions`: `0` celkových / `0` aktivních řádků;
 - RLS na `public.tindeq_sessions`: zapnuto;
 - tabulka obsahuje vazbu na klienta, normalizované souhrny, auditní sloupce a soft delete;
-- produkční schéma neobsahuje dodatečné klientské/fingerprint sloupce z ukončeného PR #15.
+- produkční schéma neobsahuje dodatečné klientské/fingerprint sloupce z ukončeného PR #15;
+- databáze stále nemá Tindeq DB unique invariant pro souběžnou deduplikaci.
 
-Historické Knee SQL změny nejsou kompletně mapovatelné na uvedenou Supabase migrační historii; část byla dříve aplikována manuálně. Proto nelze tvrdit úplnou shodu všech produkčních databázových změn s repo migracemi.
+Historické Knee SQL změny nejsou kompletně mapovatelné na uvedenou Supabase migrační historii; část byla dříve aplikována manuálně. Nové změny musí používat verzované repo migrace.
 
 ## Provedené smoke testy
 
-Anonymní kontrola `2026-08-04 10:04 CEST`:
+Poslední doložená neinvazivní anonymní kontrola `2026-08-04 10:04 CEST`:
 
 - GET `/`: HTTP `200 OK`;
 - odpověď obsahovala titul `Knee Data | Vanko Training`;
@@ -68,7 +69,7 @@ Anonymní kontrola `2026-08-04 10:04 CEST`:
 - odpověď neobsahovala Next.js error stránku;
 - Vercel odpověděl z produkčního aliasu bez redirect nebo access chyby.
 
-Nebylo provedeno přihlášení, čtení klientských dat, zápis, archivace, obnova ani export. Smoke test neměnil produkční data.
+Při auditu `2026-08-07` byl znovu ověřen deployment metadata stav, commit a produkční alias. Nebyl proveden produkční zápis ani změna databáze.
 
 ## Poslední výslovné uživatelské produkční ověření
 
@@ -78,11 +79,11 @@ Pro současný runtime commit jako celek ani pro UI polish v2 není novější v
 
 ## Produkční stav Tindeq
 
-- databáze aplikována: tabulka `public.tindeq_sessions` existuje;
+- databáze aplikována: `public.tindeq_sessions` existuje;
 - Tindeq runtime z draft PR #12 není v produkčním `main`;
-- žádná produkční Tindeq data nejsou uložena;
+- žádná produkční Tindeq session není uložena;
 - exact-head preview PR #12 není důkazem produkčního nasazení ani produkčního ověření;
-- produkční Supabase, Vercel konfigurace ani produkční doména nebyly při kontrole změněny.
+- produkční Supabase, Vercel konfigurace ani produkční doména nebyly při auditu změněny.
 
 ## Známé produkční problémy
 
@@ -90,5 +91,7 @@ Pro současný runtime commit jako celek ani pro UI polish v2 není novější v
 - UI polish v2 je produkčně nasazeno, ale bez výslovného uživatelského ověření celého rozsahu;
 - Tindeq databázové schéma je aplikováno, ale Tindeq runtime z PR #12 není v produkčním `main`;
 - repo migrace Tindeq dosud není v `main`, přestože odpovídající migrace je aplikována v databázi;
-- sdílený Supabase projekt obsahuje Knee i workout migrace a vyžaduje důsledné oddělení rozsahu;
+- produkční databáze negarantuje Tindeq unikátnost DB constraintem;
+- sdílený Supabase projekt obsahuje pre-existující security advisor nálezy, včetně tří `SECURITY DEFINER` views na úrovni `ERROR`, a další security/performance warningy mimo rozsah PR #14;
+- sdílený Supabase projekt obsahuje Knee i workout objekty a vyžaduje důsledné oddělení rozsahu;
 - úplný mapping historických manuálně aplikovaných Knee SQL změn na repo artefakty není doložen.
