@@ -122,6 +122,13 @@ Fáze 3 oddělila prezentační odpovědnosti, fáze 4 srovnala dev DB a zavedla
 
 Repo stále nemá autentický npm lockfile; deterministická instalace zůstává merge-gate dluhem.
 
+## Nasazeno
+
+- produkčně je nadále nasazen pouze `main` `7e11aa88fb0c14b5216542d4e03101aee082ec17` v deploymentu `dpl_J1ECuULAhWHXHnZvpmJgFMFEbzd1`;
+- phase-4 preview `dpl_GYvRgA9ChKg87Sh7pteCnPBUT6DZ` odpovídá historickému phase-4 headu `d67a89765b59b0f5ca8db4268cf543beac6082b7`;
+- phase-5 exact-head preview se eviduje až po dokončení finálního state-only commitu a ověření Vercel metadata;
+- phase-5 DB invariant je databázově aplikovaný pouze v dev Supabase `twndqnmrvefhwuwuglju`, nikoli v produkci.
+
 ## Produkčně ověřeno
 
 Tindeq změny z PR #12 nejsou produkčně nasazené ani produkčně ověřené. Dev DB aplikace, READY preview ani automatizované testy se za produkční ověření nepovažují.
