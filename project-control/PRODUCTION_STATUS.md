@@ -8,7 +8,7 @@
 
 `https://knee.vankotraining.cz`
 
-## Kanonický Vercel projekt
+## Vercel project ID
 
 - project: `vankotraining-knee`;
 - project ID: `prj_WLfkUldcNfXn43KmsXpJAClaKOsI`;
@@ -16,34 +16,35 @@
 
 Duplicitní projekt `vankotraining-knee-mxei` není produkčním vlastníkem domény a jeho Git integrace byla ve fázi 6 odpojena. Projekt nebyl smazán.
 
-## Aktuální produkční deployment
+## Deployment ID
 
 Živě ověřený produkční deployment:
 
 `dpl_J1ECuULAhWHXHnZvpmJgFMFEbzd1`.
 
-Metadata:
+## Nasazený commit
+
+`7e11aa88fb0c14b5216542d4e03101aee082ec17` z větve `main` – `Record project-control phase 1 completion`.
+
+Tindeq runtime z draft PR #12 na produkci stále není. Fáze 6 měnila pouze deployment topologii preview větve a project-control evidenci; produkční aplikační runtime nebyl změněn.
+
+## Čas a výsledek deploymentu
+
+Deployment `dpl_J1ECuULAhWHXHnZvpmJgFMFEbzd1`:
 
 - stav: `READY`;
 - target: `production`;
 - project: `vankotraining-knee`;
 - commit: `7e11aa88fb0c14b5216542d4e03101aee082ec17`;
 - branch: `main`;
-- commit message: `Record project-control phase 1 completion`;
 - aliasy zahrnují `knee.vankotraining.cz`, `vankotraining-knee.vercel.app` a main alias;
 - alias error: žádný.
 
 `READY` znamená pouze **produkčně nasazeno**, nikoli **produkčně ověřeno**.
 
-## Produkční runtime commit
+## Databázové migrace použité produkční aplikací
 
-`7e11aa88fb0c14b5216542d4e03101aee082ec17` z větve `main`.
-
-Tindeq runtime z draft PR #12 na produkci stále není. Fáze 6 měnila pouze deployment topologii preview větve a project-control evidenci; produkční aplikační runtime nebyl změněn.
-
-## Produkční Supabase
-
-Project ref:
+Produkční Supabase project ref:
 
 `zxvndqicslyulrinbpyn`.
 
@@ -58,7 +59,7 @@ Relevantní produkční Tindeq migrační historie zůstává na původní migra
 
 Při fázích 5–6 nebyla provedena žádná produkční DDL ani datová mutace.
 
-## Provedené produkční kontroly
+## Provedené smoke testy
 
 Po Vercel konsolidaci bylo read-only ověřeno:
 
