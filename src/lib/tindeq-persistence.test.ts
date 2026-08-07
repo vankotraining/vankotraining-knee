@@ -88,6 +88,18 @@ test("síla v newtonech se při uložení převádí na kg", async () => {
   assert.equal(payload.overall_summary.sourceForceUnit, "N");
 });
 
+test("reálná Tindeq jednotka SI se ukládá jako metrické kg", async () => {
+  assert.equal(forceToKg(61.6, "SI"), 61.6);
+  const session = await fixture();
+  session.metadata.unit = "SI";
+  const payload = mapTindeqSessionToInsert(session, athleteId);
+  assert.ok(Math.abs((payload.target_force_left_kg ?? 0) - 40) < 0.01);
+  assert.ok(Math.abs((payload.raw_metadata.mvcLeftKg ?? 0) - 50) < 0.01);
+  assert.equal(payload.overall_summary.storedForceUnit, "kg");
+  assert.equal(payload.overall_summary.sourceForceUnit, "SI");
+  assert.equal(payload.raw_metadata.sourceForceUnit, "SI");
+});
+
 test("payload vždy zapisuje podporovanou analysis_version", async () => {
   assert.equal(
     mapTindeqSessionToInsert(await fixture(), athleteId).analysis_version,
