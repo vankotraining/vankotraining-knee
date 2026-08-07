@@ -258,7 +258,11 @@ test("opakovaný upload stejného ZIPu nevytvoří druhý záznam", async ({ pag
 
   await uploadArchive(page, "same.zip", archive);
   await page.getByRole("button", { name: "Uložit měření ke klientovi" }).click();
-  await expect(page.getByText("Všechna měření byla bezpečně uložena.")).toBeVisible();
+  await expect(
+    page.getByText("Všechna měření už byla dříve uložena. Nevznikl žádný nový záznam."),
+  ).toBeVisible();
+  await expect(page.getByText("již dříve uloženo – nevytvořen nový záznam")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Měření již uloženo" })).toBeDisabled();
   expect(mock.storedRecords).toHaveLength(1);
   expect(mock.postTags).toEqual(["Klient Test"]);
 });
