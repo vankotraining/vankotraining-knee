@@ -1,0 +1,32 @@
+name: Project control
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "project-control/**"
+      - "scripts/check-project-control.mjs"
+      - "package.json"
+      - ".github/pull_request_template.md"
+      - ".github/workflows/project-control.yml"
+  push:
+    branches: [main]
+    paths:
+      - "project-control/**"
+      - "scripts/check-project-control.mjs"
+      - "package.json"
+      - ".github/pull_request_template.md"
+      - ".github/workflows/project-control.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  project-control:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run project:check

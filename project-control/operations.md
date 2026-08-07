@@ -1,239 +1,147 @@
-# Provozni dokumentace knee.vankotraining.cz
+# Provozní dokumentace knee.vankotraining.cz
 
-Datum doplneni: 2026-07-07
+Tento dokument popisuje aktuální provozní postupy. Aktuální projektový stav je v [`PROJECT_STATE.md`](./PROJECT_STATE.md) a produkční stav v [`PRODUCTION_STATUS.md`](./PRODUCTION_STATUS.md).
 
-Tento dokument je prakticky provozni navod pro vlastnika projektu. Neni to proces pro velky tym. Cilem je vedet, kde projekt bezi, co zkontrolovat po zmene a co delat, kdyz se neco rozbije.
+## 1. Kde projekt běží
 
-## Struktura dokumentace
-
-1. Kde projekt bezi
-2. Env promenne
-3. Supabase databaze
-4. Zaloha a export dat
-5. Migrace a SQL zmeny
-6. Produkcni kontrola po zmene
-7. Zakladni incident postup
-
-## 1. Kde projekt bezi
-
-| Oblast | Stav |
+| Oblast | Kanonický cíl |
 | --- | --- |
-| GitHub repo | `vankotraining/vankotraining-knee` |
-| Produkcni domena | `knee.vankotraining.cz` |
-| Vercel | samostatny Vercel projekt napojeny na knee repo |
-| Supabase | projekt s URL `https://zxvndqicslyulrinbpyn.supabase.co` |
-| Stack | Next.js + Supabase |
+| GitHub | `vankotraining/vankotraining-knee` |
+| Produkční doména | `knee.vankotraining.cz` |
+| Produkční Vercel projekt | `vankotraining-knee` (`prj_WLfkUldcNfXn43KmsXpJAClaKOsI`) |
+| Produkční Supabase | `zxvndqicslyulrinbpyn` |
+| Vývojový Supabase | `twndqnmrvefhwuwuglju` |
+| Stack | Next.js App Router, React, TypeScript, Supabase, Vercel |
 
-Zakladni vztah:
+Druhý Vercel projekt napojený na stejné repo není kanonický deployment cíl. Jeho aktuální stav a plán konsolidace jsou vedeny v `PROJECT_STATE.md`.
 
-- GitHub drzi zdrojovy kod aplikace a dokumentaci.
-- Vercel nasazuje aplikaci z GitHub repa na domenu `knee.vankotraining.cz`.
-- Supabase drzi prihlaseni, tabulky, RPC funkce a exportni view.
-- Aplikace ve Vercelu komunikuje se Supabase pres verejnou URL a anon key.
+## 2. Environment variables
 
-Projekt je oddeleny od `vankotraining.cz` a `app.vankotraining.cz`. Zmeny pro knee projekt patri jen do repa `vankotraining/vankotraining-knee`.
+Aplikace používá zejména:
 
-## 2. Env promenne
+- `NEXT_PUBLIC_SUPABASE_URL`;
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
-Aplikace potrebuje tyto promenne:
+Pravidla:
 
-| Promenna | K cemu je |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | URL Supabase projektu |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | verejny anon key pro Supabase clienta |
+- produkční Vercel musí používat produkční Supabase;
+- preview Vercel nesmí zapisovat, dokud není nezávisle potvrzeno, že používá vývojový Supabase;
+- localhost smí používat pouze explicitně schválené vývojové prostředí;
+- hodnoty klíčů se nezapisují do dokumentace, logů ani PR evidence;
+- existující legacy fallback v runtime je známý technický dluh, nikoli schválený způsob konfigurace.
 
-Kde jsou nastavene:
+Při incidentu nejdříve ověř skutečný deployment, hostname a project ref odvozený z `NEXT_PUBLIC_SUPABASE_URL`; nespoléhej pouze na název environmentu v dashboardu.
 
-- produkcne ve Vercelu v nastaveni projektu: `Settings` -> `Environment Variables`,
-- lokalne pri vyvoji typicky v `.env.local`, pokud se aplikace spousti lokalne.
+## 3. Supabase databáze
 
-Jak poznat problem:
+Hlavní Knee tabulky zahrnují:
 
-- kdyz env promenne chybi, aplikace ukaze obrazovku `Chybi Supabase konfigurace`,
-- kdyz je spatna URL nebo key, typicky se nepodari prihlaseni nebo nacitani dat,
-- kdyz magic link neprijde nebo po prihlaseni nejsou data, zkontrolovat nejdriv Vercel env a Supabase auth nastaveni.
+- `public.athletes`;
+- `public.athlete_profiles`;
+- `public.knee_extension_tests`;
+- `public.tindeq_sessions`.
 
-Poznamka: v kodu je zatim legacy fallback pro Supabase URL/anon key. Dlouhodobe je cistejsi mit vse ve Vercel env a fallback pozdeji odstranit.
+Aktivní aplikační záznamy používají soft delete. Běžný uživatelský tok nesmí fyzicky mazat klientská nebo měřicí data.
 
-## 3. Supabase databaze
+Produkční Supabase je sdílený s dalšími částmi ekosystému. Každá změna proto musí mít přesně omezený rozsah a nesmí opravovat nesouvisející objekty jen proto, že je odhalí advisor.
 
-Hlavni tabulky:
+## 4. Záloha a kontrola dat
 
-| Tabulka | Ucel |
-| --- | --- |
-| `athletes` | zakladni seznam klientu/sportovcu |
-| `athlete_profiles` | profil klienta: datum narozeni, vaha, delka berce, profilove datum |
-| `knee_extension_tests` | jednotliva knee extension mereni |
+Před schválenou produkční DDL nebo datovou změnou:
 
-### Archivace / soft delete
+1. ověř aktuální počet relevantních řádků a stav schématu;
+2. vytvoř nebo ověř použitelnou zálohu/export relevantních dat;
+3. zkontroluj migrační SQL a rollback/obnovovací postup;
+4. zaznamenej přesný cílový Supabase project ref;
+5. teprve poté žádej explicitní schválení produkční změny.
 
-Mazani klientu a mereni je resene jako archivace, ne jako fyzicke smazani radku.
+Existující ruční export Knee dat používá `public.knee_data_export` a dokument [`manual-data-export.md`](./manual-data-export.md). Historický exportní SQL artefakt není náhradou za verzovanou migraci schématu.
 
-Pouzivane sloupce:
+## 5. Databázové změny
 
-| Sloupec | Ucel |
-| --- | --- |
-| `deleted_at` | kdy byl zaznam archivovan |
-| `delete_reason` | proc byl zaznam archivovan |
-| `deleted_context` | doplnujici kontext archivace |
+### Kanonické pravidlo
 
-Aktivni klienti jsou ti, kteri maji `deleted_at is null`. Archivovany klient zustava v databazi, ale nema se zobrazovat v aktivnim seznamu.
+Veškeré nové změny databázového schématu musí mít explicitní verzovaný soubor v `supabase/migrations/` a odpovídající kontrolní SQL, pokud je potřeba. Ad-hoc produkční DDL v Supabase SQL Editoru není podporovaný postup.
 
-### Hlavni RPC funkce a provozni chovani
+Produkční databázi neměň bez explicitního schválení uživatele.
 
-| Akce | Funkce / mechanismus | Poznamka |
-| --- | --- | --- |
-| Archivace klienta | `soft_delete_athlete` | vola se z aplikace s `p_athlete_id` a duvodem archivace |
-| Obnova klienta | `restore_athlete` | vraci klienta do aktivniho seznamu |
-| Vypis archivovanych klientu | `list_archived_athletes` | pouziva panel `Archiv klientu` |
-| Archivace mereni | `delete()` nad `knee_extension_tests` | databaze ma zachytit delete jako soft delete / archivaci |
-| Vypis archivovanych mereni | `list_archived_knee_extension_tests` | pouziva panel `Archiv mereni` pro vybraneho klienta |
-| Obnova mereni | `restore_knee_extension_test` | vraci mereni z archivu do detailu klienta |
+Před aplikací migrace musí být doloženo:
 
-Kdyz aplikace hlasi, ze archiv jeste neni aktivni, typicky chybi odpovidajici RPC migrace v Supabase nebo se zmenil podpis funkce.
+- proč je změna potřebná;
+- přesný migrační soubor;
+- cílový Supabase project ref;
+- očekávaný diff schématu;
+- dopad na existující data;
+- kontrolní SQL;
+- rollback nebo obnovovací postup;
+- stav před změnou včetně relevantních počtů řádků.
 
-## 4. Zaloha a export dat
+Po aplikaci:
 
-Rucni export je uz pripraveny:
+1. ověř migrační historii a skutečné schéma;
+2. spusť databázové checks;
+3. spusť Supabase security advisors;
+4. spusť Supabase performance advisors;
+5. ověř RLS, grants, indexy a relevantní počty dat;
+6. aktualizuj `PROJECT_STATE.md` a při produkční změně také `PRODUCTION_STATUS.md`.
 
-- SQL: `supabase/manual-data-export.sql`
-- navod: `project-control/manual-data-export.md`
-- exportni view: `public.knee_data_export`
+SQL Editor lze použít pro read-only auditní a kontrolní dotazy. Schéma nebo produkční data se jím nesmí měnit mimo předem schválený, verzovaný migrační postup.
 
-Kdy export delat:
+## 6. Produkční kontrola
 
-- pred kazdou migraci nebo SQL zmenou,
-- po kazde vetsi praci s daty,
-- po oprave incidentu,
-- pravidelne jako rucni zaloha, napr. 1x tydne nebo po dulezitem testovacim dni,
-- pred jakoukoliv zmenou, ktera se dotyka archivace, obnovy, importu nebo vypoctu metrik.
+Výchozí produkční kontrola je neinvazivní:
 
-Doporuceny nazev CSV:
+1. ověř, že produkční doména odpovídá očekávanému Vercel projektu;
+2. ověř přesný nasazený commit a stav `READY`;
+3. otevři produkční stránku a zkontroluj, že nejde o error page;
+4. podle potřeby ověř přihlášení a čtení bez vytváření či změny klientských dat;
+5. zkontroluj runtime chyby relevantní k nasazenému commitu.
 
-`knee-backup-YYYY-MM-DD.csv`
+Produkční zápis, vytvoření testovacího klienta, měření, archivace, obnova nebo jiná mutace se provádí pouze po explicitním schválení. `READY` deployment ani automatizovaný test se neoznačuje jako produkčně ověřený.
 
-CSV obsahuje klienty, profily, aktivni i archivovana mereni a stav archivace.
+## 7. Preview acceptance
 
-## 5. Migrace / SQL zmeny
+Zápisová acceptance Tindeq se provádí pouze na exact-head preview a až po nezávislém potvrzení, že preview používá vývojový Supabase project ref.
 
-Pravidlo:
+Acceptance data musí být jasně testovací, minimální a po dokončení odstraněna. Produkční klientská data se do dev prostředí nekopírují.
 
-1. Nejdri vytvor CSV export pres `public.knee_data_export`.
-2. Zkontroluj, ze CSV dava smysl.
-3. Teprve potom spust migraci v Supabase SQL Editoru.
-4. Po migraci udelej produkcni kontrolu aplikace.
-5. Po uspesne kontrole udelej novy export, pokud migrace menila data nebo pohled na data.
+## 8. Incident postup
 
-Jak spoustet SQL v Supabase:
+### Aplikace nejde otevřít
 
-- otevrit spravny Supabase projekt pro `knee.vankotraining.cz`,
-- otevrit `SQL Editor`,
-- vlozit obsah pripraveneho SQL souboru,
-- pred spustenim znovu precist, jestli SQL nemaze fyzicky data,
-- spustit `Run`,
-- ulozit vysledek nebo screenshot, pokud jde o kontrolni dotaz.
+1. ověř produkční doménu a Vercel alias;
+2. ověř poslední produkční deployment a jeho commit;
+3. zkontroluj build/runtime chyby;
+4. DNS řeš pouze při doloženém problému s doménou.
 
-Pojmenovani novych SQL souboru:
+### Nejde přihlášení
 
-- ukladat do slozky `supabase`,
-- pouzit malymi pismeny a pomlcky,
-- nazev ma rikat, co soubor dela,
-- priklady:
-  - `supabase/add-knee-export-column.sql`
-  - `supabase/fix-archived-athletes-filter.sql`
-  - `supabase/restore-knee-extension-test.sql`
+1. ověř hostname, Supabase project ref a redirect URL;
+2. ověř Supabase Auth konfiguraci;
+3. ověř, že callback vrací uživatele na očekávanou Knee doménu a route;
+4. neměň produkční Auth konfiguraci bez explicitního rozsahu a následného ověření.
 
-Co overit po migraci:
+### Neukazují se data
 
-- prihlaseni stale funguje,
-- aktivni seznam klientu neobsahuje archivovane klienty,
-- archivovany klient je v panelu `Archiv klientu`,
-- obnova klienta vrati klienta do aktivniho seznamu,
-- archivace mereni nearchivuje celeho klienta,
-- obnova mereni vrati mereni do detailu klienta,
-- export `public.knee_data_export` jde spustit a hodnoty davaji smysl.
+1. ověř platnou session;
+2. ověř správný Supabase project ref;
+3. ověř skutečné tabulky, RLS a policies;
+4. ověř filtry aktivních záznamů (`deleted_at is null`);
+5. teprve poté řeš aplikační dotaz.
 
-## 6. Produkcni kontrola po zmene
+### Databázový drift
 
-Po kazde zmene projit tuto kratkou kontrolu primo na `knee.vankotraining.cz`:
+1. porovnej skutečné schéma s repo migracemi;
+2. rozděl rozdíly na schválené, historické manuální a nechtěné;
+3. nepřepisuj produkci ad-hoc;
+4. připrav explicitní srovnávací migraci a rollback;
+5. produkční DDL proveď až po schválení.
 
-1. Otevrit aplikaci.
-2. Prihlasit se magic linkem.
-3. Overit, ze se zobrazi seznam aktivnich klientu.
-4. Vybrat klienta a otevrit detail.
-5. Pridat testovaci mereni s rozumnymi hodnotami.
-6. Upravit datum, vahu a levou/pravou silu u hotoveho mereni.
-7. Archivovat jen konkretni mereni a overit, ze klient zustal aktivni.
-8. Obnovit archivovane mereni z panelu `Archiv mereni`.
-9. Archivovat testovaciho klienta a overit, ze zmizel z aktivniho seznamu.
-10. Otevrit `Archiv klientu` a obnovit klienta.
-11. Zkontrolovat mobilni zobrazeni: vyber klienta, pridani mereni, detail, spodni tlacitko.
-12. Spustit export dat a zkontrolovat, ze CSV obsahuje aktivni i archivovana data.
+## Minimální provozní pravidla
 
-Doporucene testovaci hodnoty pro rychlou kontrolu vypoctu:
-
-| Hodnota | Priklad |
-| --- | --- |
-| vaha | `82` kg |
-| delka berce | `33` cm |
-| leva sila | `35` kg |
-| prava sila | `42` kg |
-| ocekavana leva | cca `1.38` Nm/kg |
-| ocekavana prava | cca `1.66` Nm/kg |
-| ocekavana asymetrie | cca `16.7 %` |
-
-## 7. Zakladni incident postup
-
-### Aplikace nejde otevrit
-
-1. Zkontrolovat domenu `knee.vankotraining.cz`.
-2. Zkontrolovat Vercel projekt a posledni deployment.
-3. Zkontrolovat, jestli deployment nespadl na buildu.
-4. Zkontrolovat DNS jen pokud Vercel hlasi problem s domenou.
-5. Nesahat do `app.vankotraining.cz` ani `vanko-training-web`.
-
-### Nejde prihlaseni
-
-1. Zkontrolovat, ze je nastavena spravna Supabase URL a anon key ve Vercelu.
-2. Zkontrolovat Supabase Auth nastaveni pro magic link.
-3. Zkontrolovat, jestli prihlasovaci e-mail neskoncil ve spamu.
-4. Zkusit odhlasit/prihlasit v anonymnim okne.
-
-### Neukazuji se data
-
-1. Overit, ze prihlaseni opravdu probehlo.
-2. Zkontrolovat konzoli/provozni hlasku v aplikaci.
-3. V Supabase overit tabulky `athletes`, `athlete_profiles`, `knee_extension_tests`.
-4. Zkontrolovat, jestli aktivni klienti maji `deleted_at is null`.
-5. Pokud data jsou v Supabase, ale ne v aplikaci, podezreni je na env promenne, RLS/policies nebo dotaz aplikace.
-
-### Archivovany klient je porad v aktivnim seznamu
-
-1. V Supabase zkontrolovat u klienta `deleted_at`.
-2. Pokud `deleted_at` neni vyplnene, archivace neprobehla.
-3. Pokud `deleted_at` vyplnene je, zkontrolovat filtr aktivnich klientu a reload aplikace.
-4. Spustit export a overit `client_archive_status`.
-
-### Nejde obnova klienta nebo mereni
-
-1. Zkontrolovat, jestli existuje odpovidajici RPC funkce.
-2. Pro klienta overit `restore_athlete`.
-3. Pro mereni overit `restore_knee_extension_test`.
-4. Pokud aplikace hlasi chybu typu `could not find the function`, spustit nebo opravit prislusnou migraci.
-5. Po obnove udelat reload a overit aktivni seznam/detail klienta.
-
-### Chyba v exportu
-
-1. Znovu spustit `supabase/manual-data-export.sql`.
-2. Overit, ze existuje view `public.knee_data_export`.
-3. Zkontrolovat, jestli export vraci aktivni i archivovane klienty.
-4. Zkontrolovat znamy prepocet asymetrie z leve/prave sily.
-5. Pokud nesedi sloupce, upravit exportni SQL a ulozit novou verzi do `supabase`.
-
-## Minimalni provozni pravidla
-
-- Pred SQL zmenou vzdy export.
-- Po zmene vzdy projit produkcni kontrolu.
-- Neplest knee repo s webem `vanko-training-web`.
-- Nezasahovat do `app.vankotraining.cz` pri praci na knee projektu.
-- Fyzicke mazani dat delat jen vedome a az po zaloze.
+- zdroj pravdy je skutečný runtime, databáze a aktuální repo, ne starý prompt;
+- nové schema změny pouze přes `supabase/migrations/`;
+- produkční DDL a produkční zápis pouze po explicitním schválení;
+- preview zápis pouze po potvrzení dev Supabase;
+- po každé významné změně eviduj přesný commit, deployment a databázový stav;
+- produkčně ověřeno znamená pouze výslovné uživatelské potvrzení.
