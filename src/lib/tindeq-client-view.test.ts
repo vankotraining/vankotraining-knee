@@ -5,9 +5,14 @@ import {
   buildClientChartComment,
   buildClientSideView,
   buildClientSummary,
+  buildClientWarningsView,
+  clientAccuracyStatus,
+  clientMaintenanceStatus,
+  clientStabilityStatus,
   clientWarnings,
   CLIENT_VIEW_LABELS,
   DEFAULT_TINDEQ_RESULT_VIEW,
+  domainTone,
   overallMaintenance,
   overallStability,
   presentationMeanForce,
@@ -61,12 +66,47 @@ test("výchozí režim výsledku je klientský", () => {
 });
 
 test("přepínač obsahuje oba přístupné režimy bez nové analýzy", () => {
-  const source = readFileSync("src/app/tindeq/TindeqAnalyzer.tsx", "utf8");
+  const source = readFileSync("src/app/tindeq/TindeqSessionResult.tsx", "utf8");
   assert.match(source, /role="tablist"/);
   assert.match(source, /aria-selected=\{viewMode === "client"\}/);
   assert.match(source, /aria-selected=\{viewMode === "trainer"\}/);
   assert.match(source, /setViewMode\("trainer"\)/);
-  assert.doesNotMatch(source, /setViewMode\([^)]*importTindeqArchive/);
+  assert.doesNotMatch(source, /importTindeqArchive/);
+});
+
+test("analyzátor pouze orchestruje import a rendering výsledku", () => {
+  const source = readFileSync("src/app/tindeq/TindeqAnalyzer.tsx", "utf8");
+  assert.match(source, /TindeqSessionResult/);
+  assert.doesNotMatch(source, /function OverlayChart/);
+  assert.doesNotMatch(source, /function ClientSideCard/);
+  assert.doesNotMatch(source, /function TrainerSideCard/);
+});
+
+test("vizuální tón se neurčuje fuzzy parsováním prezentačních textů", () => {
+  const source = readFileSync("src/app/tindeq/TindeqSessionResult.tsx", "utf8");
+  assert.doesNotMatch(source, /toneForStatus/);
+  assert.doesNotMatch(source, /toLocaleLowerCase\([^)]*\).*includes/s);
+  assert.match(source, /clientAccuracyStatus/);
+  assert.match(source, /overallStabilityStatus/);
+  assert.match(source, /overallMaintenanceStatus/);
+  assert.match(source, /domainTone/);
+});
+
+test("typované prezentační statusy zachovávají původní význam barev", () => {
+  assert.deepEqual(clientAccuracyStatus("Dobrá"), { label: "Velmi dobře", tone: "good" });
+  assert.deepEqual(clientAccuracyStatus("Ke kontrole"), { label: "Ke kontrole", tone: "warning" });
+  assert.deepEqual(clientAccuracyStatus("Výrazná odchylka"), {
+    label: "Výraznější odchylka",
+    tone: "problem",
+  });
+  assert.deepEqual(clientStabilityStatus(null), { label: "Nelze vyhodnotit", tone: "problem" });
+  assert.deepEqual(clientStabilityStatus(6), { label: "Mírně kolísavá", tone: "warning" });
+  assert.deepEqual(clientMaintenanceStatus(-0.2), {
+    label: "Bez výrazného poklesu",
+    tone: "good",
+  });
+  assert.equal(domainTone("Nestabilní"), "problem");
+  assert.equal(domainTone("Nehodnoceno"), "problem");
 });
 
 test("klientské názvy nepoužívají dominantní technický žargon", () => {
@@ -86,6 +126,7 @@ test("klientské názvy nepoužívají dominantní technický žargon", () => {
 test("dobrý výsledek vytvoří srozumitelný pozitivní popis série", () => {
   const result = buildClientSummary(fixture());
   assert.equal(result.title, "Velmi dobrá série");
+  assert.equal(result.tone, "good");
   assert.match(result.text, /blízko nastavenému cíli/);
   assert.match(result.text, /stabilní/);
   assert.match(result.text, /výrazně nesnižoval/);
@@ -96,6 +137,7 @@ test("nedosažení cíle se projeví v hlavním závěru bez diagnózy", () => {
     fixture({ accuracy: "Výrazná odchylka", leftMean: 82, rightMean: 84 }),
   );
   assert.equal(result.title, "Výraznější odchylka");
+  assert.equal(result.tone, "problem");
   assert.match(result.text, /výrazněji odchylovala/);
   assert.doesNotMatch(result.text, /zdrav|diagn|zátěž|připraven/iu);
 });
@@ -130,6 +172,10 @@ test("technická upozornění se převádějí do běžného jazyka", () => {
 
 test("bez upozornění se zobrazí neutrální popis série", () => {
   assert.deepEqual(clientWarnings(fixture()), ["Série proběhla bez výrazných odchylek."]);
+  assert.deepEqual(buildClientWarningsView(fixture()), {
+    messages: ["Série proběhla bez výrazných odchylek."],
+    tone: "neutral",
+  });
 });
 
 test("chybějící a nevypočitatelná data nevracejí NaN ani Infinity", () => {
@@ -141,6 +187,7 @@ test("chybějící a nevypočitatelná data nevracejí NaN ani Infinity", () => 
   });
   assert.equal(side.averageForce, null);
   assert.equal(side.stability, "Nelze vyhodnotit");
+  assert.equal(side.stabilityTone, "problem");
   assert.doesNotMatch(JSON.stringify(side), /NaN|Infinity/);
 });
 

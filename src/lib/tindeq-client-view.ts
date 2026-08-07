@@ -10,6 +10,13 @@ export const CLIENT_VIEW_LABELS = {
   repeatability: "Opakovatelnost",
 } as const;
 
+export type TindeqPresentationTone = "good" | "warning" | "problem" | "neutral";
+
+export type TindeqPresentationStatus = {
+  label: string;
+  tone: TindeqPresentationTone;
+};
+
 type NullableNumber = number | null | undefined;
 
 type ClientSideSummary = {
@@ -39,6 +46,7 @@ type ClientViewSession = {
 export type ClientSummary = {
   title: "Velmi dobrá série" | "Dobrá série" | "Série ke kontrole" | "Výraznější odchylka";
   text: string;
+  tone: TindeqPresentationTone;
 };
 
 export type ClientSideView = {
@@ -47,6 +55,12 @@ export type ClientSideView = {
   targetAchievementPct: number | null;
   timeInTargetPct: number | null;
   stability: string;
+  stabilityTone: TindeqPresentationTone;
+};
+
+export type ClientWarningsView = {
+  messages: string[];
+  tone: "neutral" | "warning";
 };
 
 function finite(value: NullableNumber): number | null {
@@ -69,28 +83,62 @@ export function presentationMeanForce(
   return (target * percentage) / 100;
 }
 
-export function clientStabilityLabel(cvPct: NullableNumber): string {
+export function clientStabilityStatus(cvPct: NullableNumber): TindeqPresentationStatus {
   const value = finite(cvPct);
-  if (value === null) return "Nelze vyhodnotit";
-  if (value <= 3) return "Velmi stabilní";
-  if (value <= 5) return "Stabilní";
-  if (value <= 8) return "Mírně kolísavá";
-  return "Výrazně kolísavá";
+  if (value === null) return { label: "Nelze vyhodnotit", tone: "problem" };
+  if (value <= 3) return { label: "Velmi stabilní", tone: "good" };
+  if (value <= 5) return { label: "Stabilní", tone: "good" };
+  if (value <= 8) return { label: "Mírně kolísavá", tone: "warning" };
+  return { label: "Výrazně kolísavá", tone: "problem" };
+}
+
+export function clientStabilityLabel(cvPct: NullableNumber): string {
+  return clientStabilityStatus(cvPct).label;
+}
+
+export function clientMaintenanceStatus(
+  trendPctTargetPerRep: NullableNumber,
+): TindeqPresentationStatus {
+  const value = finite(trendPctTargetPerRep);
+  if (value === null) return { label: "Nelze vyhodnotit", tone: "problem" };
+  if (value >= -0.75) return { label: "Bez výrazného poklesu", tone: "good" };
+  if (value >= -1.5) return { label: "Mírný pokles", tone: "warning" };
+  return { label: "Výraznější pokles", tone: "problem" };
 }
 
 export function clientMaintenanceLabel(trendPctTargetPerRep: NullableNumber): string {
-  const value = finite(trendPctTargetPerRep);
-  if (value === null) return "Nelze vyhodnotit";
-  if (value >= -0.75) return "Bez výrazného poklesu";
-  if (value >= -1.5) return "Mírný pokles";
-  return "Výraznější pokles";
+  return clientMaintenanceStatus(trendPctTargetPerRep).label;
+}
+
+export function clientAccuracyStatus(domain: string): TindeqPresentationStatus {
+  if (domain === "Dobrá") return { label: "Velmi dobře", tone: "good" };
+  if (domain === "Ke kontrole") return { label: "Ke kontrole", tone: "warning" };
+  if (domain === "Výrazná odchylka") {
+    return { label: "Výraznější odchylka", tone: "problem" };
+  }
+  return { label: "Nelze vyhodnotit", tone: "problem" };
 }
 
 export function clientAccuracyLabel(domain: string): string {
-  if (domain === "Dobrá") return "Velmi dobře";
-  if (domain === "Ke kontrole") return "Ke kontrole";
-  if (domain === "Výrazná odchylka") return "Výraznější odchylka";
-  return "Nelze vyhodnotit";
+  return clientAccuracyStatus(domain).label;
+}
+
+export function domainTone(domain: string): TindeqPresentationTone {
+  if (domain === "Dobrá" || domain === "Stabilní" || domain === "Bez poklesu") {
+    return "good";
+  }
+  if (domain === "Ke kontrole" || domain === "Mírný pokles") {
+    return "warning";
+  }
+  if (
+    domain === "Výrazná odchylka" ||
+    domain === "Nestabilní" ||
+    domain === "Výrazný pokles" ||
+    domain === "Nehodnoceno"
+  ) {
+    return "problem";
+  }
+  return "neutral";
 }
 
 function domainSeverity(domain: string, kind: "accuracy" | "control" | "maintenance") {
@@ -122,10 +170,20 @@ export function buildClientSummary(session: ClientViewSession): ClientSummary {
   const hasSevere = severities.includes(2);
 
   let title: ClientSummary["title"];
-  if (hasSevere) title = "Výraznější odchylka";
-  else if (warningCount >= 2) title = "Série ke kontrole";
-  else if (warningCount === 1) title = "Dobrá série";
-  else title = "Velmi dobrá série";
+  let tone: TindeqPresentationTone;
+  if (hasSevere) {
+    title = "Výraznější odchylka";
+    tone = "problem";
+  } else if (warningCount >= 2) {
+    title = "Série ke kontrole";
+    tone = "warning";
+  } else if (warningCount === 1) {
+    title = "Dobrá série";
+    tone = "good";
+  } else {
+    title = "Velmi dobrá série";
+    tone = "good";
+  }
 
   const targetText =
     accuracy === "Dobrá"
@@ -153,19 +211,21 @@ export function buildClientSummary(session: ClientViewSession): ClientSummary {
           : "udržení výkonu nelze spolehlivě vyhodnotit";
 
   const text = `${targetText}, ${stabilityText} a ${maintenanceText}.`;
-  return { title, text: text.charAt(0).toUpperCase() + text.slice(1) };
+  return { title, text: text.charAt(0).toUpperCase() + text.slice(1), tone };
 }
 
 export function buildClientSideView(
   targetForce: NullableNumber,
   summary: ClientSideSummary,
 ): ClientSideView {
+  const stability = clientStabilityStatus(summary.medianWithinRepCvPct);
   return {
     targetForce: finite(targetForce),
     averageForce: presentationMeanForce(targetForce, summary.meanPctTarget),
     targetAchievementPct: finite(summary.meanPctTarget),
     timeInTargetPct: finite(summary.meanTimeIn5Pct),
-    stability: clientStabilityLabel(summary.medianWithinRepCvPct),
+    stability: stability.label,
+    stabilityTone: stability.tone,
   };
 }
 
@@ -176,20 +236,28 @@ export function overallTargetAchievement(session: ClientViewSession): number | n
   ]);
 }
 
-export function overallStability(session: ClientViewSession): string {
+export function overallStabilityStatus(session: ClientViewSession): TindeqPresentationStatus {
   const values = [
     finite(session.analysis.summary.left.medianWithinRepCvPct),
     finite(session.analysis.summary.right.medianWithinRepCvPct),
   ].filter((value): value is number => value !== null);
-  return clientStabilityLabel(values.length > 0 ? Math.max(...values) : null);
+  return clientStabilityStatus(values.length > 0 ? Math.max(...values) : null);
 }
 
-export function overallMaintenance(session: ClientViewSession): string {
+export function overallStability(session: ClientViewSession): string {
+  return overallStabilityStatus(session).label;
+}
+
+export function overallMaintenanceStatus(session: ClientViewSession): TindeqPresentationStatus {
   const values = [
     finite(session.analysis.summary.left.trendPctTargetPerRep),
     finite(session.analysis.summary.right.trendPctTargetPerRep),
   ].filter((value): value is number => value !== null);
-  return clientMaintenanceLabel(values.length > 0 ? Math.min(...values) : null);
+  return clientMaintenanceStatus(values.length > 0 ? Math.min(...values) : null);
+}
+
+export function overallMaintenance(session: ClientViewSession): string {
+  return overallMaintenanceStatus(session).label;
 }
 
 function sideName(prefix: string): string {
@@ -211,7 +279,7 @@ function translateFlag(flag: string): string {
   return flag;
 }
 
-export function clientWarnings(session: ClientViewSession): string[] {
+export function buildClientWarningsView(session: ClientViewSession): ClientWarningsView {
   const repetitionMessages = session.analysis.repetitions.flatMap((repetition) =>
     repetition.flags.map(translateFlag),
   );
@@ -233,7 +301,13 @@ export function clientWarnings(session: ClientViewSession): string[] {
       return warning;
     });
   const unique = [...new Set([...summaryMessages, ...repetitionMessages])];
-  return unique.length > 0 ? unique : ["Série proběhla bez výrazných odchylek."];
+  return unique.length > 0
+    ? { messages: unique, tone: "warning" }
+    : { messages: ["Série proběhla bez výrazných odchylek."], tone: "neutral" };
+}
+
+export function clientWarnings(session: ClientViewSession): string[] {
+  return buildClientWarningsView(session).messages;
 }
 
 export function buildClientChartComment(session: ClientViewSession): string {
