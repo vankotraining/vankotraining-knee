@@ -74,7 +74,7 @@ Exact head PR #12 `1c5c5334c5855fc02107cc05e9fe1668a585f2b2` má workflow run `3
 
 Clean-code audit PR #12 zůstává otevřený: `TindeqAnalyzer.tsx` je velká víceúčelová komponenta, prezentační tone se stále odvozuje z textových `includes(...)`, CSS je monolitické a `fflate` je stále v `devDependencies`.
 
-PR #14 obsahuje pouze dokumentaci, PR template, `package.json` skript, kontrolní skript a CI workflow. Nemění `src/**`, databázové migrace ani Vercel konfiguraci.
+PR #14 obsahuje pouze dokumentaci, PR template, `package.json` skript, kontrolní skript a CI workflow. Nemění `src/**`, databázové migrace ani Vercel konfiguraci. Jeho merge gate je úspěšný `npm run project:check` na přesném aktuálním head commitu.
 
 ## Nasazeno
 
