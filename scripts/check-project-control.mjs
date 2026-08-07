@@ -31,6 +31,24 @@ function requireSections(relativePath, sections) {
   }
 }
 
+function requireText(relativePath, requiredTexts) {
+  const content = read(relativePath);
+  for (const text of requiredTexts) {
+    if (!content.includes(text)) {
+      errors.push(`${relativePath}: chybí povinné pravidlo "${text}"`);
+    }
+  }
+}
+
+function forbidText(relativePath, forbiddenTexts) {
+  const content = read(relativePath);
+  for (const text of forbiddenTexts) {
+    if (content.includes(text)) {
+      errors.push(`${relativePath}: obsahuje zakázaný legacy postup "${text}"`);
+    }
+  }
+}
+
 function sectionBody(content, section) {
   const lines = content.split("\n");
   const headingIndex = lines.findIndex((line) => line.trim() === `## ${section}`);
@@ -49,6 +67,7 @@ for (const path of [
   "project-control/PROJECT_SPEC.md",
   "project-control/PROJECT_STATE.md",
   "project-control/PRODUCTION_STATUS.md",
+  "project-control/operations.md",
 ]) {
   requirePath(path);
 }
@@ -70,6 +89,7 @@ requireSections("project-control/PROJECT_STATE.md", [
 ]);
 
 requireSections("project-control/PRODUCTION_STATUS.md", [
+  "Datum poslední kontroly",
   "Produkční URL",
   "Vercel project ID",
   "Deployment ID",
@@ -78,7 +98,36 @@ requireSections("project-control/PRODUCTION_STATUS.md", [
   "Databázové migrace použité produkční aplikací",
   "Provedené smoke testy",
   "Poslední výslovné uživatelské produkční ověření",
+  "Produkční stav Tindeq",
   "Známé produkční problémy",
+]);
+
+requireSections("project-control/operations.md", [
+  "5. Databázové změny",
+  "6. Produkční kontrola",
+  "7. Preview acceptance",
+  "Minimální provozní pravidla",
+]);
+
+requireText("project-control/README.md", [
+  "Tento soubor je pouze rozcestník",
+  "Historické implementační a ověřovací důkazy",
+  "Samostatné tvrzení „hotovo“ nepoužívej.",
+]);
+
+requireText("project-control/operations.md", [
+  "supabase/migrations/",
+  "Ad-hoc produkční DDL v Supabase SQL Editoru není podporovaný postup.",
+  "Produkční databázi neměň bez explicitního schválení uživatele.",
+  "Produkční zápis, vytvoření testovacího klienta, měření, archivace, obnova nebo jiná mutace se provádí pouze po explicitním schválení.",
+  "preview používá vývojový Supabase project ref",
+]);
+
+forbidText("project-control/operations.md", [
+  "Teprve potom spust migraci v Supabase SQL Editoru.",
+  "Pojmenovani novych SQL souboru",
+  "supabase/add-knee-export-column.sql",
+  "Po kazde zmene projit tuto kratkou kontrolu primo na `knee.vankotraining.cz`",
 ]);
 
 const state = read("project-control/PROJECT_STATE.md");
