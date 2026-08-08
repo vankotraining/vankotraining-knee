@@ -166,6 +166,14 @@ function neutralizeFatigueRule(rule: string) {
     .replaceAll("Bez poklesu", "V cíli");
 }
 
+function presentationRecommendationReason(reason: string) {
+  return reason
+    .replaceAll("únavu", "vývoj série")
+    .replaceAll("únavový", "výkonový")
+    .replaceAll("únavová", "výkonová")
+    .replaceAll("únavové", "výkonové");
+}
+
 function FindingCard({
   finding,
   copy,
@@ -384,7 +392,11 @@ export default function TindeqReportView({
             <strong>{report.recommendation.summary}</strong>
             <p className={metricStyles.contextNote}>Doporučení vychází z pracovních pravidel tohoto reportu a dostupného kontextu.</p>
           </div>
-          <ul>{report.recommendation.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+          <ul>
+            {report.recommendation.reasons.map((reason) => (
+              <li key={reason}>{presentationRecommendationReason(reason)}</li>
+            ))}
+          </ul>
         </section>
       </section>
 
