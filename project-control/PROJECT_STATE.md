@@ -1,67 +1,121 @@
-# PROJECT_STATE — Knee Extension (v2.0)
+# Project state
 
-Aktualizováno: 2026-08-08
+## Datum poslední kontroly
 
-## Aktuální stabilní stav
+`2026-08-08` (Europe/Prague).
 
-- `main` je na exact SHA `8afe1328cfcb8f7ab90bb449775d1de0d441b584` (`Merge pull request #12 from agent/tindeq-results-site`).
-- PR #12 s Tindeq Results Site je sloučený do `main`.
-- Produkční Vercel deployment `dpl_u4WK75HN4j27Jtpxh4VnQvPb6jWd` je `READY` a odpovídá `main@8afe1328cfcb8f7ab90bb449775d1de0d441b584`.
-- Produkční funkční chování nebylo v této práci explicitně potvrzeno uživatelem.
-- Aktivní prezentační změna Tindeq metrik je v draft PR #16 na větvi `agent/tindeq-metric-statuses`; není sloučená ani produkčně nasazená.
+## Aktuální `main` commit
 
-## Platný datový a analytický model
+`8afe1328cfcb8f7ab90bb449775d1de0d441b584` — `Merge pull request #12 from agent/tindeq-results-site`.
 
-- Aplikace používá Next.js App Router, React, TypeScript, Supabase a Vercel.
-- Tindeq import, normalizace, persistence a kanonický `tindeq-report-v1` zůstávají zdrojem numerických a rozhodovacích dat.
-- PR #16 nemění databázové schéma, auth, persistence model, Supabase data ani Vercel environment variables.
-- PR #16 nemění výpočetní algoritmus `src/lib/tindeq-report.ts`; přidává pouze centralizovanou prezentační vrstvu pro stav, vysvětlení a typ pravidla.
+PR #12 je sloučený do `main`. Živý head byl znovu ověřen přes GitHub 2026-08-08.
 
-## Poslední změny
+## Aktivní větev a PR
 
-### 2026-08-08 — Tindeq metric interpretation states (draft PR #16)
+- větev: `agent/tindeq-metric-statuses`;
+- draft PR: `#16` — `Tindeq: clarify metric interpretation states`;
+- base: `main@8afe1328cfcb8f7ab90bb449775d1de0d441b584`;
+- poslední plně automaticky ověřený kódový checkpoint před project-control syncem: `e887791b41b8750aedd0d7ca683d189f895b9756`;
+- PR zůstává draft, není merged a nebyl označen ready-for-review.
 
-- Vznikla centralizovaná typovaná vrstva `good | warning | problem | neutral` a typy pravidel `protocol | contextual | descriptive`.
-- Chybějící nebo nehodnotitelný klinický kontext se zobrazuje neutrálně jako `Bez hodnocení`, nikoli automaticky jako červený nález.
-- Barevné stavy jsou omezené na metriky s explicitním pracovním pravidlem; MVIC, absolutní síla a stranové rozdíly zůstávají záměrně bez automatické klasifikace.
-- Klientský pohled používá tři hlavní rozhodovací karty a textový stav; trenérský a kanonický report zachovávají technická data a přidávají stručné vysvětlivky.
-- Pracovní hranice jsou v UI označené jako pravidla protokolu, nikoli jako validované klinické cut-off hodnoty.
-- Kódový checkpoint `e887791b41b8750aedd0d7ca683d189f895b9756` prošel exact-head CI: 103 unit testů, lint bez regrese proti `main`, Next build, TypeScript, `project:check`, `git diff --check` a 10 Playwright testů včetně mobilního a desktopového klientského i trenérského pohledu.
-- Preview deployment `dpl_DeJzDnWsEHrogyCWYyHG6vtEymCN` pro `e887791b41b8750aedd0d7ca683d189f895b9756` je `READY`; `/tindeq/reports/demo` odpovídá HTTP 200.
-- Změna není produkčně nasazená ani produkčně ověřená.
+## Produkční runtime commit
 
-### 2026-08-08 — Tindeq Results Site
+Produkční alias `knee.vankotraining.cz` používá:
 
-- PR #12 byl sloučen do `main` jako `8afe1328cfcb8f7ab90bb449775d1de0d441b584`.
-- `/tindeq` obsahuje klientský a trenérský pohled, kanonický report, ukládání Tindeq sessions a související auth/persistence workflow.
-- Produkční deployment odpovídající tomuto merge je na Vercelu `READY`; produkční funkční ověření je oddělený manuální gate.
+- Vercel projekt `vankotraining-knee` (`prj_WLfkUldcNfXn43KmsXpJAClaKOsI`);
+- deployment `dpl_u4WK75HN4j27Jtpxh4VnQvPb6jWd`;
+- stav `READY`, target `production`;
+- commit `8afe1328cfcb8f7ab90bb449775d1de0d441b584`;
+- branch `main`;
+- alias error: žádný.
 
-### 2026-08-04 — Tindeq auth / environment hardening
+Tindeq Results Site z PR #12 je tedy produkčně nasazený. Změny z draft PR #16 produkčně nasazené nejsou.
 
-- Tindeq auth redirect a environment guard byly zpřesněny tak, aby Knee preview používalo vývojový Supabase projekt a produkce produkční projekt.
-- `localhost` zůstává pouze lokálním vývojovým originem.
+## Stav databázových migrací
 
-## Důležitá rozhodnutí a omezení
+### Produkční Supabase `zxvndqicslyulrinbpyn`
 
-- Barevný stav v Tindeq výsledcích znamená splnění pracovního pravidla konkrétního protokolu, nikoli diagnózu nebo univerzální označení zdravého či patologického kolene.
-- `normalizedSideDifferencePctPoints` není LSI a nesmí být jako LSI prezentováno.
-- Změna maximální síly proti minulému testu se automaticky neklasifikuje bez protokolově specifické chyby měření / MDC.
-- Reakce další ráno není v aktuálním datovém modelu a v PR #16 se nepřidává.
-- Produkční databázové změny a produkční deployment vyžadují samostatné explicitní schválení.
+Phase-5 active-session dedupe migrace byla po explicitním uživatelském schválení aplikována `2026-08-08` jako:
 
-## Co je nyní uzavřené
+`20260808091809 tindeq_active_session_unique`.
 
-- Merge PR #12 do `main`.
-- Centralizace Tindeq prezentačních stavů a neutrálního chování pro chybějící kontext v draft PR #16.
-- Exact-head automatické ověření kódového checkpointu PR #16 včetně browser screenshotů klientského a trenérského pohledu.
+Použit byl repo soubor `supabase/migrations/20260807_tindeq_active_session_unique.sql`.
 
-## Co je stále otevřené
+Ověřený post-check z předchozí fáze:
 
-- Review a případný merge draft PR #16.
-- Produkční deployment PR #16 až po samostatném explicitním schválení.
-- Produkční funkční ověření po případném deploymentu pouze s explicitním potvrzením uživatele.
-- Případné budoucí rozšíření datového modelu o reakci další ráno.
+- `public.tindeq_sessions`: `0` celkem / `0` aktivních;
+- invalidní source session ID: `0`;
+- active duplicate groups: `0`;
+- validated CHECK `tindeq_sessions_source_session_id_valid` existuje a vynucuje `^[0-9a-f]{20}$`;
+- partial unique index `tindeq_sessions_active_source_session_uidx` existuje pro aktivní řádky;
+- tabulka má `28` sloupců, RLS je zapnuté a `3` policies zůstaly zachované.
 
-## Bezprostřední další krok
+PR #16 databázové schéma, produkční data ani migration history nemění.
+
+### Vývojový Supabase `twndqnmrvefhwuwuglju`
+
+Phase-5 invariant zůstává aktivní i na dev; PR #16 do dev ani production DB nezapisuje.
+
+## Aktuální fáze
+
+**Tindeq Results Site je v `main` a produkčně nasazený. Rozpracovaná je čistě prezentační interpretace Tindeq metrik v draft PR #16.**
+
+To neznamená produkční ověření PR #16. Merge a produkční rollout mají samostatné approval gates.
+
+## Implementováno v `main`
+
+- samostatná Next.js Knee aplikace na `knee.vankotraining.cz`;
+- přihlášení, klienti, knee extension měření, výpočty, historie, archivace/obnova a UI polish;
+- kanonický project-control systém;
+- Tindeq `/tindeq` runtime z původního PR #12: ZIP import, klientský a trenérský pohled, explicitní save, historie, kanonický `tindeq-report-v1`, auth/environment guard a persistence workflow;
+- produkční phase-5 DB dedupe invariant.
+
+## Rozpracováno mimo `main`
+
+Draft PR #16 obsahuje:
+
+- centralizovaný stav `good | warning | problem | neutral`;
+- typ významu `protocol | contextual | descriptive`;
+- neutrální `Bez hodnocení` pro chybějící/neinterpretovatelný klinický kontext;
+- malé textové badge, jemné barevné akcenty a krátké vysvětlivky;
+- klientský pohled se třemi primárními rozhodovacími kartami;
+- trenérský a kanonický report s rozlišením pracovních pravidel a kontextových hodnot;
+- explicitní rozlišení `normalizedSideDifferencePctPoints` od LSI;
+- beze změny výpočtů `src/lib/tindeq-report.ts`, databáze, auth a persistence.
+
+## Nasazeno
+
+- produkční aplikační runtime: `main@8afe1328cfcb8f7ab90bb449775d1de0d441b584` v `dpl_u4WK75HN4j27Jtpxh4VnQvPb6jWd`, `READY`;
+- production DB: phase-5 migration `20260808091809 tindeq_active_session_unique` je aplikovaná a databázový post-check byl PASS;
+- PR #16: pouze Vercel Preview; kódový checkpoint `e887791b41b8750aedd0d7ca683d189f895b9756` měl `READY` preview `dpl_BRh42z7GTotXNcquxLRb2kZSqBtu`.
+
+## Produkčně ověřeno
+
+- Produkční deployment `main@8afe1328cfcb8f7ab90bb449775d1de0d441b584` je na Vercelu `READY`, ale v této práci nebylo uživatelem provedeno nové výslovné funkční produkční ověření Tindeq workflow.
+- PR #16 není produkčně nasazený, a proto není produkčně ověřený.
+- READY deployment, CI ani preview acceptance se za explicitní uživatelské produkční ověření nepovažují.
+
+## Známé problémy
+
+- draft PR #16 ještě není merged;
+- PR #16 není produkčně nasazený ani produkčně ověřený;
+- existující lint baseline v `main` je `3 errors + 1 warning` mimo tuto Tindeq změnu;
+- shared production Supabase má dříve existující security/performance advisor nálezy mimo scope PR #16;
+- úplný mapping historických manuálních Knee SQL změn na repo migrace není doložen;
+- reakce další ráno není v aktuálním Tindeq datovém modelu.
+
+## Ověření draft PR #16
+
+Kódový checkpoint `e887791b41b8750aedd0d7ca683d189f895b9756`:
+
+- unit `103/103` PASS;
+- lint branch `3 errors + 1 warning`, shodně s `main` — bez regrese;
+- production build + standalone TypeScript: PASS;
+- project-control + `git diff --check`: PASS;
+- Playwright `10/10` PASS;
+- responsive browser screenshoty: klient 360/390/720/1024/1440 px, trenér 390/1024 px;
+- kanonický preview `/tindeq/reports/demo`: HTTP 200.
+
+## Další krok
 
 - Po code review rozhodnout o merge PR #16; produkční nasazení ani produkční ověření neprovádět bez samostatného explicitního schválení.
