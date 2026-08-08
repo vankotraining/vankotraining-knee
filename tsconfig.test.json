@@ -14,6 +14,8 @@
     "src/lib/tindeq-auth-flow.test.ts",
     "src/lib/tindeq-environment.ts",
     "src/lib/tindeq-environment.test.ts",
+    "src/lib/tindeq-metric-presentation.ts",
+    "src/lib/tindeq-metric-presentation.test.ts",
     "src/lib/tindeq-client-view.ts",
     "src/lib/tindeq-client-view.test.ts",
     "src/lib/tindeq-browser.ts",
