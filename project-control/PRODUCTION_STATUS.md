@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-08` (Europe/Prague), po schválené production phase-5 DB migraci a post-checku.
+`2026-08-08` (Europe/Prague).
 
 ## Produkční URL
 
@@ -14,33 +14,32 @@
 - project ID: `prj_WLfkUldcNfXn43KmsXpJAClaKOsI`;
 - team ID: `team_alNcbbTIb9p5enXHSpEJZpLt`.
 
-Duplicitní projekt `vankotraining-knee-mxei` není produkčním vlastníkem domény a jeho Git integrace zůstává odpojena.
-
 ## Deployment ID
 
-Živě evidovaný produkční deployment:
+Aktuální produkční deployment:
 
-`dpl_J1ECuULAhWHXHnZvpmJgFMFEbzd1`.
+`dpl_u4WK75HN4j27Jtpxh4VnQvPb6jWd`.
 
 ## Nasazený commit
 
-`7e11aa88fb0c14b5216542d4e03101aee082ec17` z větve `main` – `Record project-control phase 1 completion`.
+`8afe1328cfcb8f7ab90bb449775d1de0d441b584` z větve `main` — merge PR #12 `Tindeq: klienti, historie a kanonické reporty`.
 
-Tindeq runtime z draft PR #12 na produkci stále není.
+Draft PR #16 `agent/tindeq-metric-statuses` v tomto produkčním deploymentu není.
 
 ## Čas a výsledek deploymentu
 
-Deployment `dpl_J1ECuULAhWHXHnZvpmJgFMFEbzd1`:
+Deployment `dpl_u4WK75HN4j27Jtpxh4VnQvPb6jWd`:
 
-- stav: `READY`;
+- vytvořen: `2026-08-08 12:24:13` Europe/Prague;
+- `READY`: `2026-08-08 12:24:40` Europe/Prague;
 - target: `production`;
 - project: `vankotraining-knee`;
-- commit: `7e11aa88fb0c14b5216542d4e03101aee082ec17`;
+- commit: `8afe1328cfcb8f7ab90bb449775d1de0d441b584`;
 - branch: `main`;
 - alias zahrnuje `knee.vankotraining.cz`;
 - alias error: žádný.
 
-`READY` znamená pouze **produkčně nasazeno**, nikoli **produkčně ověřeno**.
+`READY` znamená produkčně nasazeno, nikoli automaticky produkčně ověřeno uživatelem.
 
 ## Databázové migrace použité produkční aplikací
 
@@ -56,98 +55,55 @@ Supabase migration history ji eviduje jako:
 
 `20260808091809 tindeq_active_session_unique`.
 
-Pre-check bezprostředně před DDL:
+Ověřený post-check z předchozí fáze:
 
 - `public.tindeq_sessions`: `0` celkem / `0` aktivních;
-- invalidní/chybějící `tindeqSessionId`: `0`;
-- active duplicate groups: `0`;
-- phase-5 CHECK/index před migrací neexistovaly;
-- `28` sloupců, RLS zapnuté, `3` policies.
-
-Backup/export gate:
-
-- read-only logický export relevantních `public.tindeq_sessions` dat byl vytvořen před DDL;
-- tabulka byla prázdná, export byl přesně `[]`;
-- rollback SQL je omezené na odstranění phase-5 indexu a CHECK constraintu a je verzovaně dokumentované.
-
-Post-check po migraci:
-
-- `public.tindeq_sessions`: stále `0` celkem / `0` aktivních;
 - invalidní source session ID: `0`;
 - active duplicate groups: `0`;
-- validated constraint `tindeq_sessions_source_session_id_valid`: existuje;
-- definice CHECK vynucuje `^[0-9a-f]{20}$`;
-- partial unique index `tindeq_sessions_active_source_session_uidx`: existuje a omezuje pouze `deleted_at IS NULL`;
+- validated CHECK `tindeq_sessions_source_session_id_valid` existuje a vynucuje `^[0-9a-f]{20}$`;
+- partial unique index `tindeq_sessions_active_source_session_uidx` existuje pro aktivní řádky;
 - počet sloupců zůstal `28`;
-- RLS je zapnuté, `3` policies a relevantní grants zůstaly zachované.
+- RLS je zapnuté a `3` policies zůstaly zachované.
 
-Security a performance advisors byly po migraci spuštěny. Neobjevil se nový phase-5 nález na `public.tindeq_sessions`; dříve existující shared-production nálezy zůstávají mimo rozsah této migrace a nebyly měněny.
+PR #16 databázové migrace, produkční schéma ani data nemění.
 
 ## Provedené smoke testy
 
-Po phase-5 DB změně bylo databázově/read-only ověřeno:
+V této práci byly provedeny read-only/deployment kontroly:
 
-- migrační historie obsahuje `20260808091809 tindeq_active_session_unique`;
-- CHECK je validated a má očekávanou definici;
-- partial UNIQUE index má očekávanou definici;
-- počty Tindeq dat jsou beze změny `0/0`;
-- `0` invalidních source ID a `0` duplicate groups;
-- RLS/policies/grants zůstaly zachované;
-- security/performance advisors byly spuštěny.
+- Vercel produkční deployment byl znovu načten a potvrzen jako `READY` na exact SHA `8afe1328cfcb8f7ab90bb449775d1de0d441b584`;
+- nebyl proveden produkční aplikační zápis, vytvoření testovacího klienta ani Tindeq session;
+- nebyla provedena produkční DB mutace ani změna environment variables.
 
-Nebyl vytvořen produkční testovací klient ani Tindeq session a nebyl proveden produkční aplikační write acceptance. Jedinou schválenou produkční mutací v tomto kroku byla verzovaná phase-5 schema migrace.
+Předchozí phase-5 DB post-check zůstává zaznamenaný jako PASS. Funkční změny PR #16 jsou ověřované pouze na preview a v automatických testech.
 
 ## Poslední výslovné uživatelské produkční ověření
 
-Současný Tindeq runtime jako celek není označen jako produkčně ověřený.
+V této práci uživatel neprovedl nové výslovné funkční produkční ověření Tindeq workflow po merge PR #12.
 
-Uživatel explicitně schválil produkční phase-5 DB migraci; to není totéž jako manuální produkční ověření Tindeq workflow po jeho budoucím runtime deploymentu.
-
-`READY` deployment, CI, preview acceptance ani DB post-check se za produkční runtime ověření nepovažují.
+PR #16 není produkčně nasazený, proto jej nelze označit jako produkčně ověřený. `READY` deployment, CI ani preview acceptance nejsou náhradou za explicitní uživatelské produkční potvrzení.
 
 ## Produkční stav Tindeq
 
-- `public.tindeq_sessions` existuje a má `0` řádků;
-- phase-5 DB dedupe invariant je na produkci aplikovaný a post-check PASS;
-- Tindeq runtime z PR #12 stále není v produkčním `main`;
-- produkční Tindeq aplikační save nebyl proveden;
-- production DB je schema-ready pro dedupe invariant, ale runtime rollout má samostatný merge/deploy gate.
+- Tindeq runtime z PR #12 je od `main@8afe1328cfcb8f7ab90bb449775d1de0d441b584` produkčně nasazený;
+- production DB má aplikovaný phase-5 dedupe invariant;
+- prezentační rozšíření stavů/vysvětlivek z draft PR #16 v produkci není;
+- tato práce neprovedla žádný produkční save ani jinou produkční mutaci.
 
-## Preview acceptance stav
+## Preview stav PR #16
 
-Fáze 7 zůstává **manuálně ověřeno: PASS** na dev Supabase a exact Vercel Preview:
+Kódový checkpoint `e887791b41b8750aedd0d7ca683d189f895b9756`:
 
-- environment guard potvrdil dev project ref;
-- skutečný magic-link se vrátil na exact preview bez localhostu;
-- `/verify` a session byly úspěšné;
-- skutečný Tindeq ZIP byl importován a explicitně uložen;
-- duplicate cesta byla idempotentní.
+- Vercel preview `dpl_BRh42z7GTotXNcquxLRb2kZSqBtu`: `READY`;
+- exact-head CI: unit `103/103`, build, TypeScript, lint bez regrese, project-control, `git diff --check` a Playwright `10/10` PASS;
+- responsive browser kontrola zahrnula klientský i trenérský pohled;
+- `/tindeq/reports/demo` na preview odpověděl HTTP 200.
 
-Toto je preview acceptance, nikoli produkční runtime ověření.
-
-## Merge-readiness infrastruktura mimo produkci
-
-PR #12 obsahuje autentický `package-lock.json` a CI používá `npm ci`.
-
-Poslední plně ověřený head před tímto DB-state syncem `2b8094629e9c689894648e38ff1194e228fe2f2b`:
-
-- Verify Tindeq client view: success;
-- Project control: success;
-- unit `93/93`, Playwright `10/10`, build/TypeScript/project-control/diff PASS;
-- lint beze změny proti `main` baseline;
-- preview `dpl_B2wQpWAA46EaoCEbiwHXpofoNXj9`: `READY`, alias error `null`;
-- duplicitní Vercel projekt: `0` nových deploymentů pro tento head.
-
-Tyto aplikační změny nejsou produkčně nasazené.
-
-## Vercel konsolidace
-
-Kanonický projekt zůstává `vankotraining-knee`. Duplicitní projekt je pouze historický artefakt s odpojenou Git integrací.
+Toto je preview evidence, nikoli produkční deployment PR #16.
 
 ## Známé produkční problémy
 
-- Tindeq runtime z PR #12 ještě není produkčně nasazen;
-- PR #12 zůstává draft a není merged;
-- produkční Tindeq workflow není manuálně produkčně ověřené;
-- shared production Supabase má dříve existující security/performance advisor nálezy mimo phase-5 scope;
+- PR #16 není produkčně nasazený ani produkčně ověřený;
+- nové výslovné uživatelské funkční ověření produkčního Tindeq workflow po merge PR #12 v této práci neproběhlo;
+- shared production Supabase má dříve existující security/performance advisor nálezy mimo scope PR #16;
 - úplný mapping historických manuálních Knee SQL změn na repo migrace není doložen.

@@ -1,0 +1,256 @@
+.statusBadge {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border: 1px solid var(--border, #dfe4d8);
+  border-radius: 999px;
+  background: var(--surface-subtle, #eef1eb);
+  color: var(--foreground, #161a15);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.statusBadge[data-tone="good"] {
+  border-color: rgba(35, 96, 74, 0.32);
+  background: rgba(35, 96, 74, 0.08);
+  color: var(--accent-strong, #173f31);
+}
+
+.statusBadge[data-tone="warning"] {
+  border-color: rgba(167, 91, 18, 0.32);
+  background: rgba(167, 91, 18, 0.08);
+  color: #844708;
+}
+
+.statusBadge[data-tone="problem"] {
+  border-color: rgba(155, 44, 44, 0.3);
+  background: rgba(155, 44, 44, 0.07);
+  color: var(--danger, #9b2c2c);
+}
+
+.statusBadge[data-tone="neutral"] {
+  border-color: rgba(104, 112, 99, 0.3);
+  background: rgba(104, 112, 99, 0.08);
+  color: var(--muted, #687063);
+}
+
+.summaryTitleLine,
+.metricValueLine,
+.clientMetricValueLine {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.summaryTitleLine {
+  margin-top: 6px;
+}
+
+.summaryTitleLine h3 {
+  margin: 0;
+}
+
+.clientMetricValueLine {
+  margin-top: auto;
+  padding-top: 13px;
+}
+
+.clientMetricValueLine strong {
+  margin: 0 !important;
+  padding: 0 !important;
+  color: var(--foreground, #161a15) !important;
+}
+
+.clientMetricExplanation {
+  min-height: 0 !important;
+  margin-top: 8px !important;
+  color: var(--muted, #687063) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1.45 !important;
+}
+
+.metricList {
+  display: grid;
+  margin: 0;
+}
+
+.metricRow {
+  position: relative;
+  min-width: 0;
+  padding: 12px 14px 12px 17px;
+  border-bottom: 1px solid var(--border, #dfe4d8);
+  border-left: 3px solid transparent;
+}
+
+.metricRow:last-child {
+  border-bottom: 0;
+}
+
+.metricRow[data-tone="good"] {
+  border-left-color: rgba(35, 96, 74, 0.52);
+}
+
+.metricRow[data-tone="warning"] {
+  border-left-color: rgba(167, 91, 18, 0.55);
+}
+
+.metricRow[data-tone="problem"] {
+  border-left-color: rgba(155, 44, 44, 0.5);
+}
+
+.metricRow[data-tone="neutral"] {
+  border-left-color: rgba(104, 112, 99, 0.35);
+}
+
+.metricHeader {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metricName {
+  min-width: 0;
+  color: var(--muted, #687063);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ruleType {
+  flex: 0 0 auto;
+  color: var(--muted, #687063);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.metricValueLine {
+  margin-top: 5px;
+  justify-content: space-between;
+}
+
+.metricValue {
+  min-width: 0;
+  color: var(--foreground, #161a15);
+  font-size: 15px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.metricExplanation {
+  margin: 7px 0 0;
+  color: var(--muted, #687063);
+  font-size: 12px;
+  line-height: 1.48;
+}
+
+.metricDetails {
+  margin-top: 7px;
+  color: var(--muted, #687063);
+  font-size: 11px;
+  line-height: 1.48;
+}
+
+.metricDetails summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--accent-strong, #173f31);
+  font-weight: 800;
+}
+
+.metricDetails summary:focus-visible {
+  outline: 3px solid var(--focus-ring, rgba(35, 96, 74, 0.42));
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.metricDetails p {
+  margin: 6px 0 0;
+}
+
+.contextNote {
+  margin: 7px 0 0;
+  color: var(--muted, #687063);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.findingCard {
+  border-left: 4px solid rgba(104, 112, 99, 0.35);
+}
+
+.findingCard[data-tone="good"] {
+  border-left-color: rgba(35, 96, 74, 0.58);
+}
+
+.findingCard[data-tone="warning"] {
+  border-left-color: rgba(167, 91, 18, 0.62);
+}
+
+.findingCard[data-tone="problem"] {
+  border-left-color: rgba(155, 44, 44, 0.58);
+}
+
+.findingCard[data-tone="neutral"] {
+  border-left-color: rgba(104, 112, 99, 0.42);
+}
+
+.findingHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.neutralNotice,
+.technicalNotice {
+  margin-top: 14px;
+  padding: 13px 15px;
+  border: 1px solid rgba(104, 112, 99, 0.28);
+  border-radius: 8px;
+  background: #fbfcfa;
+  color: var(--foreground, #161a15);
+}
+
+.technicalNotice {
+  border-color: rgba(167, 91, 18, 0.28);
+  background: rgba(167, 91, 18, 0.045);
+}
+
+.neutralNotice p,
+.technicalNotice p {
+  margin: 6px 0 0;
+  color: var(--muted, #687063);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .statusBadge {
+    white-space: normal;
+    text-align: center;
+  }
+
+  .metricHeader {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ruleType {
+    flex: initial;
+  }
+
+  .metricValueLine {
+    align-items: flex-start;
+  }
+}
