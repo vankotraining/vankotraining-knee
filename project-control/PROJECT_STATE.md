@@ -2,103 +2,159 @@
 
 ## Datum poslední kontroly
 
-`2026-08-07 12:37 CEST` (Europe/Prague).
+`2026-08-08` (Europe/Prague).
 
 ## Aktuální `main` commit
 
-PR #14 byl bezpečně squash-mergnut do `main` jako `704950a7a5a0516175126f7761adf1ccb34dc043` – `Establish canonical project control sources (#14)`.
+`7e11aa88fb0c14b5216542d4e03101aee082ec17` – `Record project-control phase 1 completion`.
 
-Tento soubor je následná stavová evidence nad uvedeným merge commitem. Jeho vlastní commit SHA se z principu nezapisuje do sebe; před jakoukoli další změnou je nutné znovu živě vyřešit aktuální head `main` a nepřebírat SHA pouze z dokumentace.
+PR #12 je stále založený přímo na tomto `main`. Tento soubor nemůže autoritativně obsahovat SHA vlastního budoucího synchronizačního commitu; před další změnou se živý head, CI a deployment vždy znovu resolve přes GitHub/Vercel.
 
 ## Aktivní větev a PR
 
-- PR `#14` – **merged** squash mergem do `main`; původní pracovní historie se do `main` nepřenesla;
-- feature větev `agent/tindeq-results-site`, draft PR `#12` – aktuální auditovaný head `1c5c5334c5855fc02107cc05e9fe1668a585f2b2`;
-- PR `#15` (`agent/tindeq-client-workflow`) je uzavřen bez merge a jeho paralelní klientský Tindeq workflow není podporovaný směr.
-
-PR #12 zůstává mimo `main`.
+- větev: `agent/tindeq-results-site`;
+- draft PR: `#12`;
+- PR je open, ne-merged a při posledním fresh re-checku mergeable;
+- submitted reviews: `0`;
+- review threads / unresolved review threads: `0`;
+- phase-7 manuálně accepted runtime head: `3d3bc241b2085ed3c547bdfc219ea1d9f4a4e2c1`;
+- poslední plně automaticky ověřený merge-readiness head před tímto DB-state syncem: `2b8094629e9c689894648e38ff1194e228fe2f2b`.
 
 ## Produkční runtime commit
 
-Produkční alias byl po merge PR #14 nasazen na commit `704950a7a5a0516175126f7761adf1ccb34dc043` v deploymentu `dpl_G4iaoxQ9f4DztA76djs8hfaceouZ`, stav `READY`.
+Produkční alias `knee.vankotraining.cz` nadále používá:
 
-Diff `71d6b1f0e67c571c71a53db6248e526704bddabe..704950a7a5a0516175126f7761adf1ccb34dc043` neobsahuje žádný `src/**`, databázový migrační soubor ani Vercel konfigurační soubor. Aplikační runtime kód tedy merge PR #14 nezměnil.
+- Vercel projekt `vankotraining-knee` (`prj_WLfkUldcNfXn43KmsXpJAClaKOsI`);
+- deployment `dpl_J1ECuULAhWHXHnZvpmJgFMFEbzd1`;
+- stav `READY`, target `production`;
+- commit `7e11aa88fb0c14b5216542d4e03101aee082ec17`;
+- alias error: žádný.
 
-Podrobnosti jsou v [`PRODUCTION_STATUS.md`](./PRODUCTION_STATUS.md).
+Tindeq aplikační runtime z PR #12 tedy stále není produkčně nasazen.
 
 ## Stav databázových migrací
 
 ### Produkční Supabase `zxvndqicslyulrinbpyn`
 
-Po merge PR #14 znovu ověřeno read-only dotazem:
+Phase-5 active-session dedupe migrace byla po explicitním uživatelském schválení aplikována `2026-08-08` jako:
 
-- `public.athletes`: `67` celkem / `66` aktivních klientů;
-- `auth.users`: `1`;
-- `public.tindeq_sessions`: `0` celkových / `0` aktivních řádků;
-- `tindeq_sessions` má stále pouze původní normalizované sloupce a indexy `tindeq_sessions_active_athlete_measured_idx`, `tindeq_sessions_analysis_version_idx`, `tindeq_sessions_pkey`;
-- PR #14 databázi ani data nezměnil.
+`20260808091809 tindeq_active_session_unique`.
 
-Aplikovaná produkční Tindeq migrace zůstává `20260802124337 tindeq_sessions`; její repo soubor je zatím pouze v PR #12, ne v `main`.
+Použit byl přesně repo SQL soubor `supabase/migrations/20260807_tindeq_active_session_unique.sql`.
+
+Fresh pre-check bezprostředně před DDL:
+
+- `public.tindeq_sessions`: `0` celkem / `0` aktivních;
+- invalidní nebo chybějící `raw_metadata ->> 'tindeqSessionId'`: `0`;
+- active duplicate groups podle `(athlete_id, analysis_version, tindeqSessionId)`: `0`;
+- phase-5 CHECK: neexistoval;
+- phase-5 partial UNIQUE index: neexistoval;
+- tabulka měla `28` sloupců, RLS zapnuté a `3` policies.
+
+Backup/export gate:
+
+- read-only logický export `public.tindeq_sessions` byl vytvořen těsně před migrací;
+- protože tabulka měla `0` řádků, export relevantních dat byl přesně `[]`;
+- rollback je omezen na odstranění nového indexu a CHECK constraintu a je dokumentovaný v repo migraci/operations.
+
+Post-check po commitnuté migraci:
+
+- `public.tindeq_sessions`: stále `0` celkem / `0` aktivních;
+- invalid source session ID: `0`;
+- active duplicate groups: `0`;
+- validated CHECK `tindeq_sessions_source_session_id_valid`: existuje a vynucuje `^[0-9a-f]{20}$`;
+- partial unique index `tindeq_sessions_active_source_session_uidx`: existuje pro `(athlete_id, analysis_version, raw_metadata ->> 'tindeqSessionId') WHERE deleted_at IS NULL`;
+- tabulka zůstala na `28` sloupcích, RLS je zapnuté, `3` policies a relevantní grants zůstaly zachované;
+- security/performance advisors byly po DDL spuštěny; neobjevil se nový phase-5 nález na `public.tindeq_sessions`. Dříve existující shared-production advisory nálezy zůstávají mimo scope této migrace.
 
 ### Vývojový Supabase `twndqnmrvefhwuwuglju`
 
-Poslední audit před merge PR #14:
+Phase-5 invariant zůstává aktivní i na dev:
 
-- `1` auth uživatel;
-- `1` aktivní klient;
-- `1` aktivní Tindeq session;
-- stále obsahuje dodatečné PR #15 sloupce a fingerprint unique index;
-- dev proto není čistě srovnaný s kanonickým ZIP-only rozsahem PR #12.
+- `1` Tindeq session / `1` aktivní;
+- `0` invalidních source session ID;
+- `0` active duplicate groups;
+- validated CHECK a partial unique index existují.
+
+## Fáze 7 — acceptance
+
+Fáze 7 je **manuálně ověřeno: PASS** na dev Supabase a exact Vercel Preview.
+
+Bylo potvrzeno:
+
+- dev environment guard;
+- deployment-specific magic-link bez localhost fallbacku;
+- úspěšný `/verify` a aktivní session;
+- skutečný Tindeq ZIP import;
+- explicitní save a historie;
+- idempotentní duplicate handling bez druhého aktivního řádku.
+
+Preview acceptance není produkční ověření.
+
+## Deterministická instalace a exact-head verification
+
+Repo obsahuje autentický `package-lock.json`; CI používá `npm ci` a kontroluje nulový diff `package.json`/`package-lock.json`.
+
+Poslední plně ověřený head před tímto dokumentačním syncem `2b8094629e9c689894648e38ff1194e228fe2f2b`:
+
+- Verify Tindeq client view: success;
+- Project control: success;
+- unit `93/93` PASS;
+- lint baseline `main = 3 errors + 1 warning`, branch = `3 errors + 1 warning`;
+- production build + Next TypeScript + standalone `tsc --noEmit`: PASS;
+- project-control + `git diff --check`: PASS;
+- Playwright `10/10` PASS;
+- 5 screenshot PNG;
+- preview `dpl_B2wQpWAA46EaoCEbiwHXpofoNXj9`: `READY`, alias error `null`;
+- duplicitní Vercel projekt pro tento head: `0` nových deploymentů.
 
 ## Aktuální fáze
 
-**Fáze 1 – project-control je dokončena.** Kanonické zdroje pravdy, ADR, bezpečný provozní postup a automatický `npm run project:check` jsou v `main`.
+**Produkční phase-5 DB gate je dokončený a databázově ověřený. PR #12 je nyní připravený k finálnímu merge-readiness rozhodnutí.**
 
-Exact merge commit `704950a7a5a0516175126f7761adf1ccb34dc043` má GitHub Actions `Project control` run `31170713406` se závěrem `success`.
-
-Další produktové funkce se nepřidávají; pokračuje konsolidace PR #12.
+To neznamená ready-for-review, merge, produkční runtime deployment ani produkční ověření; tyto kroky mají samostatné approval gates.
 
 ## Implementováno v `main`
 
-- kanonické `PROJECT_SPEC.md`, `PROJECT_STATE.md`, `PRODUCTION_STATUS.md`;
-- `project-control/README.md` jako rozcestník autority;
-- ADR pro základní architekturu a datové zacházení;
-- `operations.md` s verzovanými migracemi, explicitním schválením produkční DDL/zápisu a preview safety pravidly;
-- `npm run project:check` a GitHub Actions workflow pro project-control;
-- původní produkční Knee aplikace a její runtime zůstávají funkčně beze změny oproti předchozímu runtime baseline.
+- samostatná Next.js Knee aplikace na `knee.vankotraining.cz`;
+- přihlášení, klienti, knee extension měření, výpočty, historie, archivace/obnova a UI polish;
+- kanonický project-control systém;
+- produkční `public.tindeq_sessions` tabulka z původní migrace;
+- Tindeq runtime z PR #12 stále není v `main`.
 
 ## Rozpracováno mimo `main`
 
-PR #12 na `agent/tindeq-results-site` zůstává draft. Při posledním auditu byl proti předchozímu `main` divergentní `115` commitů ahead / `11` behind a obsahoval dlouhou experimentální historii.
+PR #12 obsahuje:
 
-Exact head `1c5c5334c5855fc02107cc05e9fe1668a585f2b2` měl CI run `31168986400` se závěrem `success`: `77/77` unit testů, build/TypeScript PASS, `10/10` Playwright a `git diff --check` PASS. Finální merge gates ale nebyly splněny: lint zůstával `3 errors + 1 warning`, `project:check` nebyl na větvi definován a clean-code/environment/database konsolidace nebyla dokončena.
+- kanonický ZIP-only Tindeq tok;
+- fail-closed auth/environment guard a magic-link hardening;
+- normalizaci, explicitní save, historii a reporty;
+- DB-aware idempotentní dedupe + race recovery;
+- phase-5 DB invariant a checks;
+- autentický npm lockfile a deterministické CI přes `npm ci`;
+- oddělený app/test TypeScript scope.
 
 ## Nasazeno
 
-- produkčně nasazeno po fázi 1: `704950a7a5a0516175126f7761adf1ccb34dc043`, deployment `dpl_G4iaoxQ9f4DztA76djs8hfaceouZ`, `READY`, target `production`, alias `knee.vankotraining.cz`;
-- tento deployment je dokumentační/řídicí změna bez změny `src/**`;
-- exact-head preview PR #12 před přestavbou: `dpl_CRKmDChVUjP3DoZbwGcWkND7dNm5`, commit `1c5c5334c5855fc02107cc05e9fe1668a585f2b2`, `READY`;
-- nekánonický projekt `vankotraining-knee-mxei` stále vyžaduje pozdější konsolidaci.
-
-Následný state-only commit tohoto souboru může vytvořit novější Vercel deployment se stejným aplikačním runtime. Přesný živý deployment je proto před další změnou vždy nutné ověřit přímo ve Vercelu.
+- produkční aplikační runtime: pouze `main` `7e11aa88fb0c14b5216542d4e03101aee082ec17` v `dpl_J1ECuULAhWHXHnZvpmJgFMFEbzd1`;
+- production DB: phase-5 migration `20260808091809 tindeq_active_session_unique` je aplikovaná a post-check PASS;
+- phase-7 manuálně accepted preview: `dpl_ERZJCHPrHL4XgFp23kBPVTmfSmtV`;
+- poslední ověřený merge-readiness preview před tímto syncem: `dpl_B2wQpWAA46EaoCEbiwHXpofoNXj9` pro `2b8094629e9c689894648e38ff1194e228fe2f2b`, `READY`.
 
 ## Produkčně ověřeno
 
-- fáze 1 je **produkčně nasazena**, nikoli uživatelsky produkčně ověřena;
-- `READY` ani CI nejsou produkční ověření;
-- poslední výslovné uživatelské produkční ověření doložené v repozitáři zůstává omezené na dřívější mobilní zobrazení splnění normy.
+Produkční DB schema change je **automaticky/databázově ověřená**, nikoli uživatelsky produkčně ověřená aplikace.
+
+Tindeq runtime z PR #12 není produkčně nasazen a Tindeq workflow na produkční doméně nebylo uživatelem ověřeno. READY deployment, DB post-check ani preview acceptance se za produkční runtime ověření nepovažují.
 
 ## Známé problémy
 
-- PR #12 musí být přestavěn na čistém novém `main` a jeho původní head musí být nejdřív bezpečně zálohován;
-- dev Supabase obsahuje PR #15 schema drift a zbylá acceptance data;
-- exact-head preview PR #12 nemá nezávisle doložený dev Supabase project ref;
-- současný Tindeq environment guard nekontroluje kombinaci Vercel environment ↔ Supabase project ref;
-- produkční DB zatím negarantuje Tindeq deduplikaci unique constraintem;
-- druhý Vercel projekt stále automaticky nasazuje stejné repo;
-- shared production Supabase má pre-existující security/performance advisor nálezy mimo rozsah fáze 1;
+- PR #12 zůstává draft a není merged;
+- produkční Tindeq runtime není nasazen;
+- existující lint baseline v `main` je `3 errors + 1 warning` mimo Tindeq změny;
+- shared production Supabase má dříve existující security/performance advisor nálezy mimo phase-5 scope;
 - úplný mapping historických manuálních Knee SQL změn na repo migrace není doložen.
 
 ## Další krok
 
-- Zahájit fázi 2: před jakýmkoli přepisem zálohovat původní head PR #12 a přestavět `agent/tindeq-results-site` na čistém aktuálním `main` pouze s výsledným schváleným ZIP-only stavem.
+- Provést finální exact-head merge-readiness re-check a poté vyžádat samostatné rozhodnutí, zda PR #12 přepnout z draftu na ready-for-review / merge; bez explicitního souhlasu nic nemergovat ani produkčně nenasazovat.
