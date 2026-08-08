@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-08` (Europe/Prague), po produkčním rollout PR #17.
+`2026-08-08` (Europe/Prague), po produkčním rollout PR #17 a při kanonickém docs-only syncu PR #18.
 
 ## Produkční URL
 
@@ -16,27 +16,33 @@
 
 ## Deployment ID
 
-Fresh ověřený produkční deployment:
+Poslední runtime-changing produkční rollout parseru byl ověřen na deploymentu:
 
 `dpl_7TYSD6qnLQS4WgkkF9RsprDcetpD`.
 
+PR #18 je pouze dokumentační sync. Jeho merge do `main` může automaticky vytvořit novější produkční deployment se stejným aplikačním runtime kódem. Exact ID takového deploymentu vzniká až po merge tohoto souboru a proto jej nelze bez self-reference spolehlivě předem vložit do stejného commitu. Aktuální exact deployment se při další práci resolve přes Vercel; finální post-merge evidence PR #18 zaznamenává jeho ID a SHA.
+
 ## Nasazený commit
+
+Poslední commit, který mění aplikační runtime, je:
 
 `47d8be4b51141da7e1960f2b555588b90c5a5ed8` z větve `main` – merge PR #17 `Fix Tindeq Repeater date parsing`.
 
+Docs-only merge PR #18 může posunout `main` na novější commit, ale nemění parser ani jiný aplikační runtime kód.
+
 ## Čas a výsledek deploymentu
 
-Deployment `dpl_7TYSD6qnLQS4WgkkF9RsprDcetpD`:
+Parser rollout deployment `dpl_7TYSD6qnLQS4WgkkF9RsprDcetpD`:
 
 - stav: `READY`;
 - target: `production`;
 - project: `vankotraining-knee`;
-- commit: `47d8be4b51141da7e1960f2b555588b90c5a5ed8`;
+- runtime-changing commit: `47d8be4b51141da7e1960f2b555588b90c5a5ed8`;
 - branch: `main`;
 - alias zahrnuje `knee.vankotraining.cz`;
 - alias error: `null`.
 
-Vercel build log potvrzuje:
+Vercel build log parser rollout potvrzuje:
 
 - checkout `main` na commitu `47d8be4`;
 - Next.js production compile PASS;
@@ -60,7 +66,7 @@ Repo SQL zdroj:
 
 `supabase/migrations/20260807_tindeq_active_session_unique.sql`.
 
-PR #17 nepřidává ani nemění databázové schéma.
+PR #17 ani docs-only PR #18 nepřidávají nebo nemění databázové schéma.
 
 ### Produkční historický Tindeq dataset
 
@@ -80,26 +86,28 @@ Fresh read-only post-deploy DB re-check po nasazení PR #17:
 - active duplicate groups: `0`;
 - active sessions s chybějícím nebo nekladným `detected_repetitions`: `0`.
 
-Produkční rollout parseru tedy nezměnil historický dataset.
+Produkční rollout parseru dataset nezměnil. Docs-only PR #18 do databáze nezapisuje.
 
 ## Provedené smoke testy
 
-Po přepnutí produkčního aliasu na `dpl_7TYSD6qnLQS4WgkkF9RsprDcetpD` bylo neinvazivně ověřeno:
+Po přepnutí produkčního aliasu na parser rollout `dpl_7TYSD6qnLQS4WgkkF9RsprDcetpD` bylo neinvazivně ověřeno:
 
-- deployment `READY` a exact SHA `47d8be4b51141da7e1960f2b555588b90c5a5ed8`;
+- deployment `READY` a exact runtime-changing SHA `47d8be4b51141da7e1960f2b555588b90c5a5ed8`;
 - `knee.vankotraining.cz` je mezi aliasy deploymentu;
 - alias error `null`;
 - `/tindeq`: HTTP `200` a render očekávané stránky `Tindeq Repeaters`;
 - `/tindeq/reports/demo`: HTTP `200` a render anonymního kanonického reportu;
-- error/fatal runtime logy nového deploymentu v post-deploy kontrolním okně: žádné nalezené;
+- error/fatal runtime logy rollout deploymentu v post-deploy kontrolním okně: žádné nalezené;
 - produkční DB post-check: beze změny a bez aktivních duplicit.
 
-Před merge exact head `a6216eaf2e1cd6f4a85d3fe884074ddec9a46e47` prošel:
+Před merge exact head PR #17 `a6216eaf2e1cd6f4a85d3fe884074ddec9a46e47` prošel:
 
 - `Verify Tindeq client view` run `31275223170`: PASS;
 - `Project control` run `31275223171`: PASS;
 - deterministic `npm ci`, unit/date regressions, lint-baseline, production build, standalone TypeScript, `project:check`, `git diff --check` a Playwright/browser verification: PASS;
 - exact preview `dpl_AbeXLcb7a7CDTJKsi5wpo7V7zSo2`: `READY`.
+
+Docs-only PR #18 má před merge vlastní exact-head CI a preview gate; po merge se pouze ověřuje, že nový produkční deployment je `READY`, exact `main`, bez alias/build error a se stejným runtime chováním.
 
 ## Poslední výslovné uživatelské produkční ověření
 
@@ -112,12 +120,13 @@ Parser z PR #17 je nyní produkčně nasazený, ale první nový živý klientsk
 ## Produkční stav Tindeq
 
 - Tindeq ZIP-only runtime je produkčně nasazený;
-- opravený `parseTindeqDate()` z PR #17 je součástí produkčního commitu `47d8be4b51141da7e1960f2b555588b90c5a5ed8`;
+- opravený `parseTindeqDate()` z PR #17 je v runtime-changing commitu `47d8be4b51141da7e1960f2b555588b90c5a5ed8`;
 - Tindeq datum se interpretuje jako pevný formát `YYYY-DD-MM HH:mm[:ss]`;
 - kalendářní datum a čas se validují a neplatný/nepodporovaný formát failne místo heuristického odhadu;
 - výpočty síly a `digest()` / dedupe identita nebyly změněny;
 - historický dataset zůstává stabilní 26 aktivních + 13 soft-deleted rows;
-- post-deploy HTTP/read-only smoke je PASS;
+- post-deploy HTTP/read-only smoke parser rollout je PASS;
+- docs-only PR #18 nemění aplikační runtime ani DB;
 - live new-client acceptance je stále pending.
 
 ## Známé produkční problémy
