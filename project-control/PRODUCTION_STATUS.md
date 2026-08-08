@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-08` (Europe/Prague).
+`2026-08-08` (Europe/Prague), po produkčním rollout PR #17.
 
 ## Produkční URL
 
@@ -14,33 +14,37 @@
 - project ID: `prj_WLfkUldcNfXn43KmsXpJAClaKOsI`;
 - team ID: `team_alNcbbTIb9p5enXHSpEJZpLt`.
 
-Kanonický projekt je `vankotraining-knee`.
-
 ## Deployment ID
 
 Fresh ověřený produkční deployment:
 
-`dpl_CxDNPh5Skm8Mwa4SxVXXWDfAsCDS`.
+`dpl_7TYSD6qnLQS4WgkkF9RsprDcetpD`.
 
 ## Nasazený commit
 
-`8afe1328cfcb8f7ab90bb449775d1de0d441b584` z větve `main` – merge PR #12 `Tindeq: klienti, historie a kanonické reporty`.
-
-Starší project-control údaje popisující stav před mergem PR #12 již neodpovídají živému produkčnímu runtime.
+`47d8be4b51141da7e1960f2b555588b90c5a5ed8` z větve `main` – merge PR #17 `Fix Tindeq Repeater date parsing`.
 
 ## Čas a výsledek deploymentu
 
-Deployment `dpl_CxDNPh5Skm8Mwa4SxVXXWDfAsCDS`:
+Deployment `dpl_7TYSD6qnLQS4WgkkF9RsprDcetpD`:
 
 - stav: `READY`;
 - target: `production`;
 - project: `vankotraining-knee`;
-- commit: `8afe1328cfcb8f7ab90bb449775d1de0d441b584`;
+- commit: `47d8be4b51141da7e1960f2b555588b90c5a5ed8`;
 - branch: `main`;
 - alias zahrnuje `knee.vankotraining.cz`;
 - alias error: `null`.
 
-`READY` dokládá produkční nasazení, nikoli automaticky uživatelské produkční ověření konkrétní funkcionality.
+Vercel build log potvrzuje:
+
+- checkout `main` na commitu `47d8be4`;
+- Next.js production compile PASS;
+- TypeScript PASS;
+- statické routy včetně `/tindeq`, `/tindeq/reports` a `/tindeq/reports/demo` vygenerované;
+- `Build Completed` bez build failure.
+
+`READY` dokládá produkční nasazení. Produkční ověření ve smyslu project-control vyžaduje samostatné výslovné uživatelské potvrzení konkrétního funkčního toku.
 
 ## Databázové migrace použité produkční aplikací
 
@@ -48,7 +52,7 @@ Produkční Supabase project ref:
 
 `zxvndqicslyulrinbpyn`.
 
-Phase-5 migrace byla `2026-08-08` aplikována jako:
+Phase-5 active-session dedupe migrace zůstává aplikována jako:
 
 `20260808091809 tindeq_active_session_unique`.
 
@@ -56,109 +60,68 @@ Repo SQL zdroj:
 
 `supabase/migrations/20260807_tindeq_active_session_unique.sql`.
 
-Doložený invariant po migraci:
+PR #17 nepřidává ani nemění databázové schéma.
 
-- validated CHECK `tindeq_sessions_source_session_id_valid` vynucuje 20znakový lowercase hex source session ID;
-- partial unique index `tindeq_sessions_active_source_session_uidx` chrání aktivní `(athlete_id, analysis_version, raw_metadata ->> 'tindeqSessionId')` při `deleted_at IS NULL`;
-- RLS a související policies zůstaly po migraci zachované.
+### Produkční historický Tindeq dataset
 
-### Produkční historický Tindeq import a remediation
+Schválená remediation z `2026-08-08` zůstává zachována:
 
-Dne `2026-08-08` byl po schváleném historickém importu proveden audit proti původnímu archivu:
-
-- manifest obsahoval 26 měření pro 7 existujících klientů;
-- 13 z 26 aktivních importovaných záznamů odpovídalo archivu;
-- 13 z 26 bylo nesprávných.
-
-Po explicitním schválení uživatele byla provedena datová remediation:
-
-- 13 chybných řádků bylo soft-delete, nikoli fyzicky smazáno;
-- 13 správných náhradních záznamů bylo vloženo;
-- auditní stopa 13 původních chybných řádků zůstala zachovaná.
-
-Manifest post-check zaznamenal:
-
-- `active_count = 26`;
-- `missing_count = 0`;
-- `extra_count = 0`;
-- `metadata_mismatch_count = 0`;
-- `active_duplicate_groups = 0`;
-- `quality_violations = 0`.
-
-Fresh read-only produkční DB re-check potvrdil:
-
-- 26 aktivních rows;
-- 13 soft-deleted rows;
+- 26 aktivních správných historických sessions;
+- 13 soft-deleted chybných původních importních rows jako auditní stopa;
 - 7 klientů mezi aktivními sessions;
-- 0 invalidních source session ID;
-- 0 active duplicate groups;
-- 0 aktivních sessions s chybějícím nebo nekladným `detected_repetitions`.
+- původní manifest post-check: missing `0`, extra `0`, metadata mismatch `0`, active duplicate groups `0`, quality violations `0`.
 
-Anonymizovaný detail je v [`tindeq-historical-import-remediation-2026-08-08.md`](./tindeq-historical-import-remediation-2026-08-08.md). Repozitář neobsahuje klientská jména ani konkrétní klientské názvy ZIP souborů.
+Fresh read-only post-deploy DB re-check po nasazení PR #17:
 
-PR #17 s parser fixem databázové schéma ani data nemění.
+- active rows: `26`;
+- soft-deleted rows: `13`;
+- active clients: `7`;
+- invalid source session IDs: `0`;
+- active duplicate groups: `0`;
+- active sessions s chybějícím nebo nekladným `detected_repetitions`: `0`.
+
+Produkční rollout parseru tedy nezměnil historický dataset.
 
 ## Provedené smoke testy
 
-Pro aktuální produkční stav bylo v tomto pracovním bloku read-only ověřeno:
+Po přepnutí produkčního aliasu na `dpl_7TYSD6qnLQS4WgkkF9RsprDcetpD` bylo neinvazivně ověřeno:
 
-- produkční Vercel deployment je `READY`;
-- metadata deploymentu odpovídají commitu `8afe1328cfcb8f7ab90bb449775d1de0d441b584` na `main`;
-- produkční alias zahrnuje `knee.vankotraining.cz` a alias error je `null`;
-- `public.tindeq_sessions` má 26 aktivních a 13 soft-deleted rows;
-- aktivní sessions patří 7 klientům;
-- invalid source session IDs: `0`;
-- active duplicate groups: `0`;
-- nonpositive/missing `detected_repetitions` u aktivních sessions: `0`;
-- oprava parseru z PR #17 není součástí produkčního deploymentu.
+- deployment `READY` a exact SHA `47d8be4b51141da7e1960f2b555588b90c5a5ed8`;
+- `knee.vankotraining.cz` je mezi aliasy deploymentu;
+- alias error `null`;
+- `/tindeq`: HTTP `200` a render očekávané stránky `Tindeq Repeaters`;
+- `/tindeq/reports/demo`: HTTP `200` a render anonymního kanonického reportu;
+- error/fatal runtime logy nového deploymentu v post-deploy kontrolním okně: žádné nalezené;
+- produkční DB post-check: beze změny a bez aktivních duplicit.
 
-Původní remediation post-check proti manifestu navíc eviduje `missing = 0`, `extra = 0`, `metadata mismatch = 0` a `quality violations = 0`.
+Před merge exact head `a6216eaf2e1cd6f4a85d3fe884074ddec9a46e47` prošel:
+
+- `Verify Tindeq client view` run `31275223170`: PASS;
+- `Project control` run `31275223171`: PASS;
+- deterministic `npm ci`, unit/date regressions, lint-baseline, production build, standalone TypeScript, `project:check`, `git diff --check` a Playwright/browser verification: PASS;
+- exact preview `dpl_AbeXLcb7a7CDTJKsi5wpo7V7zSo2`: `READY`.
 
 ## Poslední výslovné uživatelské produkční ověření
 
-Uživatel po remediation v produkční aplikaci ručně zkontroloval původně problematickou klientskou historii a potvrdil:
+Uživatel po historické remediation v produkční aplikaci ručně zkontroloval dříve problematický historický případ a potvrdil správné datum a 8 repetitions.
 
-- správné datum;
-- správný počet 8 repetitions.
+Tento PASS se vztahuje na historickou remediation a nikoli na nový parser runtime z PR #17.
 
-Tento PASS se vztahuje na ověřený problematický historický případ a stav remediation datasetu. Neznamená produkční ověření parser kódu z PR #17, protože tento kód ještě není produkčně nasazen.
+Parser z PR #17 je nyní produkčně nasazený, ale první nový živý klientský ZIP po tomto rollout ještě nebyl uživatelem manuálně ověřen. Proto parser workflow zatím není označen jako **produkčně ověřeno**.
 
 ## Produkční stav Tindeq
 
-- Tindeq runtime z PR #12 je na produkci nasazený v commitu `8afe1328cfcb8f7ab90bb449775d1de0d441b584`;
-- produkční historický dataset je po schválené remediation stabilní: 26 aktivních správných sessions + 13 soft-deleted chybných importních rows jako auditní stopa;
-- současný produkční `parseTindeqDate()` stále používá heuristiku, která zamění den a měsíc u nejednoznačných hodnot, například `2026-04-08`;
-- draft PR #17 mění parser na pevný Tindeq formát `YYYY-DD-MM HH:mm[:ss]`, validuje kalendářní datum a při neplatném formátu failne;
-- historický archive/remediation evidence potvrzuje potřebnou interpretaci problematických dat jako den–měsíc;
-- PR #17 nemění analytické výpočty síly ani `digest()`/dedupe identitu;
-- PR #17 není produkčně nasazený ani produkčně ověřený.
-
-### Preview stav opravy data
-
-Exact head PR #17 před touto evidence synchronizací:
-
-`97116e1c78ac5f50ec6047f2826d7b4d08b062c9`.
-
-Preview:
-
-`dpl_CZECenUUB3AGY18sjzCv45c6kaCe`.
-
-Doloženo:
-
-- state `READY`;
-- target preview (`null`, nikoli production);
-- exact commit `97116e1c78ac5f50ec6047f2826d7b4d08b062c9`;
-- branch `agent/tindeq-date-format-fix`;
-- alias error `null`;
-- GitHub Actions `Verify Tindeq client view` a `Project control` nad tímto exact headem byly `success`;
-- unit `101/101`, production build, standalone TypeScript, project-control, `git diff --check` a Playwright `10/10` byly PASS;
-- lint odpovídal existujícímu `main` baseline `3 errors / 1 warning` bez nové regrese.
-
-Evidence synchronizace vytváří nový head; finální merge evidence proto musí být znovu doložena exact-head CI a Vercel Preview po těchto změnách.
+- Tindeq ZIP-only runtime je produkčně nasazený;
+- opravený `parseTindeqDate()` z PR #17 je součástí produkčního commitu `47d8be4b51141da7e1960f2b555588b90c5a5ed8`;
+- Tindeq datum se interpretuje jako pevný formát `YYYY-DD-MM HH:mm[:ss]`;
+- kalendářní datum a čas se validují a neplatný/nepodporovaný formát failne místo heuristického odhadu;
+- výpočty síly a `digest()` / dedupe identita nebyly změněny;
+- historický dataset zůstává stabilní 26 aktivních + 13 soft-deleted rows;
+- post-deploy HTTP/read-only smoke je PASS;
+- live new-client acceptance je stále pending.
 
 ## Známé produkční problémy
 
-- produkční parser v `8afe1328cfcb8f7ab90bb449775d1de0d441b584` může nejednoznačné Tindeq datum `YYYY-DD-MM` interpretovat jako `YYYY-MM-DD`, pokud den není větší než 12;
-- oprava je zatím pouze v draft PR #17 a není produkčně nasazená;
-- PR #16 je samostatná prezentační změna a nesmí být mergována společně s PR #17;
-- po merge PR #17 bude PR #16 potřebovat rebase/srovnání dvou společně měněných kanonických project-control souborů.
+- první nové živé klientské měření po parser rollout zatím nebylo manuálně produkčně ověřeno;
+- PR #16 je stále založený na stavu před merge PR #17 a před budoucím mergem vyžaduje rebase/reconciliation dvou kanonických project-control souborů;
+- shared production Supabase má dříve existující advisory nálezy mimo rozsah parser opravy.
