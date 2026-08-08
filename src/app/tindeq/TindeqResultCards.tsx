@@ -1,10 +1,20 @@
 import type { TindeqSession } from "@/lib/tindeq-browser";
-import { buildClientSideView } from "@/lib/tindeq-client-view";
+import { buildClientSideView, presentationMeanForce } from "@/lib/tindeq-client-view";
+import {
+  betweenRepCvStatus,
+  targetAchievementStatus,
+  timeInTargetStatus,
+  TINDEQ_METRIC_COPY,
+  TINDEQ_RULE_TYPE_LABELS,
+  withinRepCvStatus,
+  type TindeqMetricCopy,
+  type TindeqPresentationStatus,
+} from "@/lib/tindeq-metric-presentation";
 import {
   formatTindeqNumber,
   formatTindeqSignedNumber,
-  tindeqToneClass,
 } from "./tindeq-presentation";
+import metricStyles from "./tindeq-metrics.module.css";
 import styles from "./tindeq.module.css";
 
 type SideSummary = TindeqSession["analysis"]["summary"]["left"];
@@ -16,6 +26,66 @@ type SideCardProps = {
   summary: SideSummary;
   unit: string;
 };
+
+export function TindeqStatusBadge({ status }: { status: TindeqPresentationStatus }) {
+  return (
+    <span className={metricStyles.statusBadge} data-tone={status.tone}>
+      {status.label}
+    </span>
+  );
+}
+
+export function TindeqMetricRow({
+  label,
+  value,
+  copy,
+  status,
+}: {
+  label: string;
+  value: string;
+  copy: TindeqMetricCopy;
+  status?: TindeqPresentationStatus;
+}) {
+  return (
+    <div className={metricStyles.metricRow} data-tone={status?.tone}>
+      <div className={metricStyles.metricHeader}>
+        <span className={metricStyles.metricName}>{label}</span>
+        <span className={metricStyles.ruleType}>{TINDEQ_RULE_TYPE_LABELS[copy.ruleType]}</span>
+      </div>
+      <div className={metricStyles.metricValueLine}>
+        <strong className={metricStyles.metricValue}>{value}</strong>
+        {status ? <TindeqStatusBadge status={status} /> : null}
+      </div>
+      <p className={metricStyles.metricExplanation}>{copy.explanation}</p>
+      {copy.detail ? (
+        <details className={metricStyles.metricDetails}>
+          <summary>Více informací</summary>
+          <p>{copy.detail}</p>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+function CompactMetric({
+  label,
+  value,
+  status,
+}: {
+  label: string;
+  value: string;
+  status?: TindeqPresentationStatus;
+}) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>
+        <span>{value}</span>
+        {status ? <TindeqStatusBadge status={status} /> : null}
+      </dd>
+    </div>
+  );
+}
 
 export function ClientSideCard({
   label,
@@ -32,26 +102,29 @@ export function ClientSideCard({
         <h4>{label}</h4>
       </header>
       <dl className={styles.sideMetricList}>
-        <div>
-          <dt>Cílová síla</dt>
-          <dd>{formatTindeqNumber(view.targetForce, 1, ` ${unit}`)}</dd>
-        </div>
-        <div>
-          <dt>Průměrná síla</dt>
-          <dd>{formatTindeqNumber(view.averageForce, 1, ` ${unit}`)}</dd>
-        </div>
-        <div>
-          <dt>Dosažení cíle</dt>
-          <dd>{formatTindeqNumber(view.targetAchievementPct, 0, " %")}</dd>
-        </div>
-        <div>
-          <dt>Čas v cíli</dt>
-          <dd>{formatTindeqNumber(view.timeInTargetPct, 0, " %")}</dd>
-        </div>
-        <div>
-          <dt>Stabilita</dt>
-          <dd className={tindeqToneClass(view.stabilityTone)}>{view.stability}</dd>
-        </div>
+        <CompactMetric
+          label="Cílová síla"
+          value={formatTindeqNumber(view.targetForce, 1, ` ${unit}`)}
+        />
+        <CompactMetric
+          label="Průměrná síla"
+          value={formatTindeqNumber(view.averageForce, 1, ` ${unit}`)}
+        />
+        <CompactMetric
+          label="Dosažení cíle"
+          status={targetAchievementStatus(view.targetAchievementPct)}
+          value={formatTindeqNumber(view.targetAchievementPct, 0, " %")}
+        />
+        <CompactMetric
+          label="Čas v cíli"
+          status={timeInTargetStatus(view.timeInTargetPct)}
+          value={formatTindeqNumber(view.timeInTargetPct, 0, " %")}
+        />
+        <CompactMetric
+          label="Stabilita"
+          status={{ label: view.stability, tone: view.stabilityTone }}
+          value={formatTindeqNumber(summary.medianWithinRepCvPct, 1, " % CV")}
+        />
       </dl>
     </section>
   );
@@ -70,32 +143,52 @@ export function TrainerSideCard({
         <span className={styles.sideDot} aria-hidden="true" />
         <h4>{label}</h4>
       </header>
-      <dl className={styles.sideMetricList}>
-        <div>
-          <dt>Cílová síla</dt>
-          <dd>{formatTindeqNumber(target, 1, ` ${unit}`)}</dd>
-        </div>
-        <div>
-          <dt>Průměrné splnění cíle</dt>
-          <dd>{formatTindeqNumber(summary.meanPctTarget, 1, " %")}</dd>
-        </div>
-        <div>
-          <dt>Čas v pásmu ±5 %</dt>
-          <dd>{formatTindeqNumber(summary.meanTimeIn5Pct, 0, " %")}</dd>
-        </div>
-        <div>
-          <dt>CV během opakování</dt>
-          <dd>{formatTindeqNumber(summary.medianWithinRepCvPct, 1, " %")}</dd>
-        </div>
-        <div>
-          <dt>CV mezi opakováními</dt>
-          <dd>{formatTindeqNumber(summary.betweenRepCvPct, 1, " %")}</dd>
-        </div>
-        <div>
-          <dt>Trend v sérii</dt>
-          <dd>{formatTindeqSignedNumber(summary.trendPctTargetPerRep, 2, " p. b./opak.")}</dd>
-        </div>
-      </dl>
+      <div className={metricStyles.metricList}>
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.targetForce}
+          label="Cílová síla"
+          value={formatTindeqNumber(target, 1, ` ${unit}`)}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.averageForce}
+          label="Průměrná síla"
+          value={formatTindeqNumber(presentationMeanForce(target, summary.meanPctTarget), 1, ` ${unit}`)}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.targetAchievement}
+          label="Dosažení cíle"
+          status={targetAchievementStatus(summary.meanPctTarget)}
+          value={formatTindeqNumber(summary.meanPctTarget, 1, " %")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.timeInTarget}
+          label="Čas v pásmu ±5 %"
+          status={timeInTargetStatus(summary.meanTimeIn5Pct)}
+          value={formatTindeqNumber(summary.meanTimeIn5Pct, 0, " %")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.withinRepCv}
+          label="CV během opakování"
+          status={withinRepCvStatus(summary.medianWithinRepCvPct)}
+          value={formatTindeqNumber(summary.medianWithinRepCvPct, 1, " %")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.betweenRepCv}
+          label="CV mezi opakováními"
+          status={betweenRepCvStatus(summary.betweenRepCvPct)}
+          value={formatTindeqNumber(summary.betweenRepCvPct, 1, " %")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.trend}
+          label="Trend v sérii"
+          value={formatTindeqSignedNumber(summary.trendPctTargetPerRep, 2, " p. b./opak.")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.firstToLast}
+          label="První–poslední"
+          value={formatTindeqSignedNumber(summary.firstToLastChangePctPoints, 1, " p. b.")}
+        />
+      </div>
     </section>
   );
 }

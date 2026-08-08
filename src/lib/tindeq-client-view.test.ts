@@ -82,38 +82,44 @@ test("analyzátor pouze orchestruje import a rendering výsledku", () => {
   assert.doesNotMatch(source, /function TrainerSideCard/);
 });
 
-test("vizuální tón se neurčuje fuzzy parsováním prezentačních textů", () => {
+test("vizuální tón vychází z typovaných statusů a kanonického reportu", () => {
   const source = readFileSync("src/app/tindeq/TindeqSessionResult.tsx", "utf8");
   assert.doesNotMatch(source, /toneForStatus/);
   assert.doesNotMatch(source, /toLocaleLowerCase\([^)]*\).*includes/s);
-  assert.match(source, /clientAccuracyStatus/);
-  assert.match(source, /overallStabilityStatus/);
-  assert.match(source, /overallMaintenanceStatus/);
-  assert.match(source, /domainTone/);
+  assert.match(source, /targetAchievementStatus/);
+  assert.match(source, /withinRepCvStatus/);
+  assert.match(source, /reportFindingStatus/);
+  assert.match(source, /buildTindeqReportFromSession/);
+  assert.match(source, /TindeqStatusBadge/);
 });
 
-test("typované prezentační statusy zachovávají původní význam barev", () => {
-  assert.deepEqual(clientAccuracyStatus("Dobrá"), { label: "Velmi dobře", tone: "good" });
-  assert.deepEqual(clientAccuracyStatus("Ke kontrole"), { label: "Ke kontrole", tone: "warning" });
+test("typované prezentační statusy používají neutral pro nehodnotitelná data", () => {
+  assert.deepEqual(clientAccuracyStatus("Dobrá"), { label: "V cíli", tone: "good" });
+  assert.deepEqual(clientAccuracyStatus("Ke kontrole"), { label: "Sleduj", tone: "warning" });
   assert.deepEqual(clientAccuracyStatus("Výrazná odchylka"), {
-    label: "Výraznější odchylka",
+    label: "Mimo cíl",
     tone: "problem",
   });
-  assert.deepEqual(clientStabilityStatus(null), { label: "Nelze vyhodnotit", tone: "problem" });
-  assert.deepEqual(clientStabilityStatus(6), { label: "Mírně kolísavá", tone: "warning" });
+  assert.deepEqual(clientAccuracyStatus("Nehodnoceno"), {
+    label: "Bez hodnocení",
+    tone: "neutral",
+  });
+  assert.deepEqual(clientStabilityStatus(null), { label: "Bez hodnocení", tone: "neutral" });
+  assert.deepEqual(clientStabilityStatus(6), { label: "Sleduj", tone: "warning" });
+  assert.deepEqual(clientMaintenanceStatus(null), { label: "Bez hodnocení", tone: "neutral" });
   assert.deepEqual(clientMaintenanceStatus(-0.2), {
     label: "Bez výrazného poklesu",
     tone: "good",
   });
   assert.equal(domainTone("Nestabilní"), "problem");
-  assert.equal(domainTone("Nehodnoceno"), "problem");
+  assert.equal(domainTone("Nehodnoceno"), "neutral");
 });
 
 test("klientské názvy nepoužívají dominantní technický žargon", () => {
   assert.deepEqual(CLIENT_VIEW_LABELS, {
     target: "Dosažení cílové síly",
     stability: "Stabilita síly",
-    maintenance: "Udržení výkonu",
+    maintenance: "Vývoj série",
     timeInTarget: "Čas v cíli",
     repeatability: "Opakovatelnost",
   });
@@ -132,6 +138,13 @@ test("dobrý výsledek vytvoří srozumitelný pozitivní popis série", () => {
   assert.match(result.text, /výrazně nesnižoval/);
 });
 
+test("chybějící doména vede k neutrálnímu souhrnu místo falešného problému", () => {
+  const result = buildClientSummary(fixture({ maintenance: "Nehodnoceno" }));
+  assert.equal(result.title, "Bez úplného hodnocení");
+  assert.equal(result.tone, "neutral");
+  assert.match(result.text, /nelze spolehlivě vyhodnotit/);
+});
+
 test("nedosažení cíle se projeví v hlavním závěru bez diagnózy", () => {
   const result = buildClientSummary(
     fixture({ accuracy: "Výrazná odchylka", leftMean: 82, rightMean: 84 }),
@@ -144,7 +157,7 @@ test("nedosažení cíle se projeví v hlavním závěru bez diagnózy", () => {
 
 test("vyšší nestabilita rozliší levou a pravou nohu", () => {
   const session = fixture({ leftCv: 9.2, rightCv: 3.1, control: "Nestabilní" });
-  assert.equal(overallStability(session), "Výrazně kolísavá");
+  assert.equal(overallStability(session), "Vysoká variabilita");
   const comment = buildClientChartComment(session);
   assert.match(comment, /Pravá noha byla stabilnější/);
   assert.match(comment, /levá.*více kolísala/);
@@ -178,7 +191,7 @@ test("bez upozornění se zobrazí neutrální popis série", () => {
   });
 });
 
-test("chybějící a nevypočitatelná data nevracejí NaN ani Infinity", () => {
+test("chybějící a nevypočitatelná data nevracejí NaN ani Infinity ani červený stav", () => {
   const side = buildClientSideView(0, {
     meanPctTarget: Number.NaN,
     medianWithinRepCvPct: Number.POSITIVE_INFINITY,
@@ -186,8 +199,8 @@ test("chybějící a nevypočitatelná data nevracejí NaN ani Infinity", () => 
     trendPctTargetPerRep: null,
   });
   assert.equal(side.averageForce, null);
-  assert.equal(side.stability, "Nelze vyhodnotit");
-  assert.equal(side.stabilityTone, "problem");
+  assert.equal(side.stability, "Bez hodnocení");
+  assert.equal(side.stabilityTone, "neutral");
   assert.doesNotMatch(JSON.stringify(side), /NaN|Infinity/);
 });
 
@@ -205,4 +218,9 @@ test("mobilní klientský obsah zakazuje horizontální overflow mimo graf", () 
   assert.match(css, /\.result\s*\{[^}]*overflow:\s*hidden/s);
   assert.match(css, /\.chartScroller\s*\{[^}]*overflow-x:\s*auto/s);
   assert.match(css, /@media \(max-width: 720px\)/);
+
+  const metricCss = readFileSync("src/app/tindeq/tindeq-metrics.module.css", "utf8");
+  assert.match(metricCss, /\.statusBadge/);
+  assert.match(metricCss, /summary:focus-visible/);
+  assert.match(metricCss, /@media \(max-width: 720px\)/);
 });

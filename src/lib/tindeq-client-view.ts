@@ -1,3 +1,10 @@
+import {
+  domainStatus,
+  withinRepCvStatus,
+  type TindeqPresentationStatus,
+  type TindeqPresentationTone,
+} from "./tindeq-metric-presentation.js";
+
 export type ResultViewMode = "client" | "trainer";
 
 export const DEFAULT_TINDEQ_RESULT_VIEW: ResultViewMode = "client";
@@ -5,17 +12,12 @@ export const DEFAULT_TINDEQ_RESULT_VIEW: ResultViewMode = "client";
 export const CLIENT_VIEW_LABELS = {
   target: "Dosažení cílové síly",
   stability: "Stabilita síly",
-  maintenance: "Udržení výkonu",
+  maintenance: "Vývoj série",
   timeInTarget: "Čas v cíli",
   repeatability: "Opakovatelnost",
 } as const;
 
-export type TindeqPresentationTone = "good" | "warning" | "problem" | "neutral";
-
-export type TindeqPresentationStatus = {
-  label: string;
-  tone: TindeqPresentationTone;
-};
+export type { TindeqPresentationStatus, TindeqPresentationTone };
 
 type NullableNumber = number | null | undefined;
 
@@ -44,7 +46,7 @@ type ClientViewSession = {
 };
 
 export type ClientSummary = {
-  title: "Velmi dobrá série" | "Dobrá série" | "Série ke kontrole" | "Výraznější odchylka";
+  title: "Velmi dobrá série" | "Dobrá série" | "Série ke kontrole" | "Výraznější odchylka" | "Bez úplného hodnocení";
   text: string;
   tone: TindeqPresentationTone;
 };
@@ -84,12 +86,7 @@ export function presentationMeanForce(
 }
 
 export function clientStabilityStatus(cvPct: NullableNumber): TindeqPresentationStatus {
-  const value = finite(cvPct);
-  if (value === null) return { label: "Nelze vyhodnotit", tone: "problem" };
-  if (value <= 3) return { label: "Velmi stabilní", tone: "good" };
-  if (value <= 5) return { label: "Stabilní", tone: "good" };
-  if (value <= 8) return { label: "Mírně kolísavá", tone: "warning" };
-  return { label: "Výrazně kolísavá", tone: "problem" };
+  return withinRepCvStatus(cvPct);
 }
 
 export function clientStabilityLabel(cvPct: NullableNumber): string {
@@ -100,7 +97,7 @@ export function clientMaintenanceStatus(
   trendPctTargetPerRep: NullableNumber,
 ): TindeqPresentationStatus {
   const value = finite(trendPctTargetPerRep);
-  if (value === null) return { label: "Nelze vyhodnotit", tone: "problem" };
+  if (value === null) return { label: "Bez hodnocení", tone: "neutral" };
   if (value >= -0.75) return { label: "Bez výrazného poklesu", tone: "good" };
   if (value >= -1.5) return { label: "Mírný pokles", tone: "warning" };
   return { label: "Výraznější pokles", tone: "problem" };
@@ -111,12 +108,12 @@ export function clientMaintenanceLabel(trendPctTargetPerRep: NullableNumber): st
 }
 
 export function clientAccuracyStatus(domain: string): TindeqPresentationStatus {
-  if (domain === "Dobrá") return { label: "Velmi dobře", tone: "good" };
-  if (domain === "Ke kontrole") return { label: "Ke kontrole", tone: "warning" };
-  if (domain === "Výrazná odchylka") {
-    return { label: "Výraznější odchylka", tone: "problem" };
-  }
-  return { label: "Nelze vyhodnotit", tone: "problem" };
+  const status = domainStatus(domain);
+  if (status.tone === "neutral") return status;
+  if (domain === "Dobrá") return { label: "V cíli", tone: "good" };
+  if (domain === "Ke kontrole") return { label: "Sleduj", tone: "warning" };
+  if (domain === "Výrazná odchylka") return { label: "Mimo cíl", tone: "problem" };
+  return status;
 }
 
 export function clientAccuracyLabel(domain: string): string {
@@ -124,24 +121,11 @@ export function clientAccuracyLabel(domain: string): string {
 }
 
 export function domainTone(domain: string): TindeqPresentationTone {
-  if (domain === "Dobrá" || domain === "Stabilní" || domain === "Bez poklesu") {
-    return "good";
-  }
-  if (domain === "Ke kontrole" || domain === "Mírný pokles") {
-    return "warning";
-  }
-  if (
-    domain === "Výrazná odchylka" ||
-    domain === "Nestabilní" ||
-    domain === "Výrazný pokles" ||
-    domain === "Nehodnoceno"
-  ) {
-    return "problem";
-  }
-  return "neutral";
+  return domainStatus(domain).tone;
 }
 
-function domainSeverity(domain: string, kind: "accuracy" | "control" | "maintenance") {
+function domainSeverity(domain: string, kind: "accuracy" | "control" | "maintenance"): 0 | 1 | 2 | null {
+  if (domain === "Nehodnoceno") return null;
   if (
     (kind === "accuracy" && domain === "Dobrá") ||
     (kind === "control" && domain === "Stabilní") ||
@@ -166,14 +150,19 @@ export function buildClientSummary(session: ClientViewSession): ClientSummary {
     domainSeverity(control, "control"),
     domainSeverity(maintenance, "maintenance"),
   ];
-  const warningCount = severities.filter((value) => value === 1).length;
-  const hasSevere = severities.includes(2);
+  const evaluable = severities.filter((value): value is 0 | 1 | 2 => value !== null);
+  const warningCount = evaluable.filter((value) => value === 1).length;
+  const hasSevere = evaluable.includes(2);
+  const hasMissing = evaluable.length !== severities.length;
 
   let title: ClientSummary["title"];
   let tone: TindeqPresentationTone;
   if (hasSevere) {
     title = "Výraznější odchylka";
     tone = "problem";
+  } else if (hasMissing) {
+    title = "Bez úplného hodnocení";
+    tone = "neutral";
   } else if (warningCount >= 2) {
     title = "Série ke kontrole";
     tone = "warning";
@@ -208,7 +197,7 @@ export function buildClientSummary(session: ClientViewSession): ClientSummary {
         ? "v závěru byl patrný mírný pokles výkonu"
         : maintenance === "Výrazný pokles"
           ? "výkon se během série výrazněji snižoval"
-          : "udržení výkonu nelze spolehlivě vyhodnotit";
+          : "vývoj série nelze spolehlivě vyhodnotit";
 
   const text = `${targetText}, ${stabilityText} a ${maintenanceText}.`;
   return { title, text: text.charAt(0).toUpperCase() + text.slice(1), tone };

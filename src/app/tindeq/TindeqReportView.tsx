@@ -1,9 +1,31 @@
+import {
+  betweenRepCvStatus,
+  reportFindingStatus,
+  recommendationStatus,
+  seriesSummaryStatus,
+  successRateStatus,
+  targetAchievementStatus,
+  technicalFlagRateStatus,
+  timeInTargetStatus,
+  TINDEQ_METRIC_COPY,
+  TINDEQ_RULE_TYPE_LABELS,
+  withinRepCvStatus,
+  type TindeqMetricCopy,
+  type TindeqPresentationStatus,
+} from "@/lib/tindeq-metric-presentation";
 import type {
   TindeqCanonicalReport,
   TindeqReportFinding,
   TindeqReportSide,
 } from "@/lib/tindeq-report";
+import { TindeqMetricRow, TindeqStatusBadge } from "./TindeqResultCards";
+import metricStyles from "./tindeq-metrics.module.css";
 import styles from "./tindeq.module.css";
+
+const DESCRIPTIVE: TindeqMetricCopy = {
+  ruleType: "descriptive",
+  explanation: "Popisná hodnota protokolu bez automatického klinického hodnocení.",
+};
 
 function formatNumber(
   value: number | null | undefined,
@@ -23,25 +45,28 @@ function formatDate(value: string) {
   }).format(parsed);
 }
 
-function toneForStatus(status: string) {
-  if (status === "splněno" || status === "progrese") return styles.good;
-  if (
-    status === "nesplněno" ||
-    status === "regrese" ||
-    status === "technicky nehodnotitelné" ||
-    status === "opakování měření"
-  ) {
-    return styles.problem;
-  }
-  if (
-    status === "hraniční" ||
-    status === "zachování" ||
-    status === "technická úprava provedení" ||
-    status === "doplnění údajů před rozhodnutím"
-  ) {
-    return styles.warning;
-  }
-  return styles.neutral;
+function ContextMetric({
+  label,
+  value,
+  copy,
+  status,
+}: {
+  label: string;
+  value: string;
+  copy: TindeqMetricCopy;
+  status?: TindeqPresentationStatus;
+}) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd className={metricStyles.metricValueLine}>
+        <span>{value}</span>
+        {status ? <TindeqStatusBadge status={status} /> : null}
+      </dd>
+      <small className={metricStyles.ruleType}>{TINDEQ_RULE_TYPE_LABELS[copy.ruleType]}</small>
+      <p className={metricStyles.contextNote}>{copy.explanation}</p>
+    </div>
+  );
 }
 
 function SideReportCard({
@@ -59,40 +84,125 @@ function SideReportCard({
         <span className={styles.sideDot} aria-hidden="true" />
         <h4>{label}</h4>
       </header>
-      <dl className={styles.sideMetricList}>
-        <div><dt>Cílová síla</dt><dd>{formatNumber(side.targetForceKg, 1, " kg")}</dd></div>
-        <div><dt>Průměrná síla</dt><dd>{formatNumber(side.averageForceKg, 1, " kg")}</dd></div>
-        <div><dt>Dosažení cíle</dt><dd>{formatNumber(side.targetAchievementPct, 0, " %")}</dd></div>
-        <div><dt>Čas v cílovém pásmu</dt><dd>{formatNumber(side.timeInTargetPct, 0, " %")}</dd></div>
-        <div><dt>Úspěšná opakování</dt><dd>{side.successfulRepetitions}/{side.evaluableRepetitions}</dd></div>
-        <div><dt>Úspěšnost</dt><dd>{formatNumber(side.successRatePct, 0, " %")}</dd></div>
-        <div><dt>CV uvnitř kontrakce</dt><dd>{formatNumber(side.withinRepCvPct, 1, " %")}</dd></div>
-        <div><dt>CV mezi opakováními</dt><dd>{formatNumber(side.betweenRepCvPct, 1, " %")}</dd></div>
-        <div><dt>Pod cílem / nad cílem</dt><dd>{side.undershootRepetitions} / {side.overshootRepetitions}</dd></div>
-        <div><dt>Průměrný náběh na 95 %</dt><dd>{formatNumber(side.meanOnsetTo95Seconds, 2, " s")}</dd></div>
-        <div><dt>Trend série</dt><dd>{formatNumber(side.trendPctTargetPerRep, 2, " p. b./opak.")}</dd></div>
-        <div><dt>První–poslední</dt><dd>{formatNumber(side.firstToLastChangePctPoints, 1, " p. b.")}</dd></div>
-        <div><dt>Změna času v pásmu</dt><dd>{formatNumber(side.timeInTargetChangePctPoints, 1, " p. b.")}</dd></div>
-      </dl>
+      <div className={metricStyles.metricList}>
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.targetForce}
+          label="Cílová síla"
+          value={formatNumber(side.targetForceKg, 1, " kg")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.averageForce}
+          label="Průměrná síla"
+          value={formatNumber(side.averageForceKg, 1, " kg")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.targetAchievement}
+          label="Dosažení cíle"
+          status={targetAchievementStatus(side.targetAchievementPct)}
+          value={formatNumber(side.targetAchievementPct, 0, " %")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.timeInTarget}
+          label="Čas v cílovém pásmu"
+          status={timeInTargetStatus(side.timeInTargetPct)}
+          value={formatNumber(side.timeInTargetPct, 0, " %")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.successfulRepetitions}
+          label="Úspěšná opakování"
+          value={`${side.successfulRepetitions}/${side.evaluableRepetitions}`}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.successRate}
+          label="Úspěšnost opakování"
+          status={successRateStatus(side.successRatePct)}
+          value={formatNumber(side.successRatePct, 0, " %")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.withinRepCv}
+          label="CV uvnitř kontrakce"
+          status={withinRepCvStatus(side.withinRepCvPct)}
+          value={formatNumber(side.withinRepCvPct, 1, " %")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.betweenRepCv}
+          label="CV mezi opakováními"
+          status={betweenRepCvStatus(side.betweenRepCvPct)}
+          value={formatNumber(side.betweenRepCvPct, 1, " %")}
+        />
+        <TindeqMetricRow
+          copy={DESCRIPTIVE}
+          label="Pod cílem / nad cílem"
+          value={`${side.undershootRepetitions} / ${side.overshootRepetitions}`}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.onsetTo95}
+          label="Průměrný náběh na 95 %"
+          value={formatNumber(side.meanOnsetTo95Seconds, 2, " s")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.trend}
+          label="Trend série"
+          value={formatNumber(side.trendPctTargetPerRep, 2, " p. b./opak.")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.firstToLast}
+          label="První–poslední"
+          value={formatNumber(side.firstToLastChangePctPoints, 1, " p. b.")}
+        />
+        <TindeqMetricRow
+          copy={TINDEQ_METRIC_COPY.timeInTargetChange}
+          label="Změna času v pásmu"
+          value={formatNumber(side.timeInTargetChangePctPoints, 1, " p. b.")}
+        />
+      </div>
     </section>
   );
 }
 
-function FindingCard({ finding }: { finding: TindeqReportFinding }) {
+function neutralizeFatigueRule(rule: string) {
+  return rule
+    .replaceAll("běžná únava", "hraniční výkonový trend")
+    .replaceAll("Bez poklesu", "V cíli");
+}
+
+function FindingCard({
+  finding,
+  copy,
+  title,
+  summary,
+  neutralizeRules = false,
+}: {
+  finding: TindeqReportFinding;
+  copy: TindeqMetricCopy;
+  title?: string;
+  summary?: string;
+  neutralizeRules?: boolean;
+}) {
+  const status = reportFindingStatus(finding.status);
   return (
-    <section className={styles.protocolCard}>
+    <section className={`${styles.protocolCard} ${metricStyles.findingCard}`} data-tone={status.tone}>
       <div>
         <p className={styles.eyebrow}>Pravidlový závěr</p>
-        <h3>{finding.title}</h3>
-        <strong className={toneForStatus(finding.status)}>{finding.status}</strong>
-        <p>{finding.summary}</p>
+        <div className={metricStyles.findingHeading}>
+          <h3>{title ?? finding.title}</h3>
+          <TindeqStatusBadge status={status} />
+        </div>
+        <p>{summary ?? finding.summary}</p>
+        <p className={metricStyles.contextNote}>{copy.explanation}</p>
+        {copy.detail ? (
+          <details className={metricStyles.metricDetails}>
+            <summary>Více informací</summary>
+            <p>{copy.detail}</p>
+          </details>
+        ) : null}
       </div>
       <dl className={styles.protocolGrid}>
         {finding.evidence.map((item) => (
           <div key={`${finding.title}-${item.metric}`}>
             <dt>{item.metric}</dt>
             <dd>{item.value}</dd>
-            <small>{item.rule}</small>
+            <small>{neutralizeRules ? neutralizeFatigueRule(item.rule) : item.rule}</small>
           </div>
         ))}
       </dl>
@@ -106,6 +216,11 @@ export default function TindeqReportView({
   report: TindeqCanonicalReport;
 }) {
   const { context, performance, control, fatigue, reaction } = report;
+  const interpretationStatus = reportFindingStatus(report.interpretation.status);
+  const interpretationSummary = seriesSummaryStatus(report.interpretation.status);
+  const recommendation = recommendationStatus(report.recommendation.action);
+  const painComplete = context.painBefore !== null && context.painDuring !== null && context.painAfter !== null;
+
   return (
     <article aria-labelledby="canonical-report-title">
       <section className={styles.section}>
@@ -124,20 +239,53 @@ export default function TindeqReportView({
             <p>{formatDate(context.measuredAt)}</p>
           </div>
           <dl className={styles.protocolGrid}>
-            <div><dt>Protokol</dt><dd>{context.protocol || "–"}</dd></div>
-            <div><dt>Úhel kolene</dt><dd>{formatNumber(context.kneeAngleDegrees, 0, "°")}</dd></div>
-            <div><dt>MVIC / maximum levá</dt><dd>{formatNumber(context.previousMaxLeftKg, 1, " kg")}</dd></div>
-            <div><dt>MVIC / maximum pravá</dt><dd>{formatNumber(context.previousMaxRightKg, 1, " kg")}</dd></div>
-            <div><dt>Předepsaná intenzita</dt><dd>{formatNumber(context.prescribedPct, 0, " %")}</dd></div>
-            <div><dt>Cíl levá / pravá</dt><dd>{formatNumber(context.targetForceLeftKg, 1, " kg")} / {formatNumber(context.targetForceRightKg, 1, " kg")}</dd></div>
-            <div><dt>Opakování</dt><dd>{context.detectedRepetitions}/{context.expectedRepetitions}</dd></div>
-            <div><dt>Bolest před / během / po</dt><dd>{formatNumber(context.painBefore, 0, "/10")} / {formatNumber(context.painDuring, 0, "/10")} / {formatNumber(context.painAfter, 0, "/10")}</dd></div>
+            <ContextMetric label="Protokol" value={context.protocol || "–"} copy={DESCRIPTIVE} />
+            <ContextMetric
+              label="Úhel kolene"
+              value={formatNumber(context.kneeAngleDegrees, 0, "°")}
+              copy={{ ruleType: "contextual", explanation: "Úhel je součást standardizace měření. Samotná hodnota zde není klasifikována jako dobrá nebo špatná." }}
+            />
+            <ContextMetric
+              label="MVIC / maximum levá"
+              value={formatNumber(context.previousMaxLeftKg, 1, " kg")}
+              copy={TINDEQ_METRIC_COPY.previousMax}
+            />
+            <ContextMetric
+              label="MVIC / maximum pravá"
+              value={formatNumber(context.previousMaxRightKg, 1, " kg")}
+              copy={TINDEQ_METRIC_COPY.previousMax}
+            />
+            <ContextMetric
+              label="Předepsaná intenzita"
+              value={formatNumber(context.prescribedPct, 0, " %")}
+              copy={TINDEQ_METRIC_COPY.prescribedIntensity}
+            />
+            <ContextMetric
+              label="Cíl levá / pravá"
+              value={`${formatNumber(context.targetForceLeftKg, 1, " kg")} / ${formatNumber(context.targetForceRightKg, 1, " kg")}`}
+              copy={TINDEQ_METRIC_COPY.targetForce}
+            />
+            <ContextMetric
+              label="Opakování"
+              value={`${context.detectedRepetitions}/${context.expectedRepetitions}`}
+              copy={DESCRIPTIVE}
+            />
+            <ContextMetric
+              label="Bolest před / během / po"
+              value={`${formatNumber(context.painBefore, 0, "/10")} / ${formatNumber(context.painDuring, 0, "/10")} / ${formatNumber(context.painAfter, 0, "/10")}`}
+              copy={TINDEQ_METRIC_COPY.painReaction}
+              status={painComplete ? reportFindingStatus(reaction.finding.status) : { label: "Bez hodnocení", tone: "neutral" }}
+            />
           </dl>
         </section>
 
         {context.missingData.length > 0 ? (
-          <section className={styles.alert}>
-            <strong>Chybějící kontext</strong>
+          <section className={metricStyles.neutralNotice}>
+            <div className={metricStyles.findingHeading}>
+              <strong>Chybějící kontext</strong>
+              <TindeqStatusBadge status={{ label: "Bez hodnocení", tone: "neutral" }} />
+            </div>
+            <p>Chybějící údaj sám o sobě není červený klinický nález. Omezuje pouze to, co lze z reportu spolehlivě vyvodit.</p>
             <ul>{context.missingData.map((item) => <li key={item}>{item}</li>)}</ul>
           </section>
         ) : null}
@@ -146,53 +294,96 @@ export default function TindeqReportView({
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
           <div><p className={styles.eyebrow}>2. Výkon</p><h3>Výsledek podle strany</h3></div>
-          <span>Úspěšné opakování: 95–105 % cíle a ≥60 % času v pásmu</span>
+          <span>Pracovní pravidlo úspěšného opakování: 95–105 % cíle a ≥60 % času v pásmu</span>
         </div>
         <div className={styles.sideGrid}>
           <SideReportCard accentClass={styles.leftSide} label="Levá noha" side={performance.left} />
           <SideReportCard accentClass={styles.rightSide} label="Pravá noha" side={performance.right} />
         </div>
-        <dl className={styles.protocolGrid}>
-          <div><dt>Rozdíl normalizovaného výkonu</dt><dd>{formatNumber(performance.normalizedSideDifferencePctPoints, 1, " p. b.")}</dd></div>
-          <div><dt>Rozdíl průměrné síly</dt><dd>{formatNumber(performance.averageForceDifferenceKg, 1, " kg")}</dd></div>
-        </dl>
-        <FindingCard finding={performance.finding} />
+        <section className={styles.protocolCard}>
+          <div>
+            <p className={styles.eyebrow}>Porovnání stran</p>
+            <h3>Kontextové rozdíly</h3>
+          </div>
+          <dl className={styles.protocolGrid}>
+            <ContextMetric
+              label="Rozdíl normalizovaného výkonu"
+              value={formatNumber(performance.normalizedSideDifferencePctPoints, 1, " p. b.")}
+              copy={TINDEQ_METRIC_COPY.normalizedSideDifference}
+            />
+            <ContextMetric
+              label="Rozdíl průměrné síly"
+              value={formatNumber(performance.averageForceDifferenceKg, 1, " kg")}
+              copy={TINDEQ_METRIC_COPY.averageForceDifference}
+            />
+          </dl>
+        </section>
+        <FindingCard finding={performance.finding} copy={TINDEQ_METRIC_COPY.targetAchievement} />
       </section>
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
           <div><p className={styles.eyebrow}>3. Kontrola a stabilita</p><h3>Variabilita a technický průběh</h3></div>
         </div>
-        <dl className={styles.protocolGrid}>
-          <div><dt>Průměrný rozdíl náběhu stran</dt><dd>{formatNumber(control.meanAbsOnsetDifferenceSeconds, 2, " s")}</dd></div>
-          <div><dt>Opakování s technickým flagem</dt><dd>{control.repetitionsWithTechnicalFlags}</dd></div>
-          <div><dt>Podíl technických flagů</dt><dd>{formatNumber(control.technicalFlagRatePct, 0, " %")}</dd></div>
-        </dl>
-        <FindingCard finding={control.finding} />
+        <section className={styles.protocolCard}>
+          <div>
+            <p className={styles.eyebrow}>Technický kontext</p>
+            <h3>Důvěra v záznam</h3>
+          </div>
+          <dl className={styles.protocolGrid}>
+            <ContextMetric
+              label="Průměrný rozdíl náběhu stran"
+              value={formatNumber(control.meanAbsOnsetDifferenceSeconds, 2, " s")}
+              copy={TINDEQ_METRIC_COPY.onsetDifference}
+            />
+            <ContextMetric
+              label="Opakování s technickým flagem"
+              value={String(control.repetitionsWithTechnicalFlags)}
+              copy={DESCRIPTIVE}
+            />
+            <ContextMetric
+              label="Podíl technických flagů"
+              value={formatNumber(control.technicalFlagRatePct, 0, " %")}
+              copy={TINDEQ_METRIC_COPY.technicalFlags}
+              status={technicalFlagRateStatus(control.technicalFlagRatePct)}
+            />
+          </dl>
+        </section>
+        <FindingCard finding={control.finding} copy={TINDEQ_METRIC_COPY.withinRepCv} />
       </section>
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
-          <div><p className={styles.eyebrow}>4. Únava a vývoj série</p><h3>{fatigue.pattern}</h3></div>
+          <div><p className={styles.eyebrow}>4. Vývoj série</p><h3>Souhrn výkonového trendu</h3></div>
         </div>
-        <FindingCard finding={fatigue.finding} />
+        <FindingCard
+          copy={TINDEQ_METRIC_COPY.seriesDevelopment}
+          finding={fatigue.finding}
+          neutralizeRules
+          summary={TINDEQ_METRIC_COPY.seriesDevelopment.explanation}
+          title="Vývoj série"
+        />
       </section>
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
-          <div><p className={styles.eyebrow}>5. Interpretace</p><h3>{report.interpretation.headline}</h3></div>
-          <strong className={toneForStatus(report.interpretation.status)}>{report.interpretation.status}</strong>
+          <div><p className={styles.eyebrow}>5. Interpretace</p><h3>{interpretationSummary.title}</h3></div>
+          <TindeqStatusBadge status={interpretationStatus} />
         </div>
-        <p>{report.interpretation.summary}</p>
-        <FindingCard finding={reaction.finding} />
+        <p>{interpretationSummary.explanation}</p>
+        <FindingCard finding={reaction.finding} copy={TINDEQ_METRIC_COPY.painReaction} />
       </section>
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
-          <div><p className={styles.eyebrow}>6. Doporučení pro další trénink</p><h3 className={toneForStatus(report.recommendation.action)}>{report.recommendation.action}</h3></div>
+          <div><p className={styles.eyebrow}>6. Doporučení pro další trénink</p><h3>{report.recommendation.action}</h3></div>
+          <TindeqStatusBadge status={recommendation} />
         </div>
-        <section className={styles.alert}>
-          <strong>{report.recommendation.summary}</strong>
+        <section className={`${styles.protocolCard} ${metricStyles.findingCard}`} data-tone={recommendation.tone}>
+          <div>
+            <strong>{report.recommendation.summary}</strong>
+            <p className={metricStyles.contextNote}>Doporučení vychází z pracovních pravidel tohoto reportu a dostupného kontextu.</p>
+          </div>
           <ul>{report.recommendation.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
         </section>
       </section>
