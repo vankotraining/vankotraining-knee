@@ -97,6 +97,36 @@ Po aplikaci:
 
 SQL Editor lze použít pro read-only auditní a kontrolní dotazy. Schéma nebo produkční data se jím nesmí měnit mimo předem schválený, verzovaný migrační postup.
 
+### Tindeq phase-5 active-session dedupe gate
+
+Kanonický migrační soubor je `supabase/migrations/20260807_tindeq_active_session_unique.sql`.
+
+Před produkční aplikací vždy fresh ověř:
+
+- počet všech a aktivních `public.tindeq_sessions`;
+- chybějící/neplatný `raw_metadata ->> 'tindeqSessionId'` podle `^[0-9a-f]{20}$`;
+- aktivní duplicate groups podle `(athlete_id, analysis_version, raw_metadata ->> 'tindeqSessionId')`;
+- existenci/neexistenci `tindeq_sessions_source_session_id_valid`;
+- existenci/neexistenci `tindeq_sessions_active_source_session_uidx`;
+- RLS, policies a relevantní grants;
+- že repo SQL stále odpovídá skutečnému produkčnímu schématu.
+
+Migrace sama nesmí deduplikovat ani mazat produkční data. Pokud pre-check najde invalidní ID nebo duplicate group, gate je FAIL a migrace se neaplikuje, dokud nebude zvlášť schválený datový remediation plán.
+
+Rollback po úspěšně commitnuté phase-5 migraci je omezený na odstranění nových schema objektů:
+
+```sql
+begin;
+drop index if exists public.tindeq_sessions_active_source_session_uidx;
+alter table public.tindeq_sessions
+  drop constraint if exists tindeq_sessions_source_session_id_valid;
+commit;
+```
+
+Pokud samotná transakční migrace selže před `commit`, změny se nesmí vydávat za aplikované a musí se ověřit skutečný post-failure stav.
+
+Po schválené migraci spusť `supabase/checks/20260807_tindeq_active_session_unique_checks.sql`, ověř migrační historii, oba schema objekty, nulový počet invalidních/duplicate skupin, nezměněné RLS/policies/grants a relevantní advisors.
+
 ## 6. Produkční kontrola
 
 Výchozí produkční kontrola je neinvazivní:
@@ -148,6 +178,15 @@ Pokud preview project ref nelze nezávisle přečíst, write acceptance zůstáv
 3. nepřepisuj produkci ad-hoc;
 4. připrav explicitní srovnávací migraci a rollback;
 5. produkční DDL proveď až po schválení.
+
+## 9. Deterministická Node/npm instalace
+
+- kanonický package manager pro tento projekt je npm s commitnutým `package-lock.json`;
+- CI používá `npm ci`, nikoli `npm install`;
+- po čistém `npm ci` nesmí vzniknout diff v `package.json` ani `package-lock.json`;
+- lockfile se negeneruje ani neopravuje ručně; při legitimní změně dependencies se aktualizuje standardním npm workflow a znovu se ověří čistým `npm ci`;
+- lint branch vs. current `main` musí používat stejný lockfile-backed toolchain; pokud `main` dependency specs nejsou podmnožinou PR head specs, baseline porovnání se musí zastavit místo tichého doinstalování jiné resolution;
+- Vercel custom install command se nezavádí bez prokázané potřeby; z Vercel build logu se eviduje pouze to, co log skutečně ukazuje, a netvrdí se `npm ci`, pokud interní příkaz log neexponuje.
 
 ## Minimální provozní pravidla
 

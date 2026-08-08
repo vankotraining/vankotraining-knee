@@ -8,7 +8,7 @@
 
 `7e11aa88fb0c14b5216542d4e03101aee082ec17` – `Record project-control phase 1 completion`.
 
-PR #12 zůstává založený přímo na tomto `main`.
+PR #12 je stále založený přímo na tomto `main`.
 
 Tento soubor eviduje kanonický stav projektu, ale nemůže autoritativně obsahovat vlastní budoucí commit SHA. Přesný živý head PR, CI a Vercel deployment se před další změnou vždy znovu resolve přes GitHub/Vercel.
 
@@ -16,16 +16,14 @@ Tento soubor eviduje kanonický stav projektu, ale nemůže autoritativně obsah
 
 - větev: `agent/tindeq-results-site`;
 - draft PR: `#12`;
-- PR je otevřený, ne-merged a při poslední kontrole mergeable;
-- bezpečná záloha původního experimentálního headu: `backup/tindeq-results-site-2026-08-07-1c5c5334`;
-- phase-3 exact head: `e73730c55f7b2e56f638acf380736deaed628df5`;
-- phase-4 exact head: `d67a89765b59b0f5ca8db4268cf543beac6082b7`;
-- phase-5 exact head: `f3b4dcc5c5904a2560e765deb34986ee716b8387`;
-- phase-6 verification head: `2f1c6c0c127b35020f32da97a886111648a46342`;
-- phase-7 auth incident byl diagnostikován nad headem `aea7340a5d50462905d122c7b54b75fc00c91993`;
-- phase-7 auth hardening + reálný magic-link acceptance byly provedeny na runtime headu `3d3bc241b2085ed3c547bdfc219ea1d9f4a4e2c1`;
-- phase-7 reálný ZIP acceptance byl manuálně potvrzen uživatelem a backendově doložen na dev Supabase jako idempotentní duplicate save stejného skutečného ZIP výsledku;
-- PR #14 je merged; PR #15 je uzavřen bez merge.
+- PR je otevřený, ne-merged a při fresh kontrole `2026-08-08` mergeable;
+- submitted reviews: `0`;
+- review threads / unresolved review threads: `0`;
+- phase-7 runtime head s manuálním acceptance: `3d3bc241b2085ed3c547bdfc219ea1d9f4a4e2c1`;
+- phase-7 source-of-truth head před merge-readiness prací: `96ae61a926c8700a0b4ed20fe5540b97f09c7920`;
+- poslední exact implementation head deterministické instalace před tímto dokumentačním syncem: `aa4471d90e796a01030622b6b2028f8a28d7156d`.
+
+Od phase-7 headu `96ae61a9...` do `aa4471d9...` se změnily pouze `.github/workflows/tindeq-client-view.yml`, `package-lock.json` a `tsconfig.json`; Tindeq runtime, auth, ZIP parser ani persistence kód se nezměnily.
 
 ## Produkční runtime commit
 
@@ -43,131 +41,107 @@ Tindeq runtime z PR #12 tedy stále není v produkčním `main`.
 
 ### Produkční Supabase `zxvndqicslyulrinbpyn`
 
-Fresh read-only kontrola `2026-08-07`:
+Fresh read-only pre-check `2026-08-08`:
 
-- `67` klientů / `66` aktivních;
-- `0` Tindeq sessions / `0` aktivních;
-- phase-5 index `tindeq_sessions_active_source_session_uidx`: neexistuje;
-- phase-5 constraint `tindeq_sessions_source_session_id_valid`: neexistuje;
-- phase-5 dedupe migrace není na produkci aplikovaná;
-- žádná produkční DDL ani datová mutace nebyla při fázích 5–7 provedena.
+- `public.tindeq_sessions`: `0` celkem / `0` aktivních;
+- chybějící nebo neplatný `raw_metadata ->> 'tindeqSessionId'`: `0`;
+- aktivní duplicate groups podle `(athlete_id, analysis_version, tindeqSessionId)`: `0`;
+- constraint `tindeq_sessions_source_session_id_valid`: neexistuje;
+- index `tindeq_sessions_active_source_session_uidx`: neexistuje;
+- RLS je zapnuté;
+- relevantní policies a grants odpovídají dev schématu před phase-5 invariantem;
+- repo migration SQL odpovídá skutečnému produkčnímu schématu a přidává pouze očekávaný CHECK + partial unique expression index;
+- phase-5 migrace není aplikovaná;
+- při této merge-readiness práci nebyla provedena žádná produkční DDL, Auth, environment-variable ani datová mutace.
 
-### Vývojový Supabase `twndqnmrvefhwuwuglju`
+Připravený migrační soubor:
 
-Na dev je aplikována migrace:
+`supabase/migrations/20260807_tindeq_active_session_unique.sql`.
 
-`20260807170014 tindeq_active_session_unique`.
+Pre/post checks:
 
-Ověřený stav:
-
-- validated constraint `tindeq_sessions_source_session_id_valid` vyžaduje `^[0-9a-f]{20}$`;
-- partial unique expression index `tindeq_sessions_active_source_session_uidx` vynucuje jednu aktivní identitu `(athlete_id, analysis_version, tindeqSessionId)`;
-- `WHERE deleted_at IS NULL` zachovává soft-delete/reimport semantiku;
-- po phase-7 acceptance je stále `1` Tindeq session / `1` aktivní;
-- `0` neplatných source session ID;
-- `0` aktivních duplicate groups;
-- duplicate enforcement probe → očekávaný `unique_violation`;
-- invalid-ID enforcement probe → očekávaný `check_violation`.
-
-Repo artefakty:
-
-- `supabase/migrations/20260807_tindeq_active_session_unique.sql`;
 - `supabase/checks/20260807_tindeq_active_session_unique_precheck.sql`;
 - `supabase/checks/20260807_tindeq_active_session_unique_checks.sql`.
 
-## Fáze 7 — magic-link localhost incident
+### Vývojový Supabase `twndqnmrvefhwuwuglju`
 
-Dne `2026-08-08` byl diagnostikován dev Supabase magic-link tok, který při testu z deployment-specific Vercel Preview vytvořil e-mail s návratem na `http://localhost:3000`.
+Fresh read-only stav `2026-08-08`:
 
-Důkazy příčiny:
+- `1` Tindeq session / `1` aktivní;
+- `0` neplatných source session ID;
+- `0` aktivních duplicate groups;
+- validated constraint `tindeq_sessions_source_session_id_valid` existuje;
+- partial unique index `tindeq_sessions_active_source_session_uidx` existuje;
+- phase-5 invariant je tedy na dev aktivní.
 
-- incidentní exact-head preview `dpl_9Tm6yhvadykKviQXrKBajs3Sm3cB` bylo postavené z PR headu `aea7340a5d50462905d122c7b54b75fc00c91993`;
-- `TindeqWorkspace.tsx` měl v posledním prokazatelně funkčním branch-preview toku 7. 8. i v incidentním headu stejný blob a stejný výpočet redirectu z aktuální browser domény;
-- funkční požadavky 7. 8. se vracely na branch alias `vankotraining-knee-git-agent-tin-d8df0b-vankotrainings-projects.vercel.app/tindeq`;
-- incidentní e-maily 8. 8. obsahovaly jako efektivní `redirect_to` localhost;
-- Supabase Auth používá nepovolený `redirect_to` jako důvod k fallbacku na `Site URL`; logové pole `referer` proto není samo o sobě důkaz skutečného browser originu;
-- repo neobsahuje service worker, PWA cache, middleware, auth callback route, hardcoded `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_VERCEL_URL` ani druhou implementaci `signInWithOtp`;
-- `next.config.ts` neobsahuje redirecty.
+## Fáze 7 — acceptance
 
-Efektivní příčina byla dev Supabase Auth redirect policy, která akceptovala branch alias, ale ne deployment-specific preview hostname; fallback Site URL byl localhost. Dostupný Supabase konektor neumí Auth URL Configuration přímo read/write, takže přesný obsah Dashboard allowlistu není nezávisle exportovatelný. Závěr je doložen chováním obou URL, vygenerovanými e-maily, Auth logy a nezměněným aplikačním auth kódem.
+Fáze 7 je **manuálně ověřeno: PASS**.
 
-Repo hardening:
+Na exact preview pro runtime head `3d3bc241b2085ed3c547bdfc219ea1d9f4a4e2c1` bylo uživatelem potvrzeno:
 
-- magic-link redirect se počítá jedinou fail-closed utilitou z aktuálního schváleného Knee URL;
-- localhost lze z helperu získat pouze tehdy, když aktuální browser URL je skutečně localhost/127.0.0.1;
-- deployment-specific i branch-alias Vercel Preview mají explicitní regresní test;
-- preview guard bezpečně zobrazuje aktuální origin/path a vypočtený redirect bez query/hash, takže nevystavuje magic-link tokeny.
+- dev Supabase environment guard;
+- magic-link přihlášení z deployment-specific Vercel Preview;
+- návrat magic linku na stejný exact preview `/tindeq` bez localhostu;
+- úspěšný `/verify` a aktivní session;
+- skutečný Tindeq ZIP import;
+- explicitní save;
+- následné načtení historie;
+- idempotentní duplicate handling stejného skutečného Tindeq výsledku;
+- nevznikl druhý aktivní duplicate DB řádek.
 
-### Reálný magic-link acceptance — PASS
+Produkční Supabase/Auth ani produkční runtime během fáze 7 změněny nebyly. Preview acceptance není produkční ověření.
 
-Acceptance proběhl `2026-08-08` na runtime headu `3d3bc241b2085ed3c547bdfc219ea1d9f4a4e2c1` a exact preview:
+## Deterministická instalace a exact-head verification
 
-`dpl_ERZJCHPrHL4XgFp23kBPVTmfSmtV` → `https://vankotraining-knee-7nshti6cq-vankotrainings-projects.vercel.app/tindeq`.
+Autentický `package-lock.json` byl vytvořen standardním npm workflow na GitHub-hosted runneru, nikoli ručně:
 
-Před odesláním uživatel manuálně potvrdil:
+- bootstrap run: `31245994950`;
+- Node `22.23.1`, npm `10.9.8`;
+- `npm install --no-audit --no-fund` vytvořilo lockfile;
+- následný čistý `npm ci --no-audit --no-fund` prošel;
+- `package.json` zůstal beze změny;
+- `package-lock.json` zůstal po `npm ci` byte-identický;
+- výsledný lockfile má `lockfileVersion: 3`.
 
-- `Testovací Knee preview`;
-- databáze = dev Supabase `twndqnmrvefhwuwuglju`;
-- aktuální stránka = exact preview `/tindeq`;
-- Origin = stejný exact preview origin;
-- vypočtený magic-link target = stejný exact preview `/tindeq`.
+CI bylo změněno z `npm install` na `npm ci`. Lint baseline `main` se porovnává stejným lockfile-backed toolchainem a CI explicitně kontroluje, že current-main dependency specs jsou podmnožinou branch specs.
 
-Dev Auth po ruční změně URL Configuration reloadoval konfiguraci v `06:27:24Z` a `06:27:50Z`. Produkční Supabase/Auth nebyl změněn.
+Při prvním samostatném `tsc --noEmit` se prokázal config-scope problém: root `tsconfig.json` s `target: ES2017` globem zahrnoval `*.test.ts`, zatímco testy jsou záměrně kompilované přes `tsconfig.test.json` s `target: ES2022`. Oprava pouze oddělila app a test TypeScript scope; runtime kód se nezměnil.
 
-Jediný nový acceptance pokus:
+Exact implementation head `aa4471d90e796a01030622b6b2028f8a28d7156d` je **automaticky ověřeno** runem `31246203230`:
 
-- `06:44:14Z` `/otp` → `200`;
-- `06:44:14Z` `mail.send` pro magic link;
-- skutečný přijatý e-mail obsahoval `redirect_to=https://vankotraining-knee-7nshti6cq-vankotrainings-projects.vercel.app/tindeq`, bez localhostu;
-- `06:44:37Z` `/verify` → `303` se stejným exact preview `/tindeq` jako efektivním redirectem;
-- následný login proběhl úspěšně a `/user` → `200`;
-- uživatel po návratu manuálně potvrdil, že Knee preview session funguje.
+- čistý `npm ci`: PASS a lockfile/package manifest bez diffu;
+- unit testy: `93/93` PASS;
+- auth hardening + environment guard testy: PASS;
+- ZIP workflow testy: PASS;
+- dedupe/race testy: PASS;
+- lint: `main = 3 errors + 1 warning`, branch = `3 errors + 1 warning`; žádná nová lint chyba ani warning;
+- production build: PASS;
+- Next.js TypeScript: PASS;
+- standalone app `tsc --noEmit`: PASS;
+- project-control check: PASS;
+- `git diff --check`: PASS;
+- Playwright: `10/10` PASS;
+- screenshot artifact: `9018581436`, 5 PNG, SHA-256 `5be6f7bf2122d473f924f13e913e176923eec4a664a15f1601dddc3e8b6bae92`.
 
-Verdikt auth sub-gate:
+Exact preview pro tento implementation head:
 
-- příčina prokázána: ano;
-- hardening implementován: ano;
-- exact preview nasazeno: ano;
-- automatické testy: PASS (`93/93` unit, build/TS, project-control, diff, Playwright `10/10`; lint beze změny proti `main` baseline);
-- reálný magic-link end-to-end acceptance: PASS;
-- localhost regression na testovaném exact preview: odstraněna;
-- další OTP test není potřeba, pokud se auth kód nebo dev Auth konfigurace znovu nezmění.
-
-### Reálný Tindeq ZIP acceptance — PASS
-
-Uživatel následně manuálně potvrdil, že na ověřeném Tindeq preview nahrál skutečný Tindeq ZIP a provedl jeho uložení.
-
-Použitý ZIP odpovídal již existujícímu dev záznamu:
-
-- `source_filename = repeaters_2026_31_07_11_34_20260731 Kominak Norbert 2.zip`;
-- klient v dev DB = `TEST Tindeq`;
-- `analysis_version = tindeq-repeaters-v1`;
-- `tindeqSessionId = a10424fb2f9bf4efc2f0`;
-- uložený výsledek obsahuje `8` repetition rows.
-
-Backend evidence po uživatelském save:
-
-- aplikace provedla přesný GET duplicate lookup nad `(athlete_id, analysis_version, raw_metadata contains tindeqSessionId)` a dostala `200`;
-- bezprostředně potom znovu načetla aktivní historii klienta z `tindeq_sessions` a dostala `200`;
-- nevznikl druhý aktivní řádek ani duplicate group;
-- dev DB po acceptance zůstala na `1` Tindeq session / `1` aktivní.
-
-To znamená, že reálný ZIP průchod skončil očekávanou idempotentní duplicate cestou. Nešlo o fresh INSERT nového unikátního výsledku; naopak bylo ověřeno, že opakované uložení stejné skutečné session nevytvoří duplicitu a aplikace vrátí existující výsledek/historii. Uživatel funkčnost manuálně potvrdil.
-
-Verdikt ZIP sub-gate:
-
-- skutečný ZIP import: manuálně PASS;
-- explicitní save: manuálně PASS;
-- serverová identita stejné session: potvrzena;
-- idempotentní deduplikace: PASS;
-- následné načtení historie: backendově PASS;
-- nový duplicitní DB řádek: nevznikl.
+- deployment `dpl_7v8m7r2JTHxKMXZtQ36qzAp9v6eg`;
+- exact SHA `aa4471d90e796a01030622b6b2028f8a28d7156d`;
+- `READY`;
+- alias error: `null`;
+- branch alias: `vankotraining-knee-git-agent-tin-d8df0b-vankotrainings-projects.vercel.app`;
+- Vercel build dokončil dependency install, Next build a TypeScript;
+- Vercel log neexponuje přesný interní npm install příkaz, proto se netvrdí, že Vercel explicitně spustil `npm ci`;
+- duplicitní Vercel projekt nevytvořil pro nové SHA žádný deployment.
 
 ## Aktuální fáze
 
-**Fáze 7 – exact-head testy a manuální acceptance jsou dokončené.**
+**PR #12 merge-readiness je technicky připravený k produkčnímu phase-5 DB approval gate.**
 
-Magic-link end-to-end tok i reálný Tindeq ZIP průchod jsou uzavřené jako PASS. ZIP acceptance využil již existující skutečný session ID a proto validoval idempotentní duplicate save namísto fresh insertu; tento rozdíl je evidovaný a není maskovaný jako nový zápis.
+Fáze 7 je dokončena. Deterministic lockfile / `npm ci` gate a exact implementation-head verification jsou PASS. Fresh produkční DB pre-check je PASS. Produkční phase-5 migrace je pouze připravená, nikoli aplikovaná.
+
+PR zůstává draft a není automaticky označen ready-for-review ani merged.
 
 ## Implementováno v `main`
 
@@ -179,30 +153,38 @@ Magic-link end-to-end tok i reálný Tindeq ZIP průchod jsou uzavřené jako PA
 
 ## Rozpracováno mimo `main`
 
-PR #12 zachovává jediný podporovaný tok:
+PR #12 obsahuje:
 
-`Tindeq ZIP` → lokální validace/rozbalení → normalizovaná `TindeqSession` → náhled → explicitní klient → explicitní save → historie → klientský/trenérský výstup → `tindeq-report-v1`.
-
-Fáze 3 oddělila prezentační odpovědnosti, fáze 4 srovnala dev DB a zavedla DB-aware environment guard, fáze 5 přidala atomický DB dedupe invariant + race recovery, fáze 6 odstranila paralelní Git auto-deployment cestu ve Vercelu a fáze 7 dokončila exact-head automatické testy, reálný magic-link acceptance a reálný ZIP acceptance.
+- jediný podporovaný Tindeq ZIP-only tok;
+- fail-closed auth/environment guard a preview magic-link hardening;
+- normalizaci, explicitní save, historii, klientský/trenérský výstup a report;
+- DB-aware idempotentní dedupe + race recovery;
+- phase-5 DB invariant a checks;
+- autentický npm lockfile;
+- deterministické CI přes `npm ci`;
+- oddělený app/test TypeScript scope pro samostatný typecheck.
 
 ## Nasazeno
 
 - produkčně: pouze `main` `7e11aa88fb0c14b5216542d4e03101aee082ec17` v `dpl_J1ECuULAhWHXHnZvpmJgFMFEbzd1`;
-- manuálně accepted phase-7 runtime preview: `dpl_ERZJCHPrHL4XgFp23kBPVTmfSmtV` pro `3d3bc241b2085ed3c547bdfc219ea1d9f4a4e2c1`, READY;
-- phase-5 DB invariant je aplikovaný pouze v dev Supabase `twndqnmrvefhwuwuglju`, nikoli v produkci;
-- duplicitní Vercel projekt je zachovaný, ale Git je odpojen.
+- phase-7 manuálně accepted preview: `dpl_ERZJCHPrHL4XgFp23kBPVTmfSmtV` pro `3d3bc241b2085ed3c547bdfc219ea1d9f4a4e2c1`;
+- deterministic-install implementation preview: `dpl_7v8m7r2JTHxKMXZtQ36qzAp9v6eg` pro `aa4471d90e796a01030622b6b2028f8a28d7156d`, `READY`;
+- phase-5 DB invariant je nasazen pouze v dev Supabase `twndqnmrvefhwuwuglju`, nikoli v produkci.
 
 ## Produkčně ověřeno
 
-Tindeq změny z PR #12 nejsou produkčně nasazené ani produkčně ověřené. READY preview, dev DB verification, automatizované testy ani úspěšný manuální acceptance na preview se za produkční ověření nepovažují.
+Tindeq změny z PR #12 nejsou produkčně nasazené ani produkčně ověřené. READY preview, dev DB verification, automatizované testy ani manuální phase-7 preview acceptance se za produkční ověření nepovažují.
 
 ## Známé problémy / otevřené gates
 
-- phase-7 magic-link a reálný ZIP acceptance jsou dokončené;
-- repo nemá autentický npm lockfile a CI používá `npm install`;
-- phase-5 produkční dedupe migrace je připravena, ale není aplikována; produkční DDL vyžaduje fresh pre-check, backup/rollback gate a samostatné explicitní schválení;
-- existující lint baseline v `main` je `3 errors + 1 warning` mimo Tindeq soubory.
+- produkční phase-5 dedupe migrace není aplikovaná a vyžaduje samostatné explicitní schválení uživatele;
+- před schváleným produkčním DDL musí být podle operations potvrzen použitelný backup/restore nebo export gate;
+- PR #12 zůstává draft a není merged;
+- produkční Tindeq runtime není nasazen;
+- existující lint baseline v `main` je `3 errors + 1 warning` mimo Tindeq změny;
+- shared production Supabase má dříve evidované security/performance advisor nálezy mimo tento scope;
+- úplný mapping historických manuálních Knee SQL změn na repo migrace není doložen.
 
 ## Další krok
 
-- Vyřešit zbývající merge gates PR #12, zejména autentický npm lockfile / deterministickou instalaci; produkční phase-5 dedupe migraci nadále držet za samostatným explicitním approval gate.
+- Vyžádat samostatné explicitní schválení produkční phase-5 dedupe migrace; před jejím spuštěním ověřit použitelný backup/restore gate a po aplikaci provést post-check.
