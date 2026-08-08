@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { TindeqSession } from "@/lib/tindeq-browser";
+import { getTindeqMagicLinkRedirect } from "@/lib/tindeq-environment";
 import {
   loadTindeqHistory,
   saveTindeqSessions,
@@ -148,12 +149,19 @@ export default function TindeqWorkspace() {
   async function handleMagicLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabase || !email.trim()) return;
+
+    const emailRedirectTo = getTindeqMagicLinkRedirect(window.location.href);
+    if (!emailRedirectTo) {
+      setAuthMessage("Přihlášení je na této adrese bezpečnostně zablokované.");
+      return;
+    }
+
     setAuthMessage("Posílám přihlašovací odkaz…");
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
         shouldCreateUser: false,
-        emailRedirectTo: new URL("/tindeq", window.location.origin).toString(),
+        emailRedirectTo,
       },
     });
     setAuthMessage(error ? error.message : "Hotovo. Zkontroluj e-mail a klikni na přihlašovací odkaz.");

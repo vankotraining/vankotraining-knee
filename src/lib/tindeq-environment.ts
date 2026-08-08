@@ -41,6 +41,21 @@ function expectedProjectForHostname(hostname: string): {
   return null;
 }
 
+export function getTindeqMagicLinkRedirect(locationHref: string) {
+  let currentUrl: URL;
+  try {
+    currentUrl = new URL(locationHref);
+  } catch {
+    return null;
+  }
+
+  if (!isTindeqPath(currentUrl.pathname) || !expectedProjectForHostname(currentUrl.hostname)) {
+    return null;
+  }
+
+  return new URL("/tindeq", currentUrl.origin).toString();
+}
+
 export function extractSupabaseProjectRef(supabaseUrl: string | null | undefined) {
   if (!supabaseUrl) return null;
 

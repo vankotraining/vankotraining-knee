@@ -2,7 +2,10 @@
 
 import { useSyncExternalStore, type ReactNode } from "react";
 import { getConfiguredSupabaseUrl } from "@/lib/supabase-browser";
-import { validateTindeqEnvironment } from "@/lib/tindeq-environment";
+import {
+  getTindeqMagicLinkRedirect,
+  validateTindeqEnvironment,
+} from "@/lib/tindeq-environment";
 import styles from "./tindeq.module.css";
 
 type TindeqEnvironmentGuardProps = {
@@ -29,15 +32,17 @@ export default function TindeqEnvironmentGuard({ children }: TindeqEnvironmentGu
   }
 
   const currentUrl = new URL(href);
-  const redirectUrl = new URL("/tindeq", currentUrl.origin).toString();
+  const redirectUrl = getTindeqMagicLinkRedirect(href);
   const validation = validateTindeqEnvironment(href, getConfiguredSupabaseUrl());
 
-  if (!validation.allowed) {
+  if (!validation.allowed || !redirectUrl) {
     return (
       <section className={styles.authCard} aria-labelledby="tindeq-environment-error">
         <p className={styles.eyebrow}>Přístup k databázi zablokován</p>
         <h2 id="tindeq-environment-error">Knee prostředí není bezpečně nakonfigurované</h2>
-        <div className={styles.errorBox}>{validation.reason}</div>
+        <div className={styles.errorBox}>
+          {validation.reason ?? "Pro tuto adresu nelze bezpečně určit návrat magic linku."}
+        </div>
         <p>
           Očekávaný Supabase project ref: <strong>{validation.expectedProjectRef ?? "neurčen"}</strong>
           <br />
@@ -49,6 +54,7 @@ export default function TindeqEnvironmentGuard({ children }: TindeqEnvironmentGu
   }
 
   const isPreview = validation.environment === "development" && currentUrl.hostname.endsWith(".vercel.app");
+  const safeLocation = `${currentUrl.origin}${currentUrl.pathname}`;
 
   return (
     <>
@@ -57,6 +63,11 @@ export default function TindeqEnvironmentGuard({ children }: TindeqEnvironmentGu
           <p className={styles.eyebrow}>Testovací Knee preview</p>
           <p>
             Databáze: vývojový Supabase <strong>{validation.actualProjectRef}</strong>
+          </p>
+          <p>
+            Aktuální stránka: <strong>{safeLocation}</strong>
+            <br />
+            Origin: <strong>{currentUrl.origin}</strong>
           </p>
           <p>Magic link z této stránky bude požadovat návrat na:</p>
           <p className={styles.authMessage}><strong>{redirectUrl}</strong></p>

@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-07 21:07 CEST` (Europe/Prague).
+`2026-08-08` (Europe/Prague).
 
 ## Aktuální `main` commit
 
@@ -21,7 +21,8 @@ Tento soubor eviduje kanonický stav projektu, ale nemůže autoritativně obsah
 - phase-3 exact head: `e73730c55f7b2e56f638acf380736deaed628df5`;
 - phase-4 exact head: `d67a89765b59b0f5ca8db4268cf543beac6082b7`;
 - phase-5 exact head: `f3b4dcc5c5904a2560e765deb34986ee716b8387`;
-- phase-6 verification head před tímto synchronizačním commitem: `2f1c6c0c127b35020f32da97a886111648a46342`;
+- phase-6 verification head: `2f1c6c0c127b35020f32da97a886111648a46342`;
+- phase-7 auth incident byl diagnostikován nad headem `aea7340a5d50462905d122c7b54b75fc00c91993`; následný hardening commit se resolve živě z PR;
 - PR #14 je merged; PR #15 je uzavřen bez merge.
 
 ## Produkční runtime commit
@@ -72,39 +73,40 @@ Repo artefakty:
 - `supabase/checks/20260807_tindeq_active_session_unique_precheck.sql`;
 - `supabase/checks/20260807_tindeq_active_session_unique_checks.sql`.
 
+## Fáze 7 — magic-link localhost incident
+
+Dne `2026-08-08` byl diagnostikován dev Supabase magic-link tok, který při testu z deployment-specific Vercel Preview vytvořil e-mail s návratem na `http://localhost:3000`.
+
+Důkazy:
+
+- exact-head preview `dpl_9Tm6yhvadykKviQXrKBajs3Sm3cB` bylo postavené z PR headu `aea7340a5d50462905d122c7b54b75fc00c91993`;
+- `TindeqWorkspace.tsx` měl v posledním prokazatelně funkčním branch-preview toku 7. 8. i v incidentním headu stejný blob a stejný výpočet redirectu z aktuální browser domény;
+- funkční požadavky 7. 8. se vracely na branch alias `vankotraining-knee-git-agent-tin-d8df0b-vankotrainings-projects.vercel.app/tindeq`;
+- incidentní e-maily 8. 8. obsahovaly jako efektivní `redirect_to` localhost;
+- Supabase Auth používá nepovolený `redirect_to` jako důvod k fallbacku na `Site URL`; logové pole `referer` proto není samo o sobě důkaz skutečného browser originu;
+- repo neobsahuje service worker, PWA cache, middleware, auth callback route, hardcoded `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_VERCEL_URL` ani druhou implementaci `signInWithOtp`;
+- `next.config.ts` neobsahuje redirecty.
+
+Efektivní příčina je dev Supabase Auth redirect policy, která prokazatelně akceptovala branch alias, ale neakceptovala deployment-specific preview hostname; fallback Site URL je localhost. Dostupný Supabase konektor neumí Auth URL Configuration přímo read/write, takže přesný obsah Dashboard allowlistu není nezávisle exportovatelný. Závěr je doložen chováním obou URL, vygenerovanými e-maily, Auth logy a nezměněným aplikačním auth kódem.
+
+Repo hardening pro tento incident:
+
+- magic-link redirect se počítá jedinou fail-closed utilitou z aktuálního schváleného Knee URL;
+- localhost lze z helperu získat pouze tehdy, když aktuální browser URL je skutečně localhost/127.0.0.1;
+- deployment-specific i branch-alias Vercel Preview mají explicitní regresní test;
+- preview guard bezpečně zobrazuje aktuální origin/path a vypočtený redirect bez query/hash, takže nevystavuje magic-link tokeny.
+
+Požadovaná dev Auth konfigurace před reálným acceptance testem:
+
+- zachovat localhost pouze pro skutečný lokální development;
+- v Additional Redirect URLs povolit projektově omezený wildcard `https://vankotraining-knee-*-vankotrainings-projects.vercel.app/**`, aby zahrnoval branch alias i deployment-specific preview;
+- produkční Supabase/Auth se v této fázi nemění.
+
 ## Aktuální fáze
 
-**Fáze 6 – Vercel konsolidace je dokončena a deploymentem ověřena.**
+**Fáze 7 – exact-head acceptance je rozpracovaná.**
 
-Kanonický Vercel projekt je `vankotraining-knee` (`prj_WLfkUldcNfXn43KmsXpJAClaKOsI`) a jako jediný vlastní `knee.vankotraining.cz`.
-
-Duplicitní projekt `vankotraining-knee-mxei` (`prj_6VTh3ivPiUo7soBtzR5Snrrtr9KW`) zůstává zachovaný, ale jeho GitHub repository bylo po explicitním schválení uživatele odpojeno.
-
-Kontrolní commit fáze 6:
-
-`2f1c6c0c127b35020f32da97a886111648a46342` – `Verify Vercel project consolidation`.
-
-Důkaz konsolidace:
-
-- canonical `vankotraining-knee` vytvořil pro tento SHA preview `dpl_7PZGdzPyBv9NAc8PJr7fqS2Y7XD4`, stav `READY`;
-- duplicate `vankotraining-knee-mxei` nevytvořil pro tento SHA žádný nový deployment;
-- jeho poslední deployment zůstal historický `dpl_EfraCnckKVRUHCRuufkaHPHdLZmC` pro starší SHA `f3b4dcc5...`;
-- produkční doména zůstala na kanonickém projektu a produkční stránka prošla read-only HTTP smoke `200 OK`.
-
-Exact-head CI pro `2f1c6c0c127b35020f32da97a886111648a46342`:
-
-- `Project control`, run `31205341531`: `success`;
-- `Verify Tindeq client view`, run `31205341537`: `success`;
-- unit test krok: PASS;
-- lint baseline comparison: PASS;
-- build: PASS;
-- project-control check: PASS;
-- diff check: PASS;
-- Chromium install: PASS;
-- browser/Playwright verification: PASS;
-- screenshot upload: PASS.
-
-Fáze 6 je tedy uzavřená. Projekt je připraven pro fázi 7.
+Kódová diagnostika a regresní ochrana magic-link originu jsou implementované ve větvi. Reálný magic-link acceptance je blokovaný do chvíle, kdy dev Supabase Auth Additional Redirect URLs pokryjí deployment-specific Knee Preview a odezní/obnoví se e-mailový rate limit. Po této konfiguraci se smí provést jediný nový magic-link pokus a ověřit `/otp`, e-mailový redirect, `/verify` a aktivní preview session.
 
 ## Implementováno v `main`
 
@@ -120,12 +122,13 @@ PR #12 zachovává jediný podporovaný tok:
 
 `Tindeq ZIP` → lokální validace/rozbalení → normalizovaná `TindeqSession` → náhled → explicitní klient → explicitní save → historie → klientský/trenérský výstup → `tindeq-report-v1`.
 
-Fáze 3 oddělila prezentační odpovědnosti, fáze 4 srovnala dev DB a zavedla DB-aware environment guard, fáze 5 přidala atomický DB dedupe invariant + race recovery a fáze 6 odstranila paralelní Git auto-deployment cestu ve Vercelu.
+Fáze 3 oddělila prezentační odpovědnosti, fáze 4 srovnala dev DB a zavedla DB-aware environment guard, fáze 5 přidala atomický DB dedupe invariant + race recovery, fáze 6 odstranila paralelní Git auto-deployment cestu ve Vercelu a fáze 7 řeší exact-head acceptance včetně magic-link návratu.
 
 ## Nasazeno
 
 - produkčně: pouze `main` `7e11aa88fb0c14b5216542d4e03101aee082ec17` v `dpl_J1ECuULAhWHXHnZvpmJgFMFEbzd1`;
-- phase-6 preview před tímto synchronizačním commitem: `dpl_7PZGdzPyBv9NAc8PJr7fqS2Y7XD4` pro `2f1c6c0c127b35020f32da97a886111648a46342`;
+- poslední incidentně auditovaný preview před auth hardening změnou: `dpl_9Tm6yhvadykKviQXrKBajs3Sm3cB` pro `aea7340a5d50462905d122c7b54b75fc00c91993`;
+- finální phase-7 preview musí být po změně znovu resolve na exact nový head;
 - phase-5 DB invariant je aplikovaný pouze v dev Supabase `twndqnmrvefhwuwuglju`, nikoli v produkci;
 - duplicitní Vercel projekt je zachovaný, ale Git je odpojen.
 
@@ -135,7 +138,8 @@ Tindeq změny z PR #12 nejsou produkčně nasazené ani produkčně ověřené. 
 
 ## Známé problémy / otevřené gates
 
-- Vercel Preview `NEXT_PUBLIC_SUPABASE_URL` není nezávisle read-only potvrzená, takže write acceptance zůstává blokovaná;
+- dev Supabase Auth Additional Redirect URLs musí pokrýt deployment-specific Knee Preview; dostupný konektor neumí tuto Auth URL Configuration přímo číst ani zapisovat;
+- Supabase dev e-mailový rate limit byl při incidentu `2026-08-08` vyčerpán; další OTP se nesmí posílat naslepo;
 - repo nemá autentický npm lockfile a CI používá `npm install`;
 - reálný magic-link a skutečný ZIP acceptance ještě nejsou dokončeny;
 - phase-5 produkční dedupe migrace je připravena, ale není aplikována; produkční DDL vyžaduje fresh pre-check, backup/rollback gate a samostatné explicitní schválení;
@@ -143,4 +147,7 @@ Tindeq změny z PR #12 nejsou produkčně nasazené ani produkčně ověřené. 
 
 ## Další krok
 
-- **Fáze 7:** provést exact-head acceptance na aktuálním PR headu, vyřešit nezávislé potvrzení Preview Supabase ref, otestovat reálný magic-link a skutečný Tindeq ZIP a uzavřít zbývající merge gates bez produkčního zápisu nebo produkční DDL bez samostatného schválení.
+- ověřit exact nový PR head přes unit/lint/build/project-control/Playwright a exact Vercel Preview;
+- v dev Supabase Auth povolit projektově omezený Vercel Preview wildcard bez změny produkční Auth konfigurace;
+- na exact preview zkontrolovat bezpečnou diagnostiku originu, redirectu a dev project ref;
+- poté provést jediný reálný magic-link acceptance pokus a ověřit, že se tok nevrátí na localhost.

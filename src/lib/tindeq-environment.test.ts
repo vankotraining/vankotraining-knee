@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   extractSupabaseProjectRef,
+  getTindeqMagicLinkRedirect,
   TINDEQ_DEVELOPMENT_SUPABASE_REF,
   TINDEQ_PRODUCTION_SUPABASE_REF,
   validateTindeqEnvironment,
@@ -9,6 +10,8 @@ import {
 
 const prodUrl = `https://${TINDEQ_PRODUCTION_SUPABASE_REF}.supabase.co`;
 const devUrl = `https://${TINDEQ_DEVELOPMENT_SUPABASE_REF}.supabase.co`;
+const deploymentPreview = "https://vankotraining-knee-9to0jbe71-vankotrainings-projects.vercel.app/tindeq";
+const branchPreview = "https://vankotraining-knee-git-agent-tin-d8df0b-vankotrainings-projects.vercel.app/tindeq";
 
 test("extracts the hosted Supabase project ref only from a valid HTTPS project URL", () => {
   assert.equal(extractSupabaseProjectRef(prodUrl), TINDEQ_PRODUCTION_SUPABASE_REF);
@@ -32,6 +35,41 @@ test("Knee Vercel previews accept only the development Supabase project", () => 
   assert.equal(mismatch.allowed, false);
   assert.equal(mismatch.expectedProjectRef, TINDEQ_DEVELOPMENT_SUPABASE_REF);
   assert.equal(mismatch.actualProjectRef, TINDEQ_PRODUCTION_SUPABASE_REF);
+});
+
+test("magic-link redirect remains on the exact approved Knee origin", () => {
+  assert.equal(
+    getTindeqMagicLinkRedirect(deploymentPreview),
+    "https://vankotraining-knee-9to0jbe71-vankotrainings-projects.vercel.app/tindeq",
+  );
+  assert.equal(
+    getTindeqMagicLinkRedirect(branchPreview),
+    "https://vankotraining-knee-git-agent-tin-d8df0b-vankotrainings-projects.vercel.app/tindeq",
+  );
+  assert.equal(
+    getTindeqMagicLinkRedirect("https://knee.vankotraining.cz/tindeq?source=test#ignored"),
+    "https://knee.vankotraining.cz/tindeq",
+  );
+});
+
+test("localhost is used for magic-link redirect only when the browser is actually local", () => {
+  assert.equal(
+    getTindeqMagicLinkRedirect("http://localhost:3000/tindeq"),
+    "http://localhost:3000/tindeq",
+  );
+  assert.equal(
+    getTindeqMagicLinkRedirect("http://127.0.0.1:3000/tindeq/reports"),
+    "http://127.0.0.1:3000/tindeq",
+  );
+  assert.equal(getTindeqMagicLinkRedirect(deploymentPreview)?.includes("localhost"), false);
+  assert.equal(getTindeqMagicLinkRedirect(branchPreview)?.includes("localhost"), false);
+});
+
+test("magic-link redirect fails closed for unapproved hosts and paths", () => {
+  assert.equal(getTindeqMagicLinkRedirect("https://app.vankotraining.cz/tindeq"), null);
+  assert.equal(getTindeqMagicLinkRedirect("https://example.vercel.app/tindeq"), null);
+  assert.equal(getTindeqMagicLinkRedirect("https://knee.vankotraining.cz/"), null);
+  assert.equal(getTindeqMagicLinkRedirect("not-a-url"), null);
 });
 
 test("localhost is development-only", () => {

@@ -7,12 +7,14 @@ const guardSource = readFileSync("src/app/tindeq/TindeqEnvironmentGuard.tsx", "u
 const sessionSource = readFileSync("src/lib/use-supabase-session.ts", "utf8");
 const supabaseSource = readFileSync("src/lib/supabase-browser.ts", "utf8");
 
-test("Tindeq magic link uses the current browser origin and fixed /tindeq path", () => {
+test("Tindeq magic link derives its redirect from the current approved browser URL", () => {
   assert.match(
     workspaceSource,
-    /emailRedirectTo:\s*new URL\("\/tindeq",\s*window\.location\.origin\)\.toString\(\)/,
+    /const emailRedirectTo = getTindeqMagicLinkRedirect\(window\.location\.href\)/,
   );
+  assert.match(workspaceSource, /emailRedirectTo,/);
   assert.match(workspaceSource, /shouldCreateUser:\s*false/);
+  assert.match(workspaceSource, /if \(!emailRedirectTo\)/);
 });
 
 test("redirect logic does not trust a manipulated next query parameter", () => {
@@ -20,15 +22,24 @@ test("redirect logic does not trust a manipulated next query parameter", () => {
   assert.doesNotMatch(guardSource, /get\(["']next["']\)|URLSearchParams/);
 });
 
-test("Tindeq auth source does not hardcode Workout or one preview hostname", () => {
+test("Tindeq auth source does not hardcode Workout, localhost, or one preview hostname", () => {
   assert.doesNotMatch(workspaceSource, /app\.vankotraining\.cz/);
   assert.doesNotMatch(workspaceSource, /https:\/\/[^\s"']+\.vercel\.app/);
+  assert.doesNotMatch(workspaceSource, /emailRedirectTo:\s*["'`]http:\/\/localhost/);
 });
 
 test("environment guard validates both Knee location and configured Supabase project before rendering workspace", () => {
   assert.match(guardSource, /validateTindeqEnvironment\(href, getConfiguredSupabaseUrl\(\)\)/);
-  assert.match(guardSource, /if \(!validation\.allowed\)/);
+  assert.match(guardSource, /if \(!validation\.allowed \|\| !redirectUrl\)/);
   assert.match(guardSource, /modul nenačítá klienty ani neumožní zápis Tindeq dat/);
+});
+
+test("preview diagnostics expose origin and computed redirect without query or hash", () => {
+  assert.match(guardSource, /const safeLocation = `\$\{currentUrl\.origin\}\$\{currentUrl\.pathname\}`/);
+  assert.match(guardSource, /Origin:/);
+  assert.match(guardSource, /Magic link z této stránky bude požadovat návrat na:/);
+  assert.doesNotMatch(guardSource, /<strong>\{href\}<\/strong>/);
+  assert.doesNotMatch(guardSource, /currentUrl\.search|currentUrl\.hash/);
 });
 
 test("browser Supabase config has no hardcoded production URL or legacy anon-key fallback", () => {
