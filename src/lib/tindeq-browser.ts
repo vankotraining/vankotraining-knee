@@ -213,13 +213,33 @@ function normalizeTag(tag: string): { display: string; key: string } {
 }
 
 function parseTindeqDate(value: string): string {
-  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
-  if (!match) return value.trim();
-  const [, year, first, second, hour, minute, secondValue = "00"] = match;
-  const firstNumber = Number(first);
-  const day = firstNumber > 12 ? first : second;
-  const month = firstNumber > 12 ? second : first;
-  return `${year}-${month}-${day}T${hour}:${minute}:${secondValue}`;
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) {
+    throw new Error("info.csv datum nelze bezpečně určit: očekáván Tindeq formát YYYY-DD-MM HH:mm[:ss].");
+  }
+
+  const [, yearValue, dayValue, monthValue, hourValue, minuteValue, secondValue = "00"] = match;
+  const year = Number(yearValue);
+  const day = Number(dayValue);
+  const month = Number(monthValue);
+  const hour = Number(hourValue);
+  const minute = Number(minuteValue);
+  const second = Number(secondValue);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysPerMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const valid =
+    month >= 1 && month <= 12 &&
+    day >= 1 && day <= (daysPerMonth[month - 1] ?? 0) &&
+    hour >= 0 && hour <= 23 &&
+    minute >= 0 && minute <= 59 &&
+    second >= 0 && second <= 59;
+
+  if (!valid) {
+    throw new Error("info.csv datum nelze bezpečně určit: hodnota není platné datum v Tindeq formátu YYYY-DD-MM HH:mm[:ss].");
+  }
+
+  return `${yearValue}-${monthValue}-${dayValue}T${hourValue}:${minuteValue}:${secondValue}`;
 }
 
 function parseInfo(raw: Uint8Array): TindeqSession["metadata"] {

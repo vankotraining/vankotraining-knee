@@ -1,6 +1,7 @@
 import { strToU8, zipSync } from "fflate";
 
 export type SyntheticArchiveOptions = {
+  date?: string;
   tag?: string;
   protocol?: string;
   unit?: "kg" | "N" | "lb";
@@ -25,7 +26,7 @@ function infoCsv(options: SyntheticArchiveOptions) {
   const mvcLeft = unit === "N" ? 490.3325 : unit === "lb" ? 110.231 : 50;
   const mvcRight = unit === "N" ? 509.9458 : unit === "lb" ? 114.64 : 52;
   const values = [
-    "2026-08-02 10:00:00",
+    options.date ?? "2026-02-08 10:00:00",
     options.tag ?? "Klient Test",
     "Syntetický test bez osobních dat",
     unit,
