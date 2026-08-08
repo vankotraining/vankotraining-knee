@@ -147,7 +147,4 @@ Tindeq změny z PR #12 nejsou produkčně nasazené ani produkčně ověřené. 
 
 ## Další krok
 
-- ověřit exact nový PR head přes unit/lint/build/project-control/Playwright a exact Vercel Preview;
-- v dev Supabase Auth povolit projektově omezený Vercel Preview wildcard bez změny produkční Auth konfigurace;
-- na exact preview zkontrolovat bezpečnou diagnostiku originu, redirectu a dev project ref;
-- poté provést jediný reálný magic-link acceptance pokus a ověřit, že se tok nevrátí na localhost.
+- Ověřit exact nový PR head přes unit/lint/build/project-control/Playwright a exact Vercel Preview, v dev Supabase Auth povolit projektově omezený Vercel Preview wildcard bez změny produkční Auth konfigurace, na exact preview zkontrolovat bezpečnou diagnostiku originu/redirectu/dev project ref a poté provést jediný reálný magic-link acceptance pokus bez návratu na localhost.
