@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-08` (Europe/Prague), po schválené production phase-5 DB migraci a post-checku.
+`2026-08-08` (Europe/Prague).
 
 ## Produkční URL
 
@@ -14,33 +14,31 @@
 - project ID: `prj_WLfkUldcNfXn43KmsXpJAClaKOsI`;
 - team ID: `team_alNcbbTIb9p5enXHSpEJZpLt`.
 
-Duplicitní projekt `vankotraining-knee-mxei` není produkčním vlastníkem domény a jeho Git integrace zůstává odpojena.
+Kanonický projekt je `vankotraining-knee`.
 
 ## Deployment ID
 
-Živě evidovaný produkční deployment:
+Živě ověřený produkční deployment:
 
-`dpl_J1ECuULAhWHXHnZvpmJgFMFEbzd1`.
+`dpl_CxDNPh5Skm8Mwa4SxVXXWDfAsCDS`.
 
 ## Nasazený commit
 
-`7e11aa88fb0c14b5216542d4e03101aee082ec17` z větve `main` – `Record project-control phase 1 completion`.
+`8afe1328cfcb8f7ab90bb449775d1de0d441b584` z větve `main` – merge PR #12 `Tindeq: klienti, historie a kanonické reporty`.
 
-Tindeq runtime z draft PR #12 na produkci stále není.
+Starší project-control údaj `7e11aa88fb0c14b5216542d4e03101aee082ec17` již neodpovídá živému produkčnímu runtime.
 
 ## Čas a výsledek deploymentu
 
-Deployment `dpl_J1ECuULAhWHXHnZvpmJgFMFEbzd1`:
+Deployment `dpl_CxDNPh5Skm8Mwa4SxVXXWDfAsCDS`:
 
 - stav: `READY`;
 - target: `production`;
 - project: `vankotraining-knee`;
-- commit: `7e11aa88fb0c14b5216542d4e03101aee082ec17`;
-- branch: `main`;
-- alias zahrnuje `knee.vankotraining.cz`;
-- alias error: žádný.
+- commit: `8afe1328cfcb8f7ab90bb449775d1de0d441b584`;
+- branch: `main`.
 
-`READY` znamená pouze **produkčně nasazeno**, nikoli **produkčně ověřeno**.
+`READY` dokládá produkční nasazení, nikoli uživatelské produkční ověření konkrétní funkcionality.
 
 ## Databázové migrace použité produkční aplikací
 
@@ -48,106 +46,70 @@ Produkční Supabase project ref:
 
 `zxvndqicslyulrinbpyn`.
 
-Po explicitním schválení uživatele byla `2026-08-08` aplikována phase-5 migrace z repo souboru:
-
-`supabase/migrations/20260807_tindeq_active_session_unique.sql`.
-
-Supabase migration history ji eviduje jako:
+Phase-5 migrace byla `2026-08-08` aplikována jako:
 
 `20260808091809 tindeq_active_session_unique`.
 
-Pre-check bezprostředně před DDL:
+Repo SQL zdroj:
 
-- `public.tindeq_sessions`: `0` celkem / `0` aktivních;
-- invalidní/chybějící `tindeqSessionId`: `0`;
-- active duplicate groups: `0`;
-- phase-5 CHECK/index před migrací neexistovaly;
-- `28` sloupců, RLS zapnuté, `3` policies.
+`supabase/migrations/20260807_tindeq_active_session_unique.sql`.
 
-Backup/export gate:
+Doložený invariant po migraci:
 
-- read-only logický export relevantních `public.tindeq_sessions` dat byl vytvořen před DDL;
-- tabulka byla prázdná, export byl přesně `[]`;
-- rollback SQL je omezené na odstranění phase-5 indexu a CHECK constraintu a je verzovaně dokumentované.
+- validated CHECK `tindeq_sessions_source_session_id_valid` vynucuje 20znakový lowercase hex source session ID;
+- partial unique index `tindeq_sessions_active_source_session_uidx` chrání aktivní `(athlete_id, analysis_version, raw_metadata ->> 'tindeqSessionId')` při `deleted_at IS NULL`;
+- RLS a související policies zůstaly po migraci zachované.
 
-Post-check po migraci:
-
-- `public.tindeq_sessions`: stále `0` celkem / `0` aktivních;
-- invalidní source session ID: `0`;
-- active duplicate groups: `0`;
-- validated constraint `tindeq_sessions_source_session_id_valid`: existuje;
-- definice CHECK vynucuje `^[0-9a-f]{20}$`;
-- partial unique index `tindeq_sessions_active_source_session_uidx`: existuje a omezuje pouze `deleted_at IS NULL`;
-- počet sloupců zůstal `28`;
-- RLS je zapnuté, `3` policies a relevantní grants zůstaly zachované.
-
-Security a performance advisors byly po migraci spuštěny. Neobjevil se nový phase-5 nález na `public.tindeq_sessions`; dříve existující shared-production nálezy zůstávají mimo rozsah této migrace a nebyly měněny.
+Oprava data v PR #17 nemění databázové schéma ani data. V tomto pracovním bloku nebyl proveden žádný produkční import historických Tindeq měření ani jiný produkční DB zápis.
 
 ## Provedené smoke testy
 
-Po phase-5 DB změně bylo databázově/read-only ověřeno:
+Pro aktuální produkční runtime bylo v tomto pracovním bloku read-only ověřeno:
 
-- migrační historie obsahuje `20260808091809 tindeq_active_session_unique`;
-- CHECK je validated a má očekávanou definici;
-- partial UNIQUE index má očekávanou definici;
-- počty Tindeq dat jsou beze změny `0/0`;
-- `0` invalidních source ID a `0` duplicate groups;
-- RLS/policies/grants zůstaly zachované;
-- security/performance advisors byly spuštěny.
+- produkční Vercel deployment je `READY`;
+- metadata deploymentu odpovídají commitu `8afe1328cfcb8f7ab90bb449775d1de0d441b584` na `main`;
+- oprava data z PR #17 není součástí produkčního deploymentu.
 
-Nebyl vytvořen produkční testovací klient ani Tindeq session a nebyl proveden produkční aplikační write acceptance. Jedinou schválenou produkční mutací v tomto kroku byla verzovaná phase-5 schema migrace.
+Nebyl proveden produkční aplikační write smoke test ani historický import.
 
 ## Poslední výslovné uživatelské produkční ověření
 
-Současný Tindeq runtime jako celek není označen jako produkčně ověřený.
+Oprava interpretace data z PR #17 nebyla uživatelem produkčně ověřena, protože ještě není produkčně nasazená.
 
-Uživatel explicitně schválil produkční phase-5 DB migraci; to není totéž jako manuální produkční ověření Tindeq workflow po jeho budoucím runtime deploymentu.
-
-`READY` deployment, CI, preview acceptance ani DB post-check se za produkční runtime ověření nepovažují.
+Předchozí manuální acceptance Tindeq workflow proběhlo na vývojovém Supabase a Vercel Preview před mergem PR #12; preview acceptance se nepovažuje za produkční ověření.
 
 ## Produkční stav Tindeq
 
-- `public.tindeq_sessions` existuje a má `0` řádků;
-- phase-5 DB dedupe invariant je na produkci aplikovaný a post-check PASS;
-- Tindeq runtime z PR #12 stále není v produkčním `main`;
-- produkční Tindeq aplikační save nebyl proveden;
-- production DB je schema-ready pro dedupe invariant, ale runtime rollout má samostatný merge/deploy gate.
+- Tindeq runtime z PR #12 je na produkci nasazený v commitu `8afe1328cfcb8f7ab90bb449775d1de0d441b584`;
+- současný produkční `parseTindeqDate()` používá heuristiku, která zamění den a měsíc u nejednoznačných hodnot, například `2026-04-08`;
+- draft PR #17 mění parser na pevný Tindeq formát `YYYY-DD-MM HH:mm[:ss]`, validuje kalendářní datum a při neplatném formátu failne;
+- PR #17 nemění analytické výpočty síly ani `digest()`/dedupe identitu;
+- PR #17 není produkčně nasazený.
 
-## Preview acceptance stav
+## Preview stav opravy data
 
-Fáze 7 zůstává **manuálně ověřeno: PASS** na dev Supabase a exact Vercel Preview:
+Kódový head PR #17 před project-control syncem:
 
-- environment guard potvrdil dev project ref;
-- skutečný magic-link se vrátil na exact preview bez localhostu;
-- `/verify` a session byly úspěšné;
-- skutečný Tindeq ZIP byl importován a explicitně uložen;
-- duplicate cesta byla idempotentní.
+`f73c3b0d44bd9c0e25ea68467079d4f8b01be8a2`.
 
-Toto je preview acceptance, nikoli produkční runtime ověření.
+Preview:
 
-## Merge-readiness infrastruktura mimo produkci
+`dpl_tRNgcXL7H7A6sbRyCLMwVKAVd2uX`.
 
-PR #12 obsahuje autentický `package-lock.json` a CI používá `npm ci`.
+Doloženo:
 
-Poslední plně ověřený head před tímto DB-state syncem `2b8094629e9c689894648e38ff1194e228fe2f2b`:
+- state `READY`;
+- target preview (`null`, nikoli production);
+- exact commit `f73c3b0d44bd9c0e25ea68467079d4f8b01be8a2`;
+- branch `agent/tindeq-date-format-fix`;
+- alias error `null`;
+- kanonický Vercel project ID `prj_WLfkUldcNfXn43KmsXpJAClaKOsI`.
 
-- Verify Tindeq client view: success;
-- Project control: success;
-- unit `93/93`, Playwright `10/10`, build/TypeScript/project-control/diff PASS;
-- lint beze změny proti `main` baseline;
-- preview `dpl_B2wQpWAA46EaoCEbiwHXpofoNXj9`: `READY`, alias error `null`;
-- duplicitní Vercel projekt: `0` nových deploymentů pro tento head.
-
-Tyto aplikační změny nejsou produkčně nasazené.
-
-## Vercel konsolidace
-
-Kanonický projekt zůstává `vankotraining-knee`. Duplicitní projekt je pouze historický artefakt s odpojenou Git integrací.
+Po project-control změnách vzniká nový head; finální preview evidence musí odpovídat tomuto novému exact headu.
 
 ## Známé produkční problémy
 
-- Tindeq runtime z PR #12 ještě není produkčně nasazen;
-- PR #12 zůstává draft a není merged;
-- produkční Tindeq workflow není manuálně produkčně ověřené;
-- shared production Supabase má dříve existující security/performance advisor nálezy mimo phase-5 scope;
-- úplný mapping historických manuálních Knee SQL změn na repo migrace není doložen.
+- produkční parser v `8afe1328cfcb8f7ab90bb449775d1de0d441b584` může nejednoznačné Tindeq datum `YYYY-DD-MM` interpretovat jako `YYYY-MM-DD`, pokud den není větší než 12;
+- oprava je zatím pouze v draft PR #17 a není produkčně nasazená;
+- historický archiv `repeaters_data_2026_08_08.zip` nebyl v tomto pracovním bloku dostupný přes aktuálně připojený Google Drive, takže všech 26 exportů nebylo přímo revalidováno;
+- paralelní PR #16 mění prezentační vrstvu Tindeq a před případným společným nasazením je nutné ověřit aktuální společný `main`.
