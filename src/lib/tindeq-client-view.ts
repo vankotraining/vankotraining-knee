@@ -3,7 +3,7 @@ import {
   withinRepCvStatus,
   type TindeqPresentationStatus,
   type TindeqPresentationTone,
-} from "./tindeq-metric-presentation.js";
+} from "./tindeq-metric-presentation";
 
 export type ResultViewMode = "client" | "trainer";
 
