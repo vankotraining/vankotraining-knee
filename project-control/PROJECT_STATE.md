@@ -24,6 +24,7 @@ Tento soubor eviduje kanonický stav projektu, ale nemůže autoritativně obsah
 - phase-6 verification head: `2f1c6c0c127b35020f32da97a886111648a46342`;
 - phase-7 auth incident byl diagnostikován nad headem `aea7340a5d50462905d122c7b54b75fc00c91993`;
 - phase-7 auth hardening + reálný magic-link acceptance byly provedeny na runtime headu `3d3bc241b2085ed3c547bdfc219ea1d9f4a4e2c1`;
+- phase-7 reálný ZIP acceptance byl manuálně potvrzen uživatelem a backendově doložen na dev Supabase jako idempotentní duplicate save stejného skutečného ZIP výsledku;
 - PR #14 je merged; PR #15 je uzavřen bez merge.
 
 ## Produkční runtime commit
@@ -62,7 +63,7 @@ Ověřený stav:
 - validated constraint `tindeq_sessions_source_session_id_valid` vyžaduje `^[0-9a-f]{20}$`;
 - partial unique expression index `tindeq_sessions_active_source_session_uidx` vynucuje jednu aktivní identitu `(athlete_id, analysis_version, tindeqSessionId)`;
 - `WHERE deleted_at IS NULL` zachovává soft-delete/reimport semantiku;
-- `1` Tindeq session / `1` aktivní při phase-5 DB verifikaci;
+- po phase-7 acceptance je stále `1` Tindeq session / `1` aktivní;
 - `0` neplatných source session ID;
 - `0` aktivních duplicate groups;
 - duplicate enforcement probe → očekávaný `unique_violation`;
@@ -132,11 +133,41 @@ Verdikt auth sub-gate:
 - localhost regression na testovaném exact preview: odstraněna;
 - další OTP test není potřeba, pokud se auth kód nebo dev Auth konfigurace znovu nezmění.
 
+### Reálný Tindeq ZIP acceptance — PASS
+
+Uživatel následně manuálně potvrdil, že na ověřeném Tindeq preview nahrál skutečný Tindeq ZIP a provedl jeho uložení.
+
+Použitý ZIP odpovídal již existujícímu dev záznamu:
+
+- `source_filename = repeaters_2026_31_07_11_34_20260731 Kominak Norbert 2.zip`;
+- klient v dev DB = `TEST Tindeq`;
+- `analysis_version = tindeq-repeaters-v1`;
+- `tindeqSessionId = a10424fb2f9bf4efc2f0`;
+- uložený výsledek obsahuje `8` repetition rows.
+
+Backend evidence po uživatelském save:
+
+- aplikace provedla přesný GET duplicate lookup nad `(athlete_id, analysis_version, raw_metadata contains tindeqSessionId)` a dostala `200`;
+- bezprostředně potom znovu načetla aktivní historii klienta z `tindeq_sessions` a dostala `200`;
+- nevznikl druhý aktivní řádek ani duplicate group;
+- dev DB po acceptance zůstala na `1` Tindeq session / `1` aktivní.
+
+To znamená, že reálný ZIP průchod skončil očekávanou idempotentní duplicate cestou. Nešlo o fresh INSERT nového unikátního výsledku; naopak bylo ověřeno, že opakované uložení stejné skutečné session nevytvoří duplicitu a aplikace vrátí existující výsledek/historii. Uživatel funkčnost manuálně potvrdil.
+
+Verdikt ZIP sub-gate:
+
+- skutečný ZIP import: manuálně PASS;
+- explicitní save: manuálně PASS;
+- serverová identita stejné session: potvrzena;
+- idempotentní deduplikace: PASS;
+- následné načtení historie: backendově PASS;
+- nový duplicitní DB řádek: nevznikl.
+
 ## Aktuální fáze
 
-**Fáze 7 – exact-head acceptance je rozpracovaná, auth sub-gate je dokončený.**
+**Fáze 7 – exact-head testy a manuální acceptance jsou dokončené.**
 
-Magic-link část je po reálném end-to-end testu uzavřená jako PASS. Kanonický phase-7 scope ale zahrnuje také reálný Tindeq ZIP acceptance: import skutečného ZIP exportu, kontrolní náhled, explicitní přiřazení klienta, save, historie a výsledný klientský/trenérský výstup na bezpečně potvrzeném preview. Dokud tento ZIP průchod není manuálně potvrzený, celá fáze 7 se neoznačuje jako dokončená.
+Magic-link end-to-end tok i reálný Tindeq ZIP průchod jsou uzavřené jako PASS. ZIP acceptance využil již existující skutečný session ID a proto validoval idempotentní duplicate save namísto fresh insertu; tento rozdíl je evidovaný a není maskovaný jako nový zápis.
 
 ## Implementováno v `main`
 
@@ -152,12 +183,12 @@ PR #12 zachovává jediný podporovaný tok:
 
 `Tindeq ZIP` → lokální validace/rozbalení → normalizovaná `TindeqSession` → náhled → explicitní klient → explicitní save → historie → klientský/trenérský výstup → `tindeq-report-v1`.
 
-Fáze 3 oddělila prezentační odpovědnosti, fáze 4 srovnala dev DB a zavedla DB-aware environment guard, fáze 5 přidala atomický DB dedupe invariant + race recovery, fáze 6 odstranila paralelní Git auto-deployment cestu ve Vercelu a fáze 7 dokončila auth acceptance; zbývá reálný ZIP acceptance.
+Fáze 3 oddělila prezentační odpovědnosti, fáze 4 srovnala dev DB a zavedla DB-aware environment guard, fáze 5 přidala atomický DB dedupe invariant + race recovery, fáze 6 odstranila paralelní Git auto-deployment cestu ve Vercelu a fáze 7 dokončila exact-head automatické testy, reálný magic-link acceptance a reálný ZIP acceptance.
 
 ## Nasazeno
 
 - produkčně: pouze `main` `7e11aa88fb0c14b5216542d4e03101aee082ec17` v `dpl_J1ECuULAhWHXHnZvpmJgFMFEbzd1`;
-- auth-accepted phase-7 runtime preview: `dpl_ERZJCHPrHL4XgFp23kBPVTmfSmtV` pro `3d3bc241b2085ed3c547bdfc219ea1d9f4a4e2c1`, READY;
+- manuálně accepted phase-7 runtime preview: `dpl_ERZJCHPrHL4XgFp23kBPVTmfSmtV` pro `3d3bc241b2085ed3c547bdfc219ea1d9f4a4e2c1`, READY;
 - phase-5 DB invariant je aplikovaný pouze v dev Supabase `twndqnmrvefhwuwuglju`, nikoli v produkci;
 - duplicitní Vercel projekt je zachovaný, ale Git je odpojen.
 
@@ -167,12 +198,11 @@ Tindeq změny z PR #12 nejsou produkčně nasazené ani produkčně ověřené. 
 
 ## Známé problémy / otevřené gates
 
-- reálný magic-link acceptance je dokončený; starý localhost incident již není otevřený gate;
-- reálný Tindeq ZIP acceptance ještě není dokončený;
+- phase-7 magic-link a reálný ZIP acceptance jsou dokončené;
 - repo nemá autentický npm lockfile a CI používá `npm install`;
 - phase-5 produkční dedupe migrace je připravena, ale není aplikována; produkční DDL vyžaduje fresh pre-check, backup/rollback gate a samostatné explicitní schválení;
 - existující lint baseline v `main` je `3 errors + 1 warning` mimo Tindeq soubory.
 
 ## Další krok
 
-- Na bezpečně potvrzeném Tindeq preview provést jeden reálný ZIP acceptance průchod od importu přes explicitní přiřazení klienta a save až po historii/report; po manuálním PASS zapsat finální phase-7 evidence a teprve potom rozhodnout o dalších merge gates.
+- Vyřešit zbývající merge gates PR #12, zejména autentický npm lockfile / deterministickou instalaci; produkční phase-5 dedupe migraci nadále držet za samostatným explicitním approval gate.
