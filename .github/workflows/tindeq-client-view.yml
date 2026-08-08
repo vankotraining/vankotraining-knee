@@ -37,8 +37,11 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install dependencies deterministically
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          git diff --exit-code -- package.json package-lock.json
 
       - name: Run unit tests
         run: npm test
@@ -54,8 +57,23 @@ jobs:
 
           git fetch origin main
           git worktree add ../main-worktree origin/main
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const head = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const base = JSON.parse(fs.readFileSync('../main-worktree/package.json', 'utf8'));
+          for (const section of ['dependencies', 'devDependencies']) {
+            for (const [name, spec] of Object.entries(base[section] || {})) {
+              if ((head[section] || {})[name] !== spec) {
+                throw new Error(`Current main ${section}.${name}=${spec} is not satisfied by head package.json.`);
+              }
+            }
+          }
+          console.log('Current main dependency specs are a subset of the lockfile-backed head specs.');
+          NODE
+
+          ln -s "$GITHUB_WORKSPACE/node_modules" ../main-worktree/node_modules
           pushd ../main-worktree
-          npm install --no-audit --no-fund
           set +e
           npm run lint > ../main-lint.log 2>&1
           main_status=$?
@@ -85,10 +103,15 @@ jobs:
               raise SystemExit("Branch lint failed while current main lint passed.")
           if branch_errors > main_errors:
               raise SystemExit("Branch introduces additional lint errors compared with current main.")
+          if branch_warnings > main_warnings:
+              raise SystemExit("Branch introduces additional lint warnings compared with current main.")
           PY
 
       - name: Build production bundle
         run: npm run build
+
+      - name: Run TypeScript check
+        run: npx tsc --noEmit
 
       - name: Run project control check when available
         shell: bash
