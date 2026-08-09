@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import TindeqEnvironmentGuard from "./TindeqEnvironmentGuard";
 import TindeqWorkspace from "./TindeqWorkspace";
-import navStyles from "./tindeq-nav.module.css";
 import styles from "./tindeq.module.css";
+import navStyles from "./tindeq-nav.module.css";
 
 export const metadata: Metadata = {
   title: "Tindeq Repeaters | Knee Data",
