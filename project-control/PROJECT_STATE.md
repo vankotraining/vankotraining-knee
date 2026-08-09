@@ -18,7 +18,7 @@ PR #18 byl docs-only kanonický sync a parser ani jiný aplikační runtime kód
 
 Merge PR #17 má rodiče `8afe1328cfcb8f7ab90bb449775d1de0d441b584` a exact PR head `a6216eaf2e1cd6f4a85d3fe884074ddec9a46e47`.
 
-## Aktivní větve a PR
+## Aktivní větev a PR
 
 Otevřené jsou dva oddělené draft PR:
 
@@ -154,7 +154,4 @@ Responsive bug horní navigace `/tindeq` byl uživatelem doložen screenshotem z
 
 ## Další krok
 
-- dokončit exact-head CI, project-control, Vercel preview a mobilní browser gate PR #19 bez zásahu do PR #16;
-- merge PR #19 provést až po samostatném merge rozhodnutí;
-- po budoucím produkčním nasazení responsive opravy ji označit jako produkčně ověřenou až po výslovném ručním potvrzení na mobilním zařízení;
-- při prvním novém klientském měření během běžné lekce nadále provést parser acceptance `nový ZIP → správný klient → správné datum/čas → správný počet repetitions → analýza → save → historie → report → reload`.
+- Dokončit exact-head CI, project-control, Vercel preview a mobilní browser gate PR #19 bez zásahu do PR #16; merge řešit až samostatným rozhodnutím a produkční ověření responsive opravy až po výslovné ruční kontrole na mobilním zařízení.
