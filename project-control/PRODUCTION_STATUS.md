@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-09` (Europe/Prague), před nasazením responsive opravy z draft PR #19.
+`2026-08-09` (Europe/Prague), po dokončení pre-merge preview gate responsive opravy z draft PR #19; produkce zůstává beze změny.
 
 ## Produkční URL
 
@@ -31,13 +31,17 @@ Poslední runtime-changing produkční rollout před tímto docs-only mergem zů
 
 `dpl_7TYSD6qnLQS4WgkkF9RsprDcetpD`.
 
+Responsive oprava PR #19 má pouze preview deployment runtime checkpointu:
+
+`dpl_6hupqcary9MtnVBDcN2Din21K2z7` – `READY`, exact runtime head `316d394c9608e0f0d7729e48487d265f7b91a5c0`, target preview, alias error `null`.
+
 ## Nasazený commit
 
 Aktuální exact produkční `main` commit je:
 
 `7b9f40864b35cf75fb12d87aa0de32bd3aafeb93` – merge PR #18 `Sync Tindeq parser production evidence`.
 
-PR #18 měnil pouze kanonickou dokumentaci. Poslední commit, který mění aplikační runtime, zůstává:
+PR #18 měnil pouze kanonickou dokumentaci. Poslední commit, který mění produkční aplikační runtime, zůstává:
 
 `47d8be4b51141da7e1960f2b555588b90c5a5ed8` – merge PR #17 `Fix Tindeq Repeater date parsing`.
 
@@ -55,7 +59,9 @@ Aktuální produkční deployment `dpl_EgsTqXyojtoD84y11KdBukcDeR4F`:
 
 Parser rollout deployment `dpl_7TYSD6qnLQS4WgkkF9RsprDcetpD` doložil runtime-changing commit `47d8be4b51141da7e1960f2b555588b90c5a5ed8`, úspěšný Next.js production compile, TypeScript a statické routy včetně `/tindeq`, `/tindeq/reports` a `/tindeq/reports/demo`.
 
-`READY` dokládá produkční nasazení. Produkční ověření ve smyslu project-control vyžaduje samostatné výslovné uživatelské potvrzení konkrétního funkčního toku.
+Preview runtime checkpointu PR #19 `dpl_6hupqcary9MtnVBDcN2Din21K2z7` je `READY` a bez alias error. Tento stav dokládá pouze preview nasazení, ne produkční rollout.
+
+`READY` dokládá nasazení daného deploymentu. Produkční ověření ve smyslu project-control vyžaduje samostatné výslovné uživatelské potvrzení konkrétního funkčního toku na produkci.
 
 ## Databázové migrace použité produkční aplikací
 
@@ -112,7 +118,15 @@ Před merge exact head PR #17 `a6216eaf2e1cd6f4a85d3fe884074ddec9a46e47` prošel
 - deterministic `npm ci`, unit/date regressions, lint-baseline, production build, standalone TypeScript, `project:check`, `git diff --check` a Playwright/browser verification: PASS;
 - exact preview `dpl_AbeXLcb7a7CDTJKsi5wpo7V7zSo2`: `READY`.
 
-Responsive oprava PR #19 má vlastní samostatný exact-head CI/preview/browser gate před jakýmkoli merge rozhodnutím.
+Responsive oprava PR #19 na runtime checkpointu `316d394c9608e0f0d7729e48487d265f7b91a5c0` prošla samostatným pre-merge gate:
+
+- `Project control` run `31332338247`: PASS;
+- `Verify Tindeq client view` run `31332338254`: PASS;
+- unit testy, lint baseline proti aktuálnímu `main`, production build, TypeScript, `project:check`, `git diff --check` a celý Playwright browser suite: PASS;
+- nový Playwright regresní test kontroluje navigaci `/tindeq` na 390 px a 320 px a potvrzuje nulový geometrický překryv obou tlačítek a jejich setrvání uvnitř viewportu;
+- preview `dpl_6hupqcary9MtnVBDcN2Din21K2z7`: `READY`, alias error `null`.
+
+Následný kanonický evidence sync v PR #19 je docs-only a runtime checkpoint již nemění; exact živý head PR se při merge rozhodnutí resolve přes GitHub.
 
 ## Poslední výslovné uživatelské produkční ověření
 
@@ -122,7 +136,7 @@ Tento PASS se vztahuje na historickou remediation a nikoli na nový parser runti
 
 Parser z PR #17 je produkčně nasazený, ale první nový živý klientský ZIP po tomto rollout ještě nebyl uživatelem manuálně ověřen. Proto parser workflow zatím není označen jako **produkčně ověřeno**.
 
-Uživatel `2026-08-09` doložil screenshotem produkční responsive problém na `/tindeq`: při malé šířce viewportu se vpravo nahoře překrývají tlačítka `Otevřít reporty` a `Zpět na klienty`. Tento screenshot potvrzuje existenci produkčního UI problému, nikoli ještě opravu.
+Uživatel `2026-08-09` doložil screenshotem produkční responsive problém na `/tindeq`: při malé šířce viewportu se vpravo nahoře překrývají tlačítka `Otevřít reporty` a `Zpět na klienty`. Tento screenshot potvrzuje existenci produkčního UI problému, nikoli ještě produkční opravu.
 
 ## Produkční stav Tindeq
 
@@ -134,12 +148,12 @@ Uživatel `2026-08-09` doložil screenshotem produkční responsive problém na 
 - historický dataset zůstává stabilní 26 aktivních + 13 soft-deleted rows;
 - post-deploy HTTP/read-only smoke parser rollout je PASS;
 - aktuální produkční deployment `dpl_EgsTqXyojtoD84y11KdBukcDeR4F` je `READY` na exact `main` `7b9f40864b35cf75fb12d87aa0de32bd3aafeb93`;
-- responsive oprava PR #19 zatím není v produkci;
+- responsive oprava PR #19 má preview gate PASS, ale zatím není v produkci;
 - live new-client parser acceptance je stále pending.
 
 ## Známé produkční problémy
 
-- na `/tindeq` se při malé mobilní šířce mohou překrývat tlačítka horní navigace; izolovaná oprava je pouze v draft PR #19 a před merge čeká na exact-head CI/preview/browser gate;
+- na `/tindeq` se při malé mobilní šířce mohou v aktuální produkci stále překrývat tlačítka horní navigace; izolovaná oprava v draft PR #19 má pre-merge preview/browser gate PASS, ale čeká na samostatné merge rozhodnutí;
 - první nové živé klientské měření po parser rollout zatím nebylo manuálně produkčně ověřeno;
 - PR #16 je stále založený na stavu před merge PR #17 a před budoucím mergem vyžaduje rebase/reconciliation dvou kanonických project-control souborů;
 - shared production Supabase má dříve existující advisory nálezy mimo rozsah parser a responsive opravy.
