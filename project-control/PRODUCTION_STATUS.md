@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-09` (Europe/Prague), po merge a produkčním rollout PR #19 `Fix Tindeq mobile header navigation overlap`.
+`2026-08-09` (Europe/Prague), po merge a produkčním rollout PR #19 `Fix Tindeq mobile header navigation overlap` a po výslovném uživatelském potvrzení na skutečném telefonu v `21:59` Europe/Prague.
 
 ## Produkční URL
 
@@ -31,7 +31,7 @@ Ověřený stav:
 
 Merge PR #19 proběhl `2026-08-09T19:51:57Z` (`21:51:57` Europe/Prague) z exact headu `0273f81da63a99f0320fdc808d543e249467bb50` s expected-head protection.
 
-Následný project-control sync je docs-only. Pokud jeho commit automaticky vytvoří novější Vercel production deployment, jde pouze o dokumentační rollout stejného runtime; runtime-changing checkpoint zůstává `f5e4a53c0aa00a1a1c046b22a5968e192fdb36a2` a deployment `dpl_9MsYQkzpTgq8ENusVgjg3vpe8qVq`.
+Následné project-control sync commity jsou docs-only. Jejich automatické Vercel production deploymenty jsou pouze dokumentační rollout stejného runtime; runtime-changing checkpoint zůstává `f5e4a53c0aa00a1a1c046b22a5968e192fdb36a2` a deployment `dpl_9MsYQkzpTgq8ENusVgjg3vpe8qVq`.
 
 ## Nasazený commit
 
@@ -106,11 +106,11 @@ Samostatný produkční browser geometry run na 390 px / 320 px nebyl přes dost
 
 ## Poslední výslovné uživatelské produkční ověření
 
+Responsive oprava PR #19 byla dne `2026-08-09` v `21:59` Europe/Prague **výslovně produkčně ověřena uživatelem na skutečném telefonu**. Uživatel otevřel produkční `/tindeq`, přiložil screenshot a potvrdil stav `V pořádku`. Screenshot zobrazuje `Otevřít reporty` a `Zpět na klienty` bez překryvu, uvnitř mobilního viewportu a bez zjevného rozbití navazujícího obsahu stránky.
+
 Historická Tindeq datová remediation byla uživatelem dříve ručně potvrzena na problematickém historickém případě se správným datem a 8 repetitions.
 
 Parser data z PR #17 je produkčně nasazený, ale první nový živý klientský ZIP po parser rollout stále nemá explicitní uživatelskou acceptance.
-
-Responsive oprava PR #19 zatím nemá explicitní uživatelské potvrzení na skutečném telefonu. Automatizované technické evidence tento krok nenahrazují.
 
 ## Produkční stav Tindeq
 
@@ -120,13 +120,12 @@ Responsive oprava PR #19 zatím nemá explicitní uživatelské potvrzení na sk
 - runtime-changing deployment `dpl_9MsYQkzpTgq8ENusVgjg3vpe8qVq` je `READY`, target `production`;
 - technické ověření: exact-head CI/Playwright 390 px + 320 px, production build, HTTP/HTML smoke a error/fatal log check;
 - produkční DB: beze změny;
-- produkčně ověřeno uživatelem na skutečném telefonu: zatím ne.
+- produkčně ověřeno uživatelem na skutečném telefonu: **ano, 2026-08-09 21:59 Europe/Prague**.
 
 PR #16 `Tindeq: clarify metric interpretation states` zůstává mimo tento rollout: open, draft, merged: ne, head `904da6768fe72ed86973c93fb164dea5e1eacc87`, mergeable false a nebyl v rámci PR #19 upraven.
 
 ## Známé produkční problémy
 
-- pro responsive opravu PR #19 zbývá pouze ruční kontrola na skutečném telefonu;
 - live new-client parser acceptance zůstává samostatně pending;
 - PR #16 zůstává samostatný draft a před budoucím mergem vyžaduje reconciliation proti aktuálnímu `main`;
 - dříve existující shared-production Supabase advisory nálezy jsou mimo scope PR #19.

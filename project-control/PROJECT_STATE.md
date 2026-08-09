@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-09` (Europe/Prague), po merge PR #19, produkčním rollout responsive opravy `/tindeq`, technickém smoke testu a read-only DB post-checku.
+`2026-08-09` (Europe/Prague), po merge PR #19, produkčním rollout responsive opravy `/tindeq`, technickém smoke testu, read-only DB post-checku a výslovném uživatelském potvrzení na skutečném telefonu v `21:59` Europe/Prague.
 
 ## Aktuální `main` commit
 
@@ -15,7 +15,7 @@ Runtime-changing merge PR #19 je:
 - merge metoda: standardní merge commit;
 - expected-head protection byla použita proti `0273f81da63a99f0320fdc808d543e249467bb50`.
 
-Po runtime merge vznikl pouze docs-only project-control sync. Jeho SHA není runtime-changing checkpoint; exact živý `main` se při další práci vždy resolve přes GitHub.
+Po runtime merge vznikly pouze docs-only project-control sync commity. Jejich SHA nejsou runtime-changing checkpointy; exact živý `main` se při další práci vždy resolve přes GitHub.
 
 ## Aktivní větev a PR
 
@@ -65,7 +65,7 @@ Runtime-changing production deployment PR #19:
 
 Build log potvrzuje checkout `main` na `f5e4a53`, úspěšný Next.js production build, TypeScript a routy `/tindeq`, `/tindeq/reports` a `/tindeq/reports/demo` bez build failure.
 
-Případný automatický Vercel deployment následného docs-only project-control commitu je pouze dokumentační rollout stejného aplikačního runtime. Runtime-changing checkpoint zůstává `f5e4a53c0aa00a1a1c046b22a5968e192fdb36a2` / `dpl_9MsYQkzpTgq8ENusVgjg3vpe8qVq`.
+Automatické Vercel deploymenty následných docs-only project-control commitů jsou pouze dokumentační rollout stejného aplikačního runtime. Runtime-changing checkpoint zůstává `f5e4a53c0aa00a1a1c046b22a5968e192fdb36a2` / `dpl_9MsYQkzpTgq8ENusVgjg3vpe8qVq`.
 
 ## Stav databázových migrací
 
@@ -94,9 +94,9 @@ Nebyl proveden žádný produkční DB write, DDL ani testovací klient.
 
 ## Aktuální fáze
 
-Responsive oprava PR #19 je implementována v runtime merge `f5e4a53c0aa00a1a1c046b22a5968e192fdb36a2`, nasazena na produkci a technicky ověřena exact-head CI/Playwright gatem plus produkčním build/HTTP/HTML/log smoke testem.
+Responsive oprava PR #19 je implementována v runtime merge `f5e4a53c0aa00a1a1c046b22a5968e192fdb36a2`, nasazena na produkci, technicky ověřena exact-head CI/Playwright gatem plus produkčním build/HTTP/HTML/log smoke testem a dne `2026-08-09` v `21:59` Europe/Prague byla uživatelem výslovně potvrzena na skutečném telefonu jako funkční.
 
-Samostatný produkční browser geometry run na 390 px / 320 px nebyl přes dostupné připojené produkční browser nástroje technicky dostupný. Geometrie je doložena exact-head Playwright gatem na 390 px a 320 px před mergem; produkce je doložena exact runtime SHA, `READY` deploymentem, HTTP/HTML smoke a runtime logy.
+Uživatelský screenshot produkční `/tindeq` potvrzuje, že tlačítka `Otevřít reporty` a `Zpět na klienty` se nepřekrývají, zůstávají uvnitř mobilního viewportu a header vizuálně nerozbíjí navazující obsah stránky.
 
 ## Implementováno v `main`
 
@@ -126,17 +126,16 @@ Samostatný produkční browser geometry run na 390 px / 320 px nebyl přes dost
 
 ## Produkčně ověřeno
 
-Responsive oprava PR #19 zatím **není označena jako produkčně ověřená uživatelem**. Automatizované CI/browser preview, `READY` production deployment, HTTP/HTML smoke, build a log kontroly jsou technické evidence a nenahrazují ruční kontrolu na skutečném telefonu.
+Responsive oprava PR #19 je **produkčně ověřena uživatelem**. Uživatel dne `2026-08-09` v `21:59` Europe/Prague otevřel produkční `/tindeq` na skutečném telefonu a výslovně potvrdil stav jako `V pořádku`; přiložený screenshot zobrazuje obě navigační tlačítka bez překryvu a uvnitř mobilního viewportu.
 
 Parser z PR #17 je produkčně nasazený, ale první nový živý klientský ZIP po parser rollout stále čeká na samostatnou manuální acceptance; tento pending bod nesouvisí s PR #19.
 
 ## Známé problémy
 
-- pro PR #19 chybí už jen výslovné uživatelské potvrzení na skutečném telefonu;
 - live new-client parser acceptance zůstává samostatně pending;
 - PR #16 zůstává samostatný draft a před budoucím mergem vyžaduje reconciliation proti aktuálnímu `main`;
 - dříve existující shared-production Supabase advisory nálezy jsou mimo scope PR #19.
 
 ## Další krok
 
-- Otevřít produkční `/tindeq` na skutečném telefonu a potvrdit, že se `Otevřít reporty` a `Zpět na klienty` již nepřekrývají, zůstávají uvnitř viewportu a header nerozbíjí zbytek stránky.
+- PR #19 je uzavřen a nevyžaduje další zásah; další práce patří do samostatného parser acceptance nebo do odděleného PR #16 podle dalšího rozhodnutí uživatele.
