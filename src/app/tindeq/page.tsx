@@ -3,6 +3,7 @@ import Link from "next/link";
 import TindeqEnvironmentGuard from "./TindeqEnvironmentGuard";
 import TindeqWorkspace from "./TindeqWorkspace";
 import styles from "./tindeq.module.css";
+import navStyles from "./tindeq-nav.module.css";
 
 export const metadata: Metadata = {
   title: "Tindeq Repeaters | Knee Data",
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default function TindeqPage() {
   return (
     <main className={styles.page}>
-      <header className={styles.header}>
+      <header className={`${styles.header} ${navStyles.mobileHeader}`}>
         <div>
           <p className={styles.eyebrow}>knee.vankotraining.cz</p>
           <h1>Tindeq Repeaters</h1>
@@ -21,11 +22,11 @@ export default function TindeqPage() {
             poté výslovně potvrď uložení strukturovaného výsledku.
           </p>
         </div>
-        <nav aria-label="Navigace Tindeq">
-          <Link className={styles.backLink} href="/tindeq/reports">
+        <nav className={navStyles.nav} aria-label="Navigace Tindeq">
+          <Link className={`${styles.backLink} ${navStyles.link}`} href="/tindeq/reports">
             Otevřít reporty
-          </Link>{" "}
-          <Link className={styles.backLink} href="/">
+          </Link>
+          <Link className={`${styles.backLink} ${navStyles.link}`} href="/">
             Zpět na klienty
           </Link>
         </nav>

@@ -2,54 +2,71 @@
 
 ## Datum poslední kontroly
 
-`2026-08-08` (Europe/Prague), po merge a produkčním rollout PR #17 a při kanonickém docs-only syncu PR #18.
+`2026-08-09` (Europe/Prague), po dokončení pre-merge gate izolované opravy mobilní navigace `/tindeq` v draft PR #19.
 
 ## Aktuální `main` commit
 
-Poslední commit, který mění aplikační runtime, je:
+Aktuální exact `main` je:
+
+`7b9f40864b35cf75fb12d87aa0de32bd3aafeb93` – merge PR #18 `Sync Tindeq parser production evidence`.
+
+Poslední commit, který před PR #19 měnil aplikační runtime, zůstává:
 
 `47d8be4b51141da7e1960f2b555588b90c5a5ed8` – merge PR #17 `Fix Tindeq Repeater date parsing`.
 
-PR #18 je pouze kanonický dokumentační sync. Po jeho merge je aktuální `main` commit merge commit obsahující tento soubor; jeho vlastní budoucí SHA nelze korektně vložit do souboru před vytvořením merge commitu. Exact živý `main` se proto při každé další práci resolve přes GitHub. Aplikační runtime kód po PR #18 zůstává potomkem runtime checkpointu `47d8be4b51141da7e1960f2b555588b90c5a5ed8` bez další funkční změny.
+PR #18 byl docs-only kanonický sync a parser ani jiný aplikační runtime kód nezměnil.
 
 Merge PR #17 má rodiče `8afe1328cfcb8f7ab90bb449775d1de0d441b584` a exact PR head `a6216eaf2e1cd6f4a85d3fe884074ddec9a46e47`.
 
 ## Aktivní větev a PR
 
-PR #17 je merged a closed.
+Otevřené jsou dva oddělené draft PR:
 
-PR #18 `Sync Tindeq parser production evidence` je docs-only kanonický sync tohoto produkčního rollout evidence. Po jeho merge nevzniká nová aplikační funkcionalita ani DB změna.
-
-Paralelně zůstává otevřený draft PR #16 `Tindeq: clarify metric interpretation states`:
+### PR #16 `Tindeq: clarify metric interpretation states`
 
 - větev: `agent/tindeq-metric-statuses`;
-- head před rebase: `904da6768fe72ed86973c93fb164dea5e1eacc87`;
-- PR zůstává samostatná prezentační změna;
-- runtime/presentation soubory PR #16 se s parser soubory PR #17 nepřekrývají;
-- PR #16 mění `PROJECT_STATE.md` a `PRODUCTION_STATUS.md`, proto před budoucím mergem vyžaduje rebase/reconciliation proti post-PR-17/18 `main`.
+- head při fresh kontrole: `904da6768fe72ed86973c93fb164dea5e1eacc87`;
+- base v PR metadata zůstává pre-PR-17 commit `8afe1328cfcb8f7ab90bb449775d1de0d441b584`;
+- GitHub jej při fresh kontrole `2026-08-09` označil jako `mergeable: false`;
+- před budoucím mergem vyžaduje rebase/reconciliation proti aktuálnímu `main`, zejména v kanonických project-control souborech.
+
+### PR #19 `Fix Tindeq mobile header navigation overlap`
+
+- větev: `agent/tindeq-mobile-nav-fix`;
+- base: exact `main` `7b9f40864b35cf75fb12d87aa0de32bd3aafeb93`;
+- runtime-changing checkpoint opravy: `316d394c9608e0f0d7729e48487d265f7b91a5c0`;
+- scope: pouze responsive layout horní navigace `/tindeq` a cílený Playwright regresní test;
+- žádné změny Tindeq analýzy, auth, Supabase, persistence, schema, environment variables ani produkčních dat;
+- oprava je **implementována ve větvi**, ale ještě není v `main` ani produkci;
+- GitHub při kontrole runtime checkpointu uváděl PR jako `mergeable: true` a PR zůstává draft;
+- exact runtime checkpoint prošel `Project control` run `31332338247`: PASS;
+- exact runtime checkpoint prošel `Verify Tindeq client view` run `31332338254`: PASS včetně unit testů, lint baseline, production build, TypeScript, `project:check`, `git diff --check` a celého Playwright browser suite;
+- nový E2E test ověřuje na viewportu 390 px a 320 px, že boxy `Otevřít reporty` a `Zpět na klienty` se nepřekrývají a zůstávají uvnitř viewportu;
+- exact runtime checkpoint má Vercel preview `dpl_6hupqcary9MtnVBDcN2Din21K2z7`: `READY`, alias error `null`;
+- tento kanonický evidence sync je po runtime checkpointu docs-only a aplikační runtime již nemění; exact živý PR head se proto při dalším kroku resolve přes GitHub.
+
+PR #19 záměrně nezasahuje do větve PR #16.
 
 ## Produkční runtime commit
 
-Runtime-changing produkční checkpoint parseru je:
+Aktuální produkční deployment po docs-only merge PR #18 je:
 
-`47d8be4b51141da7e1960f2b555588b90c5a5ed8`.
+`dpl_EgsTqXyojtoD84y11KdBukcDeR4F`.
 
-Parser rollout byl ověřen na produkčním deploymentu:
-
-`dpl_7TYSD6qnLQS4WgkkF9RsprDcetpD`.
-
-Doložený stav rollout checkpointu:
+Doložený stav:
 
 - target: `production`;
 - state: `READY`;
-- commit: `47d8be4b51141da7e1960f2b555588b90c5a5ed8`;
-- branch: `main`;
-- alias zahrnuje `knee.vankotraining.cz`;
-- alias error: `null`.
+- commit: `7b9f40864b35cf75fb12d87aa0de32bd3aafeb93`;
+- branch: `main`.
 
-Docs-only merge PR #18 může vytvořit novější produkční deployment ID, ale nemění aplikační runtime kód. Exact aktuální deployment po takovém self-referential docs merge se resolve přes Vercel; finální evidence se zapisuje také do PR #18, protože deployment ID vzniká až po merge tohoto souboru.
+Protože PR #18 byl docs-only, poslední aplikační runtime změna uvnitř tohoto produkčního commitu zůstává parser checkpoint:
+
+`47d8be4b51141da7e1960f2b555588b90c5a5ed8`.
 
 Oprava `parseTindeqDate()` z PR #17 je tedy **implementována v `main` a produkčně nasazena**.
+
+Responsive oprava z PR #19 zatím **není produkčně nasazena**.
 
 ## Stav databázových migrací
 
@@ -63,7 +80,7 @@ Doložený invariant:
 
 - validated CHECK `tindeq_sessions_source_session_id_valid` vyžaduje 20znakový lowercase hex `raw_metadata ->> 'tindeqSessionId'`;
 - partial unique index `tindeq_sessions_active_source_session_uidx` chrání aktivní identitu `(athlete_id, analysis_version, raw_metadata ->> 'tindeqSessionId') WHERE deleted_at IS NULL`;
-- PR #17 ani PR #18 databázové schéma nemění.
+- PR #19 databázové schéma ani data nemění.
 
 ### Produkční historický Tindeq dataset
 
@@ -87,13 +104,13 @@ Detailní anonymizovaný evidence záznam je v [`tindeq-historical-import-remedi
 
 ### Vývojový Supabase `twndqnmrvefhwuwuglju`
 
-PR #17 ani docs-only PR #18 do dev databáze nezapisují a nevyžadují schema změnu.
+PR #19 do dev databáze nezapisuje a nevyžaduje schema změnu.
 
 ## Aktuální fáze
 
-**Oprava Tindeq parseru data je mergnutá a produkčně nasazená. Stabilizace nyní čeká na první nové živé klientské měření jako manuální produkční acceptance.**
+Parser data je mergnutý a produkčně nasazený; jeho první nové živé klientské měření stále čeká na manuální produkční acceptance.
 
-Produkční parser interpretuje Tindeq `info.csv` datum jako pevný formát `YYYY-DD-MM HH:mm[:ss]`, validuje kalendářní datum a čas a při neplatném/nepodporovaném formátu failne místo heuristického odhadu.
+Responsive oprava horní navigace `/tindeq` je v draft PR #19 implementovaná a její runtime checkpoint prošel bezpečným pre-merge CI, browser a Vercel preview gate. Produkce se nezměnila.
 
 ## Implementováno v `main`
 
@@ -108,14 +125,16 @@ Produkční parser interpretuje Tindeq `info.csv` datum jako pevný formát `YYY
 
 ## Rozpracováno mimo `main`
 
-PR #16 samostatně řeší prezentační stavy a vysvětlivky Tindeq metrik. Před dalším mergem musí být rebased/reconciled proti post-PR-17/18 `main`, zejména ve dvou kanonických project-control souborech.
+- PR #16 samostatně řeší prezentační stavy a vysvětlivky Tindeq metrik a před dalším mergem potřebuje rebase/reconciliation proti aktuálnímu `main`;
+- PR #19 řeší pouze responsive horní navigaci `/tindeq`; používá explicitní flex/grid layout a obsahuje E2E regresní kontrolu pro mobilní viewporty 390 px a 320 px; runtime checkpoint `316d394c9608e0f0d7729e48487d265f7b91a5c0` má pre-merge gate PASS.
 
 ## Nasazeno
 
-- parser runtime checkpoint: `dpl_7TYSD6qnLQS4WgkkF9RsprDcetpD`, commit `47d8be4b51141da7e1960f2b555588b90c5a5ed8`, `READY`, alias error `null`;
+- aktuální produkční deployment: `dpl_EgsTqXyojtoD84y11KdBukcDeR4F`, commit `7b9f40864b35cf75fb12d87aa0de32bd3aafeb93`, `READY`, target `production`;
+- parser runtime checkpoint uvnitř aktuálního produkčního commitu: `47d8be4b51141da7e1960f2b555588b90c5a5ed8`;
 - předmerge exact preview PR #17: `dpl_AbeXLcb7a7CDTJKsi5wpo7V7zSo2`, exact head `a6216eaf2e1cd6f4a85d3fe884074ddec9a46e47`, `READY`;
-- exact-head CI PR #17: `Verify Tindeq client view` run `31275223170` PASS a `Project control` run `31275223171` PASS;
-- docs-only PR #18 má vlastní exact-head CI/preview gate před merge; jeho produkční deployment po merge nemění runtime funkcionalitu.
+- preview PR #19 runtime checkpoint: `dpl_6hupqcary9MtnVBDcN2Din21K2z7`, exact runtime head `316d394c9608e0f0d7729e48487d265f7b91a5c0`, `READY`, target preview, alias error `null`;
+- responsive oprava PR #19 zatím není produkčně nasazena.
 
 Post-deploy read-only smoke parser rollout:
 
@@ -131,14 +150,15 @@ Historická datová remediation je manuálně produkčně ověřena pouze v dř�
 
 Parser kód z PR #17 je **produkčně nasazený**, ale zatím není označen jako **produkčně ověřený** ve smyslu project-control. Automatizovaný CI, READY deployment, HTTP smoke a DB post-check tento stav nenahrazují.
 
-Manuální produkční acceptance parseru bude provedena při prvním novém živém klientském měření.
+Responsive bug horní navigace `/tindeq` byl uživatelem doložen screenshotem z produkce. Oprava PR #19 je automatizovaně ověřená na preview, ale protože ještě není v produkci, není označena jako **produkčně ověřeno**.
 
 ## Známé problémy
 
+- na aktuálním produkčním `/tindeq` se při malé mobilní šířce mohou stále překrývat navigační tlačítka; oprava je pouze v draft PR #19 a čeká na samostatné merge rozhodnutí;
 - PR #16 je stále založený na pre-PR-17 `main` a před budoucím mergem potřebuje rebase/reconciliation kanonické dokumentace;
-- shared production Supabase má dříve existující advisory nálezy mimo rozsah parser opravy;
+- shared production Supabase má dříve existující advisory nálezy mimo rozsah této UI opravy;
 - první nový live ZIP workflow po parser rollout zatím nebyl uživatelem manuálně potvrzen.
 
 ## Další krok
 
-- Při prvním novém klientském měření během běžné lekce provést acceptance `nový ZIP → správný klient → správné datum/čas → správný počet repetitions → analýza → save → historie → report → reload` a teprve po PASS označit parser workflow jako produkčně ověřený.
+- Rozhodnout samostatně o merge draft PR #19; po případném produkčním rollout ověřit mobilní header ručně na skutečném telefonu a až poté změnu označit jako produkčně ověřenou.

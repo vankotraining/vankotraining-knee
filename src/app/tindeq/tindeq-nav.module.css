@@ -1,0 +1,37 @@
+.nav {
+  display: flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.link {
+  min-width: 0;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .mobileHeader {
+    flex-direction: column;
+  }
+
+  .mobileHeader > :first-child {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .nav {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .link {
+    width: 100%;
+    white-space: normal;
+  }
+}
