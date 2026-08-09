@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-09` (Europe/Prague), při izolované opravě mobilní navigace `/tindeq` v draft PR #19.
+`2026-08-09` (Europe/Prague), po dokončení pre-merge gate izolované opravy mobilní navigace `/tindeq` v draft PR #19.
 
 ## Aktuální `main` commit
 
@@ -25,7 +25,7 @@ Otevřené jsou dva oddělené draft PR:
 ### PR #16 `Tindeq: clarify metric interpretation states`
 
 - větev: `agent/tindeq-metric-statuses`;
-- head: `904da6768fe72ed86973c93fb164dea5e1eacc87`;
+- head při fresh kontrole: `904da6768fe72ed86973c93fb164dea5e1eacc87`;
 - base v PR metadata zůstává pre-PR-17 commit `8afe1328cfcb8f7ab90bb449775d1de0d441b584`;
 - GitHub jej při fresh kontrole `2026-08-09` označil jako `mergeable: false`;
 - před budoucím mergem vyžaduje rebase/reconciliation proti aktuálnímu `main`, zejména v kanonických project-control souborech.
@@ -34,10 +34,16 @@ Otevřené jsou dva oddělené draft PR:
 
 - větev: `agent/tindeq-mobile-nav-fix`;
 - base: exact `main` `7b9f40864b35cf75fb12d87aa0de32bd3aafeb93`;
+- runtime-changing checkpoint opravy: `316d394c9608e0f0d7729e48487d265f7b91a5c0`;
 - scope: pouze responsive layout horní navigace `/tindeq` a cílený Playwright regresní test;
 - žádné změny Tindeq analýzy, auth, Supabase, persistence, schema, environment variables ani produkčních dat;
 - oprava je **implementována ve větvi**, ale ještě není v `main` ani produkci;
-- před merge vyžaduje exact-head CI, `project:check`, Vercel preview a mobilní browser gate.
+- GitHub při kontrole runtime checkpointu uváděl PR jako `mergeable: true` a PR zůstává draft;
+- exact runtime checkpoint prošel `Project control` run `31332338247`: PASS;
+- exact runtime checkpoint prošel `Verify Tindeq client view` run `31332338254`: PASS včetně unit testů, lint baseline, production build, TypeScript, `project:check`, `git diff --check` a celého Playwright browser suite;
+- nový E2E test ověřuje na viewportu 390 px a 320 px, že boxy `Otevřít reporty` a `Zpět na klienty` se nepřekrývají a zůstávají uvnitř viewportu;
+- exact runtime checkpoint má Vercel preview `dpl_6hupqcary9MtnVBDcN2Din21K2z7`: `READY`, alias error `null`;
+- tento kanonický evidence sync je po runtime checkpointu docs-only a aplikační runtime již nemění; exact živý PR head se proto při dalším kroku resolve přes GitHub.
 
 PR #19 záměrně nezasahuje do větve PR #16.
 
@@ -104,7 +110,7 @@ PR #19 do dev databáze nezapisuje a nevyžaduje schema změnu.
 
 Parser data je mergnutý a produkčně nasazený; jeho první nové živé klientské měření stále čeká na manuální produkční acceptance.
 
-Paralelně se v PR #19 řeší izolovaný produkčně pozorovaný responsive bug horní navigace `/tindeq`, kde se při malé šířce viewportu překrývají tlačítka `Otevřít reporty` a `Zpět na klienty`.
+Responsive oprava horní navigace `/tindeq` je v draft PR #19 implementovaná a její runtime checkpoint prošel bezpečným pre-merge CI, browser a Vercel preview gate. Produkce se nezměnila.
 
 ## Implementováno v `main`
 
@@ -120,13 +126,14 @@ Paralelně se v PR #19 řeší izolovaný produkčně pozorovaný responsive bug
 ## Rozpracováno mimo `main`
 
 - PR #16 samostatně řeší prezentační stavy a vysvětlivky Tindeq metrik a před dalším mergem potřebuje rebase/reconciliation proti aktuálnímu `main`;
-- PR #19 řeší pouze responsive horní navigaci `/tindeq`; používá explicitní flex/grid layout a obsahuje E2E regresní kontrolu pro mobilní viewporty 390 px a 320 px.
+- PR #19 řeší pouze responsive horní navigaci `/tindeq`; používá explicitní flex/grid layout a obsahuje E2E regresní kontrolu pro mobilní viewporty 390 px a 320 px; runtime checkpoint `316d394c9608e0f0d7729e48487d265f7b91a5c0` má pre-merge gate PASS.
 
 ## Nasazeno
 
 - aktuální produkční deployment: `dpl_EgsTqXyojtoD84y11KdBukcDeR4F`, commit `7b9f40864b35cf75fb12d87aa0de32bd3aafeb93`, `READY`, target `production`;
 - parser runtime checkpoint uvnitř aktuálního produkčního commitu: `47d8be4b51141da7e1960f2b555588b90c5a5ed8`;
 - předmerge exact preview PR #17: `dpl_AbeXLcb7a7CDTJKsi5wpo7V7zSo2`, exact head `a6216eaf2e1cd6f4a85d3fe884074ddec9a46e47`, `READY`;
+- preview PR #19 runtime checkpoint: `dpl_6hupqcary9MtnVBDcN2Din21K2z7`, exact runtime head `316d394c9608e0f0d7729e48487d265f7b91a5c0`, `READY`, target preview, alias error `null`;
 - responsive oprava PR #19 zatím není produkčně nasazena.
 
 Post-deploy read-only smoke parser rollout:
@@ -143,15 +150,15 @@ Historická datová remediation je manuálně produkčně ověřena pouze v dř�
 
 Parser kód z PR #17 je **produkčně nasazený**, ale zatím není označen jako **produkčně ověřený** ve smyslu project-control. Automatizovaný CI, READY deployment, HTTP smoke a DB post-check tento stav nenahrazují.
 
-Responsive bug horní navigace `/tindeq` byl uživatelem doložen screenshotem z produkce; oprava PR #19 zatím čeká na preview/browser ověření a není produkčně ověřena.
+Responsive bug horní navigace `/tindeq` byl uživatelem doložen screenshotem z produkce. Oprava PR #19 je automatizovaně ověřená na preview, ale protože ještě není v produkci, není označena jako **produkčně ověřeno**.
 
 ## Známé problémy
 
-- na aktuálním produkčním `/tindeq` se při malé mobilní šířce mohou překrývat navigační tlačítka; oprava je pouze v draft PR #19;
+- na aktuálním produkčním `/tindeq` se při malé mobilní šířce mohou stále překrývat navigační tlačítka; oprava je pouze v draft PR #19 a čeká na samostatné merge rozhodnutí;
 - PR #16 je stále založený na pre-PR-17 `main` a před budoucím mergem potřebuje rebase/reconciliation kanonické dokumentace;
 - shared production Supabase má dříve existující advisory nálezy mimo rozsah této UI opravy;
 - první nový live ZIP workflow po parser rollout zatím nebyl uživatelem manuálně potvrzen.
 
 ## Další krok
 
-- Dokončit exact-head CI, project-control, Vercel preview a mobilní browser gate PR #19 bez zásahu do PR #16; merge řešit až samostatným rozhodnutím a produkční ověření responsive opravy až po výslovné ruční kontrole na mobilním zařízení.
+- Rozhodnout samostatně o merge draft PR #19; po případném produkčním rollout ověřit mobilní header ručně na skutečném telefonu a až poté změnu označit jako produkčně ověřenou.
