@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-10` (Europe/Prague), po live new-client Tindeq upload/save acceptance a fresh read-only produkčním DB post-checku.
+`2026-08-10` (Europe/Prague), po live new-client Tindeq upload/save acceptance, fresh read-only produkčním DB post-checku a reconciliation draft PR #16 proti aktuálnímu `main`.
 
 ## Produkční URL
 
@@ -26,7 +26,7 @@ Poslední runtime-changing deployment zůstává PR #19:
 - exact runtime-changing commit: `f5e4a53c0aa00a1a1c046b22a5968e192fdb36a2`;
 - alias obsahuje `knee.vankotraining.cz`.
 
-Následné acceptance/project-control deploymenty jsou docs-only a nejsou novými runtime checkpointy.
+Následné acceptance/project-control deploymenty jsou docs-only a nejsou novými runtime checkpointy. Fresh Vercel kontrola dne `2026-08-10` potvrdila jako nejnovější produkční deployment `dpl_AUEYkF1LzeeJtXDuQTWKs29oJB89`, `READY`, z `main@2aad506dd482e765c61036a84b6a39a5635c90cf`; tento commit je docs-only a nemění runtime checkpoint uvedený výše.
 
 ## Nasazený commit
 
@@ -39,6 +39,8 @@ Parser oprava PR #17 je jeho předkem a zůstává součástí aktuálního prod
 ## Čas a výsledek deploymentu
 
 Runtime deployment `dpl_9MsYQkzpTgq8ENusVgjg3vpe8qVq` byl ověřen jako `READY`; build log potvrzuje správný checkout `main`, úspěšný Next.js production build, TypeScript a generování rout `/`, `/tindeq`, `/tindeq/reports` a `/tindeq/reports/demo` bez build failure.
+
+Fresh HTTP kontrola nejnovějšího produkčního deploymentu dne `2026-08-10` vrátila pro `/tindeq` HTTP 200 a HTML obsahuje aktuální responsive Tindeq navigaci z PR #19.
 
 ## Databázové migrace použité produkční aplikací
 
@@ -69,23 +71,26 @@ PR #19 prošel před mergem exact-head CI/Playwright gatem včetně mobilních v
 
 Parser PR #17 měl před rolloutem vlastní exact-head testy a produkční technický smoke. Dne `2026-08-10` byl doplněn chybějící live acceptance: uživatel nahrál nové Tindeq měření a úspěšně vyzkoušel jeho uložení; fresh DB post-check potvrzuje novou aktivní validní session bez dedupe porušení.
 
+Historické automatické ověření PR #16 na starém head `904da6768fe72ed86973c93fb164dea5e1eacc87` bylo zelené, ale po reconciliation proti aktuálnímu `main` není samo o sobě merge gatem. Pro budoucí merge je autoritativní pouze fresh exact-head CI/Playwright/Vercel stav zreconcilované větve.
+
 ## Poslední výslovné uživatelské produkční ověření
 
 `2026-08-10`: uživatel výslovně potvrdil nové live Tindeq měření slovy, že jej nahrál, vyzkoušel uložení a vše vypadá v pořádku. Toto potvrzení uzavírá live new-client parser acceptance po PR #17.
 
 `2026-08-09 21:59` Europe/Prague: uživatel na skutečném telefonu potvrdil responsive opravu PR #19 jako `V pořádku`.
 
+PR #16 není produkčně nasazený, proto pro jeho nový interpretační model zatím neexistuje produkční acceptance.
+
 ## Produkční stav Tindeq
 
 - Tindeq runtime je produkčně nasazený;
-- parser data z PR #17 je produkčně nasazený a nyní také uživatelsky ověřený v novém live upload/save workflow;
+- parser data z PR #17 je produkčně nasazený a uživatelsky ověřený v novém live upload/save workflow;
 - responsive oprava PR #19 je produkčně nasazená a uživatelsky ověřená na skutečném telefonu;
 - produkční DB po live save: `40` total / `27` active / `13` soft-deleted, `8` aktivních klientů, bez invalid source IDs a bez aktivních duplicit;
-- parser acceptance ani responsive oprava již nemají otevřený produkční acceptance bod.
-
-PR #16 `Tindeq: clarify metric interpretation states` zůstává samostatný open draft a není součástí dokončených rolloutů.
+- parser acceptance ani responsive oprava již nemají otevřený produkční acceptance bod;
+- PR #16 zůstává samostatná prezentační změna mimo produkci; jeho reconciliation nesmí být interpretována jako produkční deployment.
 
 ## Známé produkční problémy
 
-- PR #16 před budoucím mergem vyžaduje reconciliation proti aktuálnímu `main`;
-- dříve existující shared-production Supabase advisory nálezy zůstávají mimo scope dokončených parser/responsive změn.
+- PR #16 je po branch reconciliation stále draft, není v `main` ani v produkci; před budoucím mergem musí být zelený fresh exact-head CI/Playwright/Vercel gate;
+- dříve existující shared-production Supabase advisory nálezy zůstávají mimo scope dokončených parser/responsive změn i PR #16.

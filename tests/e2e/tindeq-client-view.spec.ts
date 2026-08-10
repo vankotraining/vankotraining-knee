@@ -207,7 +207,8 @@ test("ZIP se analyzuje před explicitním výběrem klienta a teprve potom lze u
   await expect(page.getByRole("option", { name: "Klient Test" })).toHaveAttribute("aria-selected", "false");
 
   await uploadArchive(page, "single-tindeq.zip", tindeqArchive("Klient Test"));
-  await expect(page.getByRole("heading", { name: "Velmi dobrá série" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Série splněna" })).toBeVisible();
+  await expect(page.getByText("V cíli", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Uložit měření ke klientovi" })).toBeDisabled();
 
   await page.getByRole("option", { name: "Klient Test" }).click();
@@ -229,6 +230,19 @@ test("ZIP se analyzuje před explicitním výběrem klienta a teprve potom lze u
     }));
     expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
     await page.screenshot({ fullPage: true, path: testInfo.outputPath(`client-${width}.png`) });
+  }
+
+  await page.getByRole("tab", { name: "Detail pro trenéra" }).click();
+  await expect(page.getByText("Pracovní pravidlo protokolu").first()).toBeVisible();
+  await expect(page.getByText("Individuální kontext").first()).toBeVisible();
+  for (const width of [390, 1024]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+    const overflow = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+    await page.screenshot({ fullPage: true, path: testInfo.outputPath(`trainer-${width}.png`) });
   }
 });
 
@@ -274,7 +288,7 @@ test("chyba uložení zachová výsledek a umožní opakování", async ({ page 
   await uploadArchive(page, "failed-save.zip", tindeqArchive("Klient Test"));
   await page.getByRole("button", { name: "Uložit měření ke klientovi" }).click();
   await expect(page.getByText("Uložení selhalo. Analyzovaný výsledek zůstává na obrazovce.")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Velmi dobrá série" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Série splněna" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Uložit měření ke klientovi" })).toBeEnabled();
 });
 
