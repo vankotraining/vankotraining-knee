@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-10` (Europe/Prague), po uživatelském live new-client Tindeq acceptance, fresh read-only produkčním DB post-checku a reconciliation draft PR #16 proti aktuálnímu `main`.
+`2026-08-10` (Europe/Prague), po uživatelském live new-client Tindeq acceptance, fresh read-only produkčním DB post-checku, reconciliation draft PR #16 proti aktuálnímu `main` a fresh exact-head validation kódového checkpointu PR #16.
 
 ## Aktuální `main` commit
 
@@ -22,7 +22,9 @@ PR #19 `Fix Tindeq mobile header navigation overlap` je merged / closed a uživa
 
 PR #16 `Tindeq: clarify metric interpretation states` zůstává samostatný open draft na větvi `agent/tindeq-metric-statuses`. Původní head před reconciliation byl `904da6768fe72ed86973c93fb164dea5e1eacc87` a původní base `8afe1328cfcb8f7ab90bb449775d1de0d441b584`. Reconciliation je postavená nad exact `main@2aad506dd482e765c61036a84b6a39a5635c90cf` a zachovává změny parseru PR #17, responsive navigace PR #19 i následnou project-control evidenci.
 
-PR #16 zůstává draft; reconciliation sama o sobě není schválení merge do `main`.
+Fresh automaticky ověřený kódový checkpoint po reconciliation je `88dc6cce27321306f4770285c3d35d904022f669`. GitHub na tomto checkpointu potvrzuje `mergeable: true`, `behind_by: 0`; oba workflow (`Verify Tindeq client view` run 213 a `Project control` run 69) skončily `success` a Vercel preview `dpl_6bFRYvkszDqJrq1MC4rx9BeU4nUy` je `READY`.
+
+PR #16 zůstává draft; zelený gate ani reconciliation samy o sobě nejsou schválení merge do `main`.
 
 ## Produkční runtime commit
 
@@ -73,7 +75,7 @@ Responsive oprava PR #19 je kompletně uzavřena: implementována, nasazena, tec
 
 Parser data z PR #17 je rovněž **produkčně ověřený v live new-client workflow**. Uživatel dne `2026-08-10` nahrál nové Tindeq měření, provedl jeho uložení na produkci a výslovně potvrdil, že vše vypadá v pořádku. Fresh read-only DB post-check potvrzuje novou aktivní session bez duplicit, s validním source session ID a `8/8` repetitions.
 
-PR #16 je po reconciliation implementovaný ve své větvi jako prezentační rozšíření. Cílový uživatelský model je **3stupňová barevná škála + neutrální stav**: zelená `good`, oranžová `warning`, červená `problem`; šedá `neutral` není čtvrtý hodnoticí stupeň a slouží pro metriky bez korektní dobré/špatné klasifikace. `tindeq-report-v1`, databáze, persistence, auth a parserové pravidlo se tímto PR nemění.
+PR #16 je po reconciliation implementovaný a stabilizovaný ve své větvi jako prezentační rozšíření. Cílový uživatelský model je **3stupňová barevná škála + neutrální stav**: zelená `good`, oranžová `warning`, červená `problem`; šedá `neutral` není čtvrtý hodnoticí stupeň a slouží pro metriky bez korektní dobré/špatné klasifikace. `tindeq-report-v1`, databáze, persistence, auth a parserové pravidlo se tímto PR nemění.
 
 ## Implementováno v `main`
 
@@ -89,7 +91,9 @@ PR #16 je po reconciliation implementovaný ve své větvi jako prezentační ro
 - chybějící nebo skutečně nehodnotitelné údaje jsou neutrální, nikoli automaticky červené;
 - při chybějící délce pracovního intervalu se technický náběh na 95 % neklasifikuje jako problém bez dostatečného podkladu;
 - pracovní hranice zůstávají označené jako pravidla protokolu, ne validované klinické cut-off hodnoty;
-- před merge je autoritativní pouze fresh exact-head workflow a preview stav po reconciliation; historické zelené checky na `904da...` nejsou merge gate.
+- kódový checkpoint `88dc6cce...` prošel fresh unit, lint-baseline, production build, TypeScript, project-control, whitespace/diff a Playwright/browser gatem; responsive screenshot artefakty byly úspěšně uploadované;
+- Vercel preview stejného checkpointu je `READY`;
+- PR je technicky stabilizovaný pro samostatné rozhodnutí o ready-for-review / merge.
 
 ## Nasazeno
 
@@ -110,9 +114,9 @@ PR #16: **ne** – není v produkci.
 
 ## Známé problémy
 
-- PR #16 zůstává draft mimo `main`; před budoucím mergem musí projít fresh exact-head CI/Playwright/Vercel gatem po reconciliation;
+- PR #16 zůstává draft mimo `main` a produkci; technický pre-merge gate kódového checkpointu `88dc6cce...` je zelený, ale merge vyžaduje samostatné explicitní rozhodnutí;
 - dříve existující shared-production Supabase advisory nálezy zůstávají mimo scope dokončených parser/responsive změn i PR #16.
 
 ## Další krok
 
-- Ověřit fresh exact-head checky a preview zreconcilovaného PR #16. Pokud budou zelené, následuje samostatné rozhodnutí o ready-for-review / merge; produkční rollout a uživatelský acceptance zůstávají oddělené gate.
+- Samostatně rozhodnout o převedení PR #16 z draftu / merge. Bez explicitního rozhodnutí PR zůstává draft a produkce se nemění.

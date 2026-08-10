@@ -7,6 +7,7 @@
 - Draft PR: #16.
 - Původní head před reconciliation: `904da6768fe72ed86973c93fb164dea5e1eacc87`.
 - Fresh `main` při reconciliation dne `2026-08-10`: `2aad506dd482e765c61036a84b6a39a5635c90cf`.
+- Fresh automaticky ověřený kódový checkpoint po reconciliation: `88dc6cce27321306f4770285c3d35d904022f669`.
 
 ## Cíl změny
 
@@ -87,18 +88,50 @@ Zachované hranice nejsou prezentované jako klinické normy:
 
 Původní PR vznikl proti `main@8afe1328...`. Mezitím `main` postoupil na `2aad506...` a obsahuje mimo jiné parser opravu PR #17, responsive opravu PR #19 a následné project-control evidence commity.
 
-Reconciliation proto používá jako výsledný strom aktuální `main` a přenáší do něj pouze změny vlastního scope PR #16. Tím se nevytváří rollback parseru, mobilní navigace ani jejich testů.
+Reconciliation používá jako výsledný strom aktuální `main` a přenáší do něj pouze změny vlastního scope PR #16. Výsledný merge commit `88dc6cce...` má rodiče původní PR head `904da676...` a `main@2aad506...`; GitHub po aktualizaci větve hlásí PR jako `mergeable: true`, `behind_by: 0`.
 
-Produkční stav zůstává beze změny: poslední runtime-changing checkpoint je PR #19 (`f5e4a53...`, deployment `dpl_9MsYQkzpTgq8ENusVgjg3vpe8qVq`); nejnovější docs-only produkční deployment `main@2aad506...` je `READY`. `/tindeq` byl při fresh kontrole dostupný s HTTP 200.
+Fresh compare `main@2aad506...` → `88dc6cce...` obsahuje přesně 13 souborů scope PR #16. Neobsahuje `src/lib/tindeq-browser.ts`, `src/lib/tindeq-browser.test.ts`, `src/app/tindeq/page.tsx`, `src/app/tindeq/tindeq-nav.module.css` ani `tests/e2e/tindeq-mobile-nav.spec.ts`; nevznikl tedy rollback parseru ani mobilní navigace.
 
-## Automatické ověření
+Produkční stav zůstává beze změny: poslední runtime-changing checkpoint je PR #19 (`f5e4a53...`, deployment `dpl_9MsYQkzpTgq8ENusVgjg3vpe8qVq`); nejnovější docs-only produkční deployment `main@2aad506...` je `READY`.
 
-Historický kódový checkpoint před reconciliation `e887791b41b8750aedd0d7ca683d189f895b9756` prošel 103 unit testy, buildem, TypeScriptem, lint-baseline, `project:check`, `git diff --check` a 10 Playwright testy. Také starý head `904da676...` měl oba GitHub Actions workflow checky úspěšné a Vercel status `success`.
+## Fresh automatické ověření po reconciliation
 
-Tato evidence je po změně `main` pouze historická. Před budoucím merge je autoritativní výhradně fresh exact-head CI/Playwright/Vercel stav zreconcilované větve.
+Kódový checkpoint: `88dc6cce27321306f4770285c3d35d904022f669`.
+
+GitHub Actions:
+
+- `Project control` run `69`: `success`;
+- `Verify Tindeq client view` run `213`: `success`;
+- checkout exact source commit: PASS;
+- unit tests: PASS;
+- lint comparison proti current main: PASS;
+- Next production build: PASS;
+- TypeScript check: PASS;
+- project-control check: PASS;
+- patch whitespace check: PASS;
+- Chromium install: PASS;
+- Playwright/browser verification: PASS;
+- responsive screenshot artifact upload: PASS.
+
+Vercel preview stejného checkpointu:
+
+- deployment `dpl_6bFRYvkszDqJrq1MC4rx9BeU4nUy`;
+- state: `READY`;
+- branch: `agent/tindeq-metric-statuses`;
+- PR: `#16`;
+- GitHub combined status `Vercel`: `success`.
+
+Preview je chráněné Vercel SSO; nepřihlášený přímý request na `/tindeq/reports/demo` proto vrací očekávaný redirect do Vercel SSO. Browser funkčnost byla ověřena v exact-head CI lokálním preview serverem.
+
+## Historická evidence
+
+Původní kódový checkpoint před reconciliation `e887791b41b8750aedd0d7ca683d189f895b9756` prošel 103 unit testy, buildem, TypeScriptem, lint-baseline, `project:check`, `git diff --check` a 10 Playwright testy. Také starý head `904da676...` měl oba GitHub Actions workflow checky úspěšné a Vercel status `success`.
+
+Po změně `main` je tato stará evidence pouze historická; aktuální pre-merge evidence je fresh checkpoint `88dc6cce...` výše.
 
 ## Preview / produkce
 
-- Historický preview PR #16 byl `READY`; po reconciliation je rozhodující pouze preview odpovídající novému exact head.
+- Fresh preview PR #16 je `READY` na kódovém checkpointu `88dc6cce...`.
 - Produkční deployment PR #16 nebyl proveden.
 - Produkční funkční ověření PR #16 nebylo provedeno.
+- PR zůstává draft; další krok je samostatné rozhodnutí o ready-for-review / merge.
