@@ -4,10 +4,13 @@
 
 - Původní výchozí `main`: `8afe1328cfcb8f7ab90bb449775d1de0d441b584`.
 - Pracovní větev: `agent/tindeq-metric-statuses`.
-- Draft PR: #16.
+- PR: #16 `Tindeq: clarify metric interpretation states`.
 - Původní head před reconciliation: `904da6768fe72ed86973c93fb164dea5e1eacc87`.
 - Fresh `main` při reconciliation dne `2026-08-10`: `2aad506dd482e765c61036a84b6a39a5635c90cf`.
-- Fresh automaticky ověřený kódový checkpoint po reconciliation: `88dc6cce27321306f4770285c3d35d904022f669`.
+- Reconciliation kódový checkpoint: `88dc6cce27321306f4770285c3d35d904022f669`.
+- Final docs-only PR head před merge: `bfc9ba06f165a7659dcf2451a8cc2fdeb9ddf4cc`.
+- Merge commit: `6c2a08352b509d51336e368771edc6e804006008`.
+- Production deployment merge commitu: `dpl_B6i49n5RAUuTZADdN8zc3dZN8i9B`, `READY`.
 
 ## Cíl změny
 
@@ -26,112 +29,109 @@ Uživatelský model je výslovně:
 
 ## Implementace
 
-- Interní centralizovaný tón zůstává `good | warning | problem | neutral`.
+- Interní centralizovaný tón: `good | warning | problem | neutral`.
 - Centralizovaný typ významu: `protocol | contextual | descriptive`.
-- Viditelné labely: `V cíli`, `Sleduj`, `Mimo cíl`, `Bez hodnocení` a přesnější technické varianty podle významu.
-- Výsledek pro klienta i detail pro trenéra zobrazují stručnou legendu `3stupňová barevná škála + neutrální stav`; legenda explicitně říká, že šedá není čtvrtý stupeň hodnocení.
-- Chybějící klinický kontext a nehodnotitelná data jsou neutrální; technicky vadný záznam zůstává explicitně označen jako technický problém, nikoli patologický nález.
-- Pokud není známá platná délka pracovního intervalu, chybějící `timeTo95Seconds` se neinterpretuje jako červené `Cíl nedosažen`; bez protokolového kontextu je neutrální. Při známém intervalu a skutečně nedosaženém 95% cíli zůstává stav červený.
-- Barva je pouze sekundární nosič informace: tmavá hodnota + textový badge + jemný akcent.
-- Klientský pohled má tři hlavní rozhodovací karty; trenérský a kanonický report zachovávají podrobné metriky a přidávají vysvětlivky a progressive disclosure.
+- Viditelné textové labely podle významu, např. `V cíli`, `Sleduj`, `Mimo cíl`, `Bez hodnocení`.
+- Výsledek pro klienta a odpovídající UI používají explicitní legendu `3stupňová barevná škála + neutrální stav`.
+- Chybějící klinický/protokolový kontext a nehodnotitelná data jsou neutrální; technicky vadný záznam je oddělen od patologického nálezu.
+- Pokud není známá platná délka pracovního intervalu, chybějící `timeTo95Seconds` se neinterpretuje jako červené `Cíl nedosažen`; při známém intervalu a skutečně nedosaženém 95% cíli zůstává stav červený.
+- Barva je sekundární nosič informace; rozhodující jsou text, badge a vysvětlivka.
+- `src/lib/tindeq-report.ts` / `tindeq-report-v1` se tímto PR výpočetně nemění.
 
 ## Metriky s pracovním stavem
 
-- dosažení cílové síly,
-- čas v cílovém pásmu,
-- úspěšnost opakování,
-- CV uvnitř kontrakce,
-- CV mezi opakováními,
-- kombinovaný vývoj série,
-- technické flagy / důvěra v záznam,
-- reakce bolesti při úplných datech,
+- dosažení cílové síly;
+- čas v cílovém pásmu;
+- úspěšnost opakování;
+- CV uvnitř kontrakce;
+- CV mezi opakováními;
+- kombinovaný vývoj série;
+- technické flagy / důvěra v záznam;
+- reakce bolesti při úplných datech;
 - souhrnné findingy a doporučení kanonického reportu.
 
 ## Metriky záměrně bez automatické klinické klasifikace
 
-- předchozí maximum / MVIC,
-- předepsaná intenzita jako popis předpisu,
-- cílová síla jako popis zadaného cíle,
-- absolutní průměrná síla,
-- samotný počet úspěšných opakování `x/y`,
-- samostatný trend série,
-- první–poslední,
-- změna času v pásmu,
-- rozdíl náběhu stran,
-- rozdíl normalizovaného výkonu stran,
+- předchozí maximum / MVIC;
+- předepsaná intenzita;
+- cílová síla;
+- absolutní průměrná síla;
+- samotný počet úspěšných opakování `x/y`;
+- samostatný trend série;
+- první–poslední;
+- změna času v pásmu;
+- rozdíl náběhu stran;
+- rozdíl normalizovaného výkonu stran;
 - rozdíl absolutní průměrné síly stran.
 
-`normalizedSideDifferencePctPoints` je výslovně označen jako rozdíl plnění vlastního cíle obou stran a není prezentován jako LSI.
+`normalizedSideDifferencePctPoints` je rozdíl plnění vlastního cíle obou stran, nikoli LSI.
 
 ## Pracovní pravidla protokolu
 
-Zachované hranice nejsou prezentované jako klinické normy:
+Hranice jsou transparentní pracovní pravidla aplikace, ne validované klinické normy:
 
-- dosažení cíle: 95–105 % `good`; 90–<95 % nebo >105–110 % `warning`; mimo tento rozsah `problem`;
+- dosažení cíle: 95–105 % `good`; 90–<95 % nebo >105–110 % `warning`; mimo rozsah `problem`;
 - čas v cíli: ≥60 % `good`; 40–59 % `warning`; <40 % `problem`;
 - úspěšnost opakování: ≥70 % `good`; 50–69 % `warning`; <50 % `problem`;
 - CV uvnitř kontrakce: ≤5 % stabilní; >5–8 % sledovat; >8 % vysoká variabilita;
 - CV mezi opakováními: ≤8 % stabilní; >8–12 % sledovat; >12 % vysoká variabilita;
 - technické flagy: ≤10 % technicky v pořádku; >10–30 % sledovat; >30 % nízká důvěra;
-- bolest: zachována stávající pracovní toleranční logika `tindeq-report-v1`; chybějící údaje znamenají `Bez hodnocení`;
-- kombinovaný vývoj série: zachován stávající algoritmus `tindeq-report-v1`; UI jej neoznačuje za přímé měření fyziologické únavy.
+- bolest: stávající pracovní toleranční logika `tindeq-report-v1`; chybějící údaje = `Bez hodnocení`;
+- kombinovaný vývoj série: stávající algoritmus `tindeq-report-v1`; UI jej neprezentuje jako přímé měření fyziologické únavy.
 
 ## Výpočet a data
 
-- `src/lib/tindeq-report.ts` se tímto PR nemění.
-- Databázové schéma, persistence, auth a environment variables se tímto PR nemění.
-- Parserové pravidlo data z PR #17 musí při reconciliation zůstat beze změny.
-- Responsive navigace z PR #19 musí při reconciliation zůstat beze změny.
+- `src/lib/tindeq-report.ts` se PR #16 nemění.
+- Databázové schéma, persistence, auth a environment variables se PR #16 nemění.
+- Parserové pravidlo PR #17 je zachované.
+- Responsive navigace PR #19 je zachovaná.
 - Reakce další ráno nebyla přidána, protože není v aktuálním datovém modelu.
 
 ## Reconciliation 2026-08-10
 
-Původní PR vznikl proti `main@8afe1328...`. Mezitím `main` postoupil na `2aad506...` a obsahuje mimo jiné parser opravu PR #17, responsive opravu PR #19 a následné project-control evidence commity.
+Původní PR vznikl proti staršímu `main`. Reconciliation byla provedena proti exact `main@2aad506...` tak, aby výsledný strom zachoval parser PR #17, responsive navigaci PR #19 a pouze přenesl scope PR #16.
 
-Reconciliation používá jako výsledný strom aktuální `main` a přenáší do něj pouze změny vlastního scope PR #16. Výsledný merge commit `88dc6cce...` má rodiče původní PR head `904da676...` a `main@2aad506...`; GitHub po aktualizaci větve hlásí PR jako `mergeable: true`, `behind_by: 0`.
+Kódový reconciliation commit `88dc6cce...` má rodiče původní PR head `904da676...` a `main@2aad506...`. Fresh compare potvrdil `behind_by: 0` a stejný 13souborový scope PR #16 bez rollbacku parseru nebo mobilní navigace.
 
-Fresh compare `main@2aad506...` → `88dc6cce...` obsahuje přesně 13 souborů scope PR #16. Neobsahuje `src/lib/tindeq-browser.ts`, `src/lib/tindeq-browser.test.ts`, `src/app/tindeq/page.tsx`, `src/app/tindeq/tindeq-nav.module.css` ani `tests/e2e/tindeq-mobile-nav.spec.ts`; nevznikl tedy rollback parseru ani mobilní navigace.
+## Pre-merge ověření
 
-Produkční stav zůstává beze změny: poslední runtime-changing checkpoint je PR #19 (`f5e4a53...`, deployment `dpl_9MsYQkzpTgq8ENusVgjg3vpe8qVq`); nejnovější docs-only produkční deployment `main@2aad506...` je `READY`.
+Final exact PR head: `bfc9ba06f165a7659dcf2451a8cc2fdeb9ddf4cc`.
 
-## Fresh automatické ověření po reconciliation
+- GitHub PR: `mergeable: true`, `behind_by: 0`;
+- `Project control` run 70: `success`;
+- `Verify Tindeq client view` run 214: `success`;
+- Vercel Preview `dpl_2k8WvSyHCaPrTM8uxNEXtyFaamNs`: `READY`;
+- uživatel Preview funkčně zkontroloval a potvrdil `v pořádku`;
+- uživatel následně dal explicitní souhlas s merge.
 
-Kódový checkpoint: `88dc6cce27321306f4770285c3d35d904022f669`.
+## Merge a produkční rollout 2026-08-10
 
-GitHub Actions:
+PR #16 byl převeden z draftu na ready a mergnut pouze za použití očekávaného head SHA `bfc9ba06...`.
 
-- `Project control` run `69`: `success`;
-- `Verify Tindeq client view` run `213`: `success`;
-- checkout exact source commit: PASS;
-- unit tests: PASS;
-- lint comparison proti current main: PASS;
-- Next production build: PASS;
-- TypeScript check: PASS;
-- project-control check: PASS;
-- patch whitespace check: PASS;
-- Chromium install: PASS;
-- Playwright/browser verification: PASS;
-- responsive screenshot artifact upload: PASS.
+GitHub:
 
-Vercel preview stejného checkpointu:
+- PR #16: `merged: true`, `closed`;
+- merge commit: `6c2a08352b509d51336e368771edc6e804006008`;
+- `main` po merge ukazoval přesně na `6c2a08352...`.
 
-- deployment `dpl_6bFRYvkszDqJrq1MC4rx9BeU4nUy`;
+Vercel:
+
+- production deployment: `dpl_B6i49n5RAUuTZADdN8zc3dZN8i9B`;
 - state: `READY`;
-- branch: `agent/tindeq-metric-statuses`;
-- PR: `#16`;
-- GitHub combined status `Vercel`: `success`.
+- target: `production`;
+- GitHub SHA: `6c2a08352b509d51336e368771edc6e804006008`;
+- alias zahrnuje `knee.vankotraining.cz`.
 
-Preview je chráněné Vercel SSO; nepřihlášený přímý request na `/tindeq/reports/demo` proto vrací očekávaný redirect do Vercel SSO. Browser funkčnost byla ověřena v exact-head CI lokálním preview serverem.
+Technický production smoke:
 
-## Historická evidence
-
-Původní kódový checkpoint před reconciliation `e887791b41b8750aedd0d7ca683d189f895b9756` prošel 103 unit testy, buildem, TypeScriptem, lint-baseline, `project:check`, `git diff --check` a 10 Playwright testy. Také starý head `904da676...` měl oba GitHub Actions workflow checky úspěšné a Vercel status `success`.
-
-Po změně `main` je tato stará evidence pouze historická; aktuální pre-merge evidence je fresh checkpoint `88dc6cce...` výše.
+- `/tindeq` → HTTP 200;
+- `/tindeq/reports/demo` → HTTP 200;
+- demo HTML obsahuje `tindeq-report-v1`, status badge, typy pravidel a vysvětlivky PR #16.
 
 ## Preview / produkce
 
-- Fresh preview PR #16 je `READY` na kódovém checkpointu `88dc6cce...`.
-- Produkční deployment PR #16 nebyl proveden.
-- Produkční funkční ověření PR #16 nebylo provedeno.
-- PR zůstává draft; další krok je samostatné rozhodnutí o ready-for-review / merge.
+- Preview review: **uživatelsky schváleno před mergem**.
+- Implementováno v `main`: **ano**.
+- Produkčně nasazeno: **ano**, `dpl_B6i49n5RAUuTZADdN8zc3dZN8i9B`, `READY`.
+- Technicky produkčně ověřeno: **ano** (deployment metadata + HTTP smoke).
+- Uživatelské produkční funkční ověření po rollout: **zatím ne**; vyžaduje samostatné explicitní potvrzení uživatele podle projektového acceptance pravidla.
