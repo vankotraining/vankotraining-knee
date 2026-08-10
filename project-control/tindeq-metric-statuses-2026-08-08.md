@@ -2,22 +2,36 @@
 
 ## Zdroj pravdy
 
-- Výchozí `main`: `8afe1328cfcb8f7ab90bb449775d1de0d441b584`.
+- Původní výchozí `main`: `8afe1328cfcb8f7ab90bb449775d1de0d441b584`.
 - Pracovní větev: `agent/tindeq-metric-statuses`.
 - Draft PR: #16.
-- Kódový checkpoint před evidenčním commitem: `e887791b41b8750aedd0d7ca683d189f895b9756`.
+- Původní head před reconciliation: `904da6768fe72ed86973c93fb164dea5e1eacc87`.
+- Fresh `main` při reconciliation dne `2026-08-10`: `2aad506dd482e765c61036a84b6a39a5635c90cf`.
 
 ## Cíl změny
 
 Rozšířit `/tindeq` o konzistentní, textově čitelné stavové hodnocení rozhodovacích metrik bez falešného dojmu, že každá Tindeq hodnota má univerzální klinickou hranici dobré/špatné.
 
+Uživatelský model je výslovně:
+
+**3stupňová barevná škála + neutrální stav.**
+
+- zelená = v pořádku / v cílovém rozmezí;
+- oranžová = hraniční / vyžaduje pozornost;
+- červená = problém / výrazná odchylka;
+- šedá = neutrální stav pro metriku, kterou nelze korektně klasifikovat jako dobrou nebo špatnou.
+
+Šedá není čtvrtý hodnoticí stupeň.
+
 ## Implementace
 
-- Centralizovaný tón: `good`, `warning`, `problem`, `neutral`.
-- Centralizovaný typ významu: `protocol`, `contextual`, `descriptive`.
+- Interní centralizovaný tón zůstává `good | warning | problem | neutral`.
+- Centralizovaný typ významu: `protocol | contextual | descriptive`.
 - Viditelné labely: `V cíli`, `Sleduj`, `Mimo cíl`, `Bez hodnocení` a přesnější technické varianty podle významu.
+- Výsledek pro klienta i detail pro trenéra zobrazují stručnou legendu `3stupňová barevná škála + neutrální stav`; legenda explicitně říká, že šedá není čtvrtý stupeň hodnocení.
 - Chybějící klinický kontext a nehodnotitelná data jsou neutrální; technicky vadný záznam zůstává explicitně označen jako technický problém, nikoli patologický nález.
-- Barva je pouze sekundární nosič informace: tmavá hodnota + malý badge + jemný akcent.
+- Pokud není známá platná délka pracovního intervalu, chybějící `timeTo95Seconds` se neinterpretuje jako červené `Cíl nedosažen`; bez protokolového kontextu je neutrální. Při známém intervalu a skutečně nedosaženém 95% cíli zůstává stav červený.
+- Barva je pouze sekundární nosič informace: tmavá hodnota + textový badge + jemný akcent.
 - Klientský pohled má tři hlavní rozhodovací karty; trenérský a kanonický report zachovávají podrobné metriky a přidávají vysvětlivky a progressive disclosure.
 
 ## Metriky s pracovním stavem
@@ -52,37 +66,39 @@ Rozšířit `/tindeq` o konzistentní, textově čitelné stavové hodnocení ro
 
 Zachované hranice nejsou prezentované jako klinické normy:
 
-- dosažení cíle: 95–105 % `good`; 90–<95 % nebo >105–110 % `warning`; mimo tento rozsah `problem`,
-- čas v cíli: ≥60 % `good`; 40–59 % `warning`; <40 % `problem`,
-- úspěšnost opakování: ≥70 % `good`; 50–69 % `warning`; <50 % `problem`,
-- CV uvnitř kontrakce: ≤5 % stabilní; >5–8 % sledovat; >8 % vysoká variabilita,
-- CV mezi opakováními: ≤8 % stabilní; >8–12 % sledovat; >12 % vysoká variabilita,
-- technické flagy: ≤10 % technicky v pořádku; >10–30 % sledovat; >30 % nízká důvěra,
-- bolest: zachována stávající pracovní toleranční logika `tindeq-report-v1`; chybějící údaje znamenají `Bez hodnocení`,
+- dosažení cíle: 95–105 % `good`; 90–<95 % nebo >105–110 % `warning`; mimo tento rozsah `problem`;
+- čas v cíli: ≥60 % `good`; 40–59 % `warning`; <40 % `problem`;
+- úspěšnost opakování: ≥70 % `good`; 50–69 % `warning`; <50 % `problem`;
+- CV uvnitř kontrakce: ≤5 % stabilní; >5–8 % sledovat; >8 % vysoká variabilita;
+- CV mezi opakováními: ≤8 % stabilní; >8–12 % sledovat; >12 % vysoká variabilita;
+- technické flagy: ≤10 % technicky v pořádku; >10–30 % sledovat; >30 % nízká důvěra;
+- bolest: zachována stávající pracovní toleranční logika `tindeq-report-v1`; chybějící údaje znamenají `Bez hodnocení`;
 - kombinovaný vývoj série: zachován stávající algoritmus `tindeq-report-v1`; UI jej neoznačuje za přímé měření fyziologické únavy.
 
 ## Výpočet a data
 
-- `src/lib/tindeq-report.ts` nebyl změněn.
-- Databázové schéma, persistence, auth a environment variables nebyly změněny.
+- `src/lib/tindeq-report.ts` se tímto PR nemění.
+- Databázové schéma, persistence, auth a environment variables se tímto PR nemění.
+- Parserové pravidlo data z PR #17 musí při reconciliation zůstat beze změny.
+- Responsive navigace z PR #19 musí při reconciliation zůstat beze změny.
 - Reakce další ráno nebyla přidána, protože není v aktuálním datovém modelu.
 
-## Automatické ověření kódového checkpointu
+## Reconciliation 2026-08-10
 
-Exact head: `e887791b41b8750aedd0d7ca683d189f895b9756`.
+Původní PR vznikl proti `main@8afe1328...`. Mezitím `main` postoupil na `2aad506...` a obsahuje mimo jiné parser opravu PR #17, responsive opravu PR #19 a následné project-control evidence commity.
 
-- unit tests: 103 passed, 0 failed,
-- lint: branch 3 errors + 1 warning; `main` 3 errors + 1 warning — bez regrese,
-- Next production build: passed,
-- TypeScript `--noEmit`: passed,
-- `project:check`: passed,
-- `git diff --check origin/main...HEAD`: passed,
-- Playwright: 10 passed,
-- responsive screenshoty: klient 360/390/720/1024/1440 px; trenér 390/1024 px; bez horizontálního overflow mimo určený grafový scroller.
+Reconciliation proto používá jako výsledný strom aktuální `main` a přenáší do něj pouze změny vlastního scope PR #16. Tím se nevytváří rollback parseru, mobilní navigace ani jejich testů.
 
-## Preview
+Produkční stav zůstává beze změny: poslední runtime-changing checkpoint je PR #19 (`f5e4a53...`, deployment `dpl_9MsYQkzpTgq8ENusVgjg3vpe8qVq`); nejnovější docs-only produkční deployment `main@2aad506...` je `READY`. `/tindeq` byl při fresh kontrole dostupný s HTTP 200.
 
-- Vercel preview pro kódový checkpoint: `dpl_DeJzDnWsEHrogyCWYyHG6vtEymCN` — `READY`.
-- Kanonický `/tindeq/reports/demo` byl na preview načten s HTTP 200.
-- Produkční deployment této změny nebyl proveden.
-- Produkční funkční ověření této změny nebylo provedeno.
+## Automatické ověření
+
+Historický kódový checkpoint před reconciliation `e887791b41b8750aedd0d7ca683d189f895b9756` prošel 103 unit testy, buildem, TypeScriptem, lint-baseline, `project:check`, `git diff --check` a 10 Playwright testy. Také starý head `904da676...` měl oba GitHub Actions workflow checky úspěšné a Vercel status `success`.
+
+Tato evidence je po změně `main` pouze historická. Před budoucím merge je autoritativní výhradně fresh exact-head CI/Playwright/Vercel stav zreconcilované větve.
+
+## Preview / produkce
+
+- Historický preview PR #16 byl `READY`; po reconciliation je rozhodující pouze preview odpovídající novému exact head.
+- Produkční deployment PR #16 nebyl proveden.
+- Produkční funkční ověření PR #16 nebylo provedeno.

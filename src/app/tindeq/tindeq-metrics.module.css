@@ -39,6 +39,44 @@
   color: var(--muted, #687063);
 }
 
+.statusLegend {
+  grid-column: 1 / -1;
+  padding: 13px 15px;
+  border: 1px solid var(--border, #dfe4d8);
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
+.statusLegend > strong {
+  display: block;
+  color: var(--foreground, #161a15);
+  font-size: 13px;
+}
+
+.statusLegendGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  margin-top: 10px;
+}
+
+.statusLegendItem {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted, #687063);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.statusLegendNote {
+  margin: 9px 0 0;
+  color: var(--muted, #687063);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .summaryTitleLine,
 .metricValueLine,
 .clientMetricValueLine {
@@ -238,6 +276,14 @@
   .statusBadge {
     white-space: normal;
     text-align: center;
+  }
+
+  .statusLegendGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statusLegendItem {
+    align-items: flex-start;
   }
 
   .metricHeader {

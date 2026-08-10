@@ -177,8 +177,8 @@ export function onsetTo95Status(
 ): TindeqPresentationStatus {
   const duration = finite(workDurationSeconds);
   const metric = finite(value);
-  if (metric === null) return { label: "Cíl nedosažen", tone: "problem" };
   if (duration === null || duration <= 0) return NEUTRAL;
+  if (metric === null) return { label: "Cíl nedosažen", tone: "problem" };
   if (metric > Math.max(1.5, 0.4 * duration)) return { label: "Pomalý náběh", tone: "warning" };
   return GOOD;
 }

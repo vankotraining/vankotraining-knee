@@ -13,7 +13,7 @@ import {
   withinRepCvStatus,
 } from "./tindeq-metric-presentation.js";
 
-test("stavový systém rozlišuje good, warning, problem a neutral", () => {
+test("stavový systém má tři hodnoticí tóny a samostatný neutral", () => {
   assert.deepEqual(targetAchievementStatus(100), { label: "V cíli", tone: "good" });
   assert.deepEqual(targetAchievementStatus(92), { label: "Sleduj", tone: "warning" });
   assert.deepEqual(targetAchievementStatus(112), { label: "Mimo cíl", tone: "problem" });
@@ -85,4 +85,5 @@ test("náběh na 95 procent používá pouze technické pracovní pravidlo", () 
   assert.deepEqual(onsetTo95Status(2.1, 5), { label: "Pomalý náběh", tone: "warning" });
   assert.deepEqual(onsetTo95Status(null, 5), { label: "Cíl nedosažen", tone: "problem" });
   assert.equal(onsetTo95Status(1, null).tone, "neutral");
+  assert.equal(onsetTo95Status(null, null).tone, "neutral");
 });

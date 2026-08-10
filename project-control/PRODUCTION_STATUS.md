@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-08` (Europe/Prague).
+`2026-08-10` (Europe/Prague), po live new-client Tindeq upload/save acceptance, fresh read-only produkčním DB post-checku a reconciliation draft PR #16 proti aktuálnímu `main`.
 
 ## Produkční URL
 
@@ -16,94 +16,81 @@
 
 ## Deployment ID
 
-Aktuální produkční deployment:
+Poslední runtime-changing deployment zůstává PR #19:
 
-`dpl_u4WK75HN4j27Jtpxh4VnQvPb6jWd`.
+`dpl_9MsYQkzpTgq8ENusVgjg3vpe8qVq`
+
+- state: `READY`;
+- target: `production`;
+- branch: `main`;
+- exact runtime-changing commit: `f5e4a53c0aa00a1a1c046b22a5968e192fdb36a2`;
+- alias obsahuje `knee.vankotraining.cz`.
+
+Následné acceptance/project-control deploymenty jsou docs-only a nejsou novými runtime checkpointy. Fresh Vercel kontrola dne `2026-08-10` potvrdila jako nejnovější produkční deployment `dpl_AUEYkF1LzeeJtXDuQTWKs29oJB89`, `READY`, z `main@2aad506dd482e765c61036a84b6a39a5635c90cf`; tento commit je docs-only a nemění runtime checkpoint uvedený výše.
 
 ## Nasazený commit
 
-`8afe1328cfcb8f7ab90bb449775d1de0d441b584` z větve `main` — merge PR #12 `Tindeq: klienti, historie a kanonické reporty`.
+Runtime-changing commit:
 
-Draft PR #16 `agent/tindeq-metric-statuses` v tomto produkčním deploymentu není.
+`f5e4a53c0aa00a1a1c046b22a5968e192fdb36a2` – merge PR #19 `Fix Tindeq mobile header navigation overlap`.
+
+Parser oprava PR #17 je jeho předkem a zůstává součástí aktuálního produkčního runtime.
 
 ## Čas a výsledek deploymentu
 
-Deployment `dpl_u4WK75HN4j27Jtpxh4VnQvPb6jWd`:
+Runtime deployment `dpl_9MsYQkzpTgq8ENusVgjg3vpe8qVq` byl ověřen jako `READY`; build log potvrzuje správný checkout `main`, úspěšný Next.js production build, TypeScript a generování rout `/`, `/tindeq`, `/tindeq/reports` a `/tindeq/reports/demo` bez build failure.
 
-- vytvořen: `2026-08-08 12:24:13` Europe/Prague;
-- `READY`: `2026-08-08 12:24:40` Europe/Prague;
-- target: `production`;
-- project: `vankotraining-knee`;
-- commit: `8afe1328cfcb8f7ab90bb449775d1de0d441b584`;
-- branch: `main`;
-- alias zahrnuje `knee.vankotraining.cz`;
-- alias error: žádný.
-
-`READY` znamená produkčně nasazeno, nikoli automaticky produkčně ověřeno uživatelem.
+Fresh HTTP kontrola nejnovějšího produkčního deploymentu dne `2026-08-10` vrátila pro `/tindeq` HTTP 200 a HTML obsahuje aktuální responsive Tindeq navigaci z PR #19.
 
 ## Databázové migrace použité produkční aplikací
 
-Produkční Supabase project ref:
+Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-`zxvndqicslyulrinbpyn`.
+Aktivní dedupe invariant:
 
-Po explicitním schválení uživatele byla `2026-08-08` aplikována phase-5 migrace z repo souboru:
+- CHECK `tindeq_sessions_source_session_id_valid`;
+- partial unique index `tindeq_sessions_active_source_session_uidx`.
 
-`supabase/migrations/20260807_tindeq_active_session_unique.sql`.
+Fresh read-only post-check po novém live save:
 
-Supabase migration history ji eviduje jako:
-
-`20260808091809 tindeq_active_session_unique`.
-
-Ověřený post-check z předchozí fáze:
-
-- `public.tindeq_sessions`: `0` celkem / `0` aktivních;
-- invalidní source session ID: `0`;
+- sessions celkem: `40`;
+- aktivní sessions: `27`;
+- soft-deleted sessions: `13`;
+- aktivní klienti: `8`;
+- invalid source session IDs: `0`;
 - active duplicate groups: `0`;
-- validated CHECK `tindeq_sessions_source_session_id_valid` existuje a vynucuje `^[0-9a-f]{20}$`;
-- partial unique index `tindeq_sessions_active_source_session_uidx` existuje pro aktivní řádky;
-- počet sloupců zůstal `28`;
-- RLS je zapnuté a `3` policies zůstaly zachované.
+- aktivní sessions s chybějícím nebo nekladným `detected_repetitions`: `0`.
 
-PR #16 databázové migrace, produkční schéma ani data nemění.
+Nejnovější session je aktivní, má validní source session ID, `8` detected a `8` expected repetitions, analysis version `tindeq-repeaters-v1`, measured_at `2026-08-10 06:46:18+00` a imported/created_at `2026-08-10 06:49:37+00`.
+
+Kontrola byla pouze read-only.
 
 ## Provedené smoke testy
 
-V této práci byly provedeny read-only/deployment kontroly:
+PR #19 prošel před mergem exact-head CI/Playwright gatem včetně mobilních viewportů 390 px a 320 px. Produkční rollout následně prošel build/HTTP/HTML/log smoke testem a uživatel jej ručně potvrdil na skutečném telefonu.
 
-- Vercel produkční deployment byl znovu načten a potvrzen jako `READY` na exact SHA `8afe1328cfcb8f7ab90bb449775d1de0d441b584`;
-- nebyl proveden produkční aplikační zápis, vytvoření testovacího klienta ani Tindeq session;
-- nebyla provedena produkční DB mutace ani změna environment variables.
+Parser PR #17 měl před rolloutem vlastní exact-head testy a produkční technický smoke. Dne `2026-08-10` byl doplněn chybějící live acceptance: uživatel nahrál nové Tindeq měření a úspěšně vyzkoušel jeho uložení; fresh DB post-check potvrzuje novou aktivní validní session bez dedupe porušení.
 
-Předchozí phase-5 DB post-check zůstává zaznamenaný jako PASS. Funkční změny PR #16 jsou ověřované pouze na preview a v automatických testech.
+Historické automatické ověření PR #16 na starém head `904da6768fe72ed86973c93fb164dea5e1eacc87` bylo zelené, ale po reconciliation proti aktuálnímu `main` není samo o sobě merge gatem. Pro budoucí merge je autoritativní pouze fresh exact-head CI/Playwright/Vercel stav zreconcilované větve.
 
 ## Poslední výslovné uživatelské produkční ověření
 
-V této práci uživatel neprovedl nové výslovné funkční produkční ověření Tindeq workflow po merge PR #12.
+`2026-08-10`: uživatel výslovně potvrdil nové live Tindeq měření slovy, že jej nahrál, vyzkoušel uložení a vše vypadá v pořádku. Toto potvrzení uzavírá live new-client parser acceptance po PR #17.
 
-PR #16 není produkčně nasazený, proto jej nelze označit jako produkčně ověřený. `READY` deployment, CI ani preview acceptance nejsou náhradou za explicitní uživatelské produkční potvrzení.
+`2026-08-09 21:59` Europe/Prague: uživatel na skutečném telefonu potvrdil responsive opravu PR #19 jako `V pořádku`.
+
+PR #16 není produkčně nasazený, proto pro jeho nový interpretační model zatím neexistuje produkční acceptance.
 
 ## Produkční stav Tindeq
 
-- Tindeq runtime z PR #12 je od `main@8afe1328cfcb8f7ab90bb449775d1de0d441b584` produkčně nasazený;
-- production DB má aplikovaný phase-5 dedupe invariant;
-- prezentační rozšíření stavů/vysvětlivek z draft PR #16 v produkci není;
-- tato práce neprovedla žádný produkční save ani jinou produkční mutaci.
-
-## Preview stav PR #16
-
-Kódový checkpoint `e887791b41b8750aedd0d7ca683d189f895b9756`:
-
-- Vercel preview `dpl_BRh42z7GTotXNcquxLRb2kZSqBtu`: `READY`;
-- exact-head CI: unit `103/103`, build, TypeScript, lint bez regrese, project-control, `git diff --check` a Playwright `10/10` PASS;
-- responsive browser kontrola zahrnula klientský i trenérský pohled;
-- `/tindeq/reports/demo` na preview odpověděl HTTP 200.
-
-Toto je preview evidence, nikoli produkční deployment PR #16.
+- Tindeq runtime je produkčně nasazený;
+- parser data z PR #17 je produkčně nasazený a uživatelsky ověřený v novém live upload/save workflow;
+- responsive oprava PR #19 je produkčně nasazená a uživatelsky ověřená na skutečném telefonu;
+- produkční DB po live save: `40` total / `27` active / `13` soft-deleted, `8` aktivních klientů, bez invalid source IDs a bez aktivních duplicit;
+- parser acceptance ani responsive oprava již nemají otevřený produkční acceptance bod;
+- PR #16 zůstává samostatná prezentační změna mimo produkci; jeho reconciliation nesmí být interpretována jako produkční deployment.
 
 ## Známé produkční problémy
 
-- PR #16 není produkčně nasazený ani produkčně ověřený;
-- nové výslovné uživatelské funkční ověření produkčního Tindeq workflow po merge PR #12 v této práci neproběhlo;
-- shared production Supabase má dříve existující security/performance advisor nálezy mimo scope PR #16;
-- úplný mapping historických manuálních Knee SQL změn na repo migrace není doložen.
+- PR #16 je po branch reconciliation stále draft, není v `main` ani v produkci; před budoucím mergem musí být zelený fresh exact-head CI/Playwright/Vercel gate;
+- dříve existující shared-production Supabase advisory nálezy zůstávají mimo scope dokončených parser/responsive změn i PR #16.
