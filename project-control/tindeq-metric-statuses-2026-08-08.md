@@ -11,6 +11,7 @@
 - Final docs-only PR head před merge: `bfc9ba06f165a7659dcf2451a8cc2fdeb9ddf4cc`.
 - Merge commit: `6c2a08352b509d51336e368771edc6e804006008`.
 - Production deployment merge commitu: `dpl_B6i49n5RAUuTZADdN8zc3dZN8i9B`, `READY`.
+- Produkční uživatelský acceptance: `2026-08-10`, uživatel výslovně potvrdil `v pořádku`.
 
 ## Cíl změny
 
@@ -111,8 +112,7 @@ PR #16 byl převeden z draftu na ready a mergnut pouze za použití očekávané
 GitHub:
 
 - PR #16: `merged: true`, `closed`;
-- merge commit: `6c2a08352b509d51336e368771edc6e804006008`;
-- `main` po merge ukazoval přesně na `6c2a08352...`.
+- merge commit: `6c2a08352b509d51336e368771edc6e804006008`.
 
 Vercel:
 
@@ -128,10 +128,17 @@ Technický production smoke:
 - `/tindeq/reports/demo` → HTTP 200;
 - demo HTML obsahuje `tindeq-report-v1`, status badge, typy pravidel a vysvětlivky PR #16.
 
+## Produkční acceptance 2026-08-10
+
+Po rollout uživatel výslovně potvrdil produkční UI jako `v pořádku`.
+
+Tím je splněn projektový acceptance gate pro PR #16 a změna je považována za plně produkčně ověřenou.
+
 ## Preview / produkce
 
 - Preview review: **uživatelsky schváleno před mergem**.
 - Implementováno v `main`: **ano**.
 - Produkčně nasazeno: **ano**, `dpl_B6i49n5RAUuTZADdN8zc3dZN8i9B`, `READY`.
-- Technicky produkčně ověřeno: **ano** (deployment metadata + HTTP smoke).
-- Uživatelské produkční funkční ověření po rollout: **zatím ne**; vyžaduje samostatné explicitní potvrzení uživatele podle projektového acceptance pravidla.
+- Technicky produkčně ověřeno: **ano**.
+- Uživatelské produkční funkční ověření po rollout: **ano** – `2026-08-10`, potvrzeno `v pořádku`.
+- PR #16: **uzavřený**.

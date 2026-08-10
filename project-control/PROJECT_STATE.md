@@ -2,15 +2,19 @@
 
 ## Datum poslední kontroly
 
-`2026-08-10` (Europe/Prague), po explicitním uživatelském Preview review PR #16, fresh pre-merge gate, merge PR #16, produkčním Vercel rollout ověření a HTTP smoke testu `/tindeq` a `/tindeq/reports/demo`.
+`2026-08-10` (Europe/Prague), po explicitním uživatelském Preview review PR #16, fresh pre-merge gate, merge PR #16, produkčním Vercel rollout ověření, HTTP smoke testu `/tindeq` a `/tindeq/reports/demo` a následném výslovném uživatelském produkčním acceptance `v pořádku`.
 
 ## Aktuální `main` commit
 
-Bezprostředně před tímto docs-only production-evidence syncem byl exact `main`:
+Bezprostředně před tímto docs-only acceptance syncem byl exact `main`:
+
+`bd7732b2ee64fb54a84a5e34205c1e39e287c5e7` – `Sync PR #16 production deployment evidence`.
+
+Aktuální runtime-changing checkpoint zůstává:
 
 `6c2a08352b509d51336e368771edc6e804006008` – merge PR #16 `Tindeq: clarify metric interpretation states`.
 
-Tento merge je aktuální runtime-changing checkpoint. Následný docs-only evidence sync nemění aplikační runtime.
+Tento acceptance sync mění pouze `project-control`; aplikační runtime ani databázi nemění.
 
 ## Aktivní větev a PR
 
@@ -20,17 +24,15 @@ PR #16 `Tindeq: clarify metric interpretation states` je **merged / closed**.
 - base před merge: `main@2aad506dd482e765c61036a84b6a39a5635c90cf`;
 - merge commit: `6c2a08352b509d51336e368771edc6e804006008`;
 - merge time: `2026-08-10 13:44:46` Europe/Prague;
-- uživatel před mergem výslovně potvrdil Preview review jako `v pořádku` a následně dal explicitní souhlas s merge.
+- uživatel před mergem schválil Preview review jako `v pořádku`, následně dal explicitní souhlas s merge a po produkčním rollout výslovně potvrdil produkci jako `v pořádku`.
 
 Fresh pre-merge gate exact headu `bfc9ba06...`:
 
-- PR open, draft před převodem na ready, `mergeable: true`;
+- `mergeable: true`;
 - `behind_by: 0` proti exact `main@2aad506...`;
 - `Project control` run 70: `success`;
 - `Verify Tindeq client view` run 214: `success`;
 - Vercel Preview `dpl_2k8WvSyHCaPrTM8uxNEXtyFaamNs`: `READY`.
-
-PR byl následně převeden z draftu na ready a mergnut s `expected_head_sha=bfc9ba06...`; GitHub merge result byl `merged: true`.
 
 ## Produkční runtime commit
 
@@ -43,7 +45,7 @@ Aktuální runtime-changing production checkpoint:
 - branch: `main`;
 - alias zahrnuje `knee.vankotraining.cz`.
 
-Vercel metadata deploymentu potvrzují exact GitHub commit `6c2a08352b509d51336e368771edc6e804006008` a merge zprávu PR #16.
+Vercel metadata deploymentu potvrzují exact GitHub commit `6c2a08352b509d51336e368771edc6e804006008` a merge zprávu PR #16. Technický smoke po rollout potvrdil `/tindeq` i `/tindeq/reports/demo` jako HTTP 200.
 
 ## Stav databázových migrací
 
@@ -64,11 +66,11 @@ Poslední fresh read-only DB post-check po live parser acceptance:
 - active duplicate groups: `0`;
 - aktivní sessions s chybějícím nebo nekladným `detected_repetitions`: `0`.
 
-PR #16 neobsahuje DB schema, data, auth ani persistence změny; po jeho merge proto nebyl proveden žádný DB write ani DDL.
+PR #16 neobsahuje DB schema, data, auth ani persistence změny; jeho merge ani acceptance sync neprovedly DB write ani DDL.
 
 ## Aktuální fáze
 
-PR #16 je implementovaný, merged a technicky nasazený do produkce.
+PR #16 je **plně uzavřený**: implementovaný, merged, produkčně nasazený, technicky ověřený a uživatelsky produkčně potvrzený.
 
 Cílový uživatelský model je **3stupňová barevná škála + neutrální stav**:
 
@@ -90,7 +92,7 @@ Cílový uživatelský model je **3stupňová barevná škála + neutrální sta
 
 ## Rozpracováno mimo `main`
 
-- žádná další změna PR #16; PR je merged / closed;
+- žádná další změna PR #16; PR je merged / closed a produkčně accepted;
 - případné další rozšíření Tindeq metrik nebo hranic je nový samostatný scope.
 
 ## Nasazeno
@@ -100,7 +102,7 @@ Cílový uživatelský model je **3stupňová barevná škála + neutrální sta
 - PR #16 runtime merge: `6c2a08352b509d51336e368771edc6e804006008`;
 - PR #16 production deployment: `dpl_B6i49n5RAUuTZADdN8zc3dZN8i9B`, `READY`;
 - produkční alias: `knee.vankotraining.cz`;
-- technický HTTP smoke po rollout: `/tindeq` = HTTP 200, `/tindeq/reports/demo` = HTTP 200; demo HTML obsahuje `tindeq-report-v1`, textové status badge a vysvětlivky PR #16.
+- technický HTTP smoke po rollout: `/tindeq` = HTTP 200, `/tindeq/reports/demo` = HTTP 200.
 
 ## Produkčně ověřeno
 
@@ -108,13 +110,13 @@ Responsive oprava PR #19: **ano** – uživatel ji `2026-08-09` potvrdil na skut
 
 Parser data / live new-client workflow po PR #17: **ano** – uživatel `2026-08-10` nahrál a uložil nové měření a potvrdil, že vše vypadá v pořádku.
 
-PR #16: **zatím ne jako samostatný produkční acceptance**. Uživatel před mergem výslovně provedl a schválil Preview review; produkční deployment je technicky `READY` a HTTP smoke je zelený, ale dle projektového pravidla je produkční funkční acceptance až po výslovném uživatelském potvrzení produkčního UI.
+PR #16: **ano** – po produkčním rollout a technickém smoke uživatel dne `2026-08-10` výslovně potvrdil produkční UI slovy `v pořádku`.
 
 ## Známé problémy
 
-- PR #16 nemá otevřený technický merge/deployment problém; zbývá pouze uživatelský produkční acceptance nového interpretačního UI;
+- PR #16 nemá otevřený technický ani acceptance blocker;
 - dříve existující shared-production Supabase advisory nálezy zůstávají mimo scope PR #16.
 
 ## Další krok
 
-- Uživatel může na produkci krátce zkontrolovat Tindeq výsledek / demo report a výslovně potvrdit, že nové statusy a vysvětlivky vypadají v pořádku. Poté lze PR #16 označit jako plně produkčně ověřený.
+- PR #16 je uzavřený; další práce na Tindeq má být nový samostatný scope.

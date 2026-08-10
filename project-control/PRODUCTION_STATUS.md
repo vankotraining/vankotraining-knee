@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-10` (Europe/Prague), po merge PR #16, Vercel production rollout ověření a HTTP smoke testu `/tindeq` a `/tindeq/reports/demo`.
+`2026-08-10` (Europe/Prague), po merge PR #16, Vercel production rollout ověření, HTTP smoke testu `/tindeq` a `/tindeq/reports/demo` a následném explicitním uživatelském produkčním acceptance `v pořádku`.
 
 ## Produkční URL
 
@@ -27,7 +27,7 @@ Aktuální runtime-changing production deployment:
 - GitHub commit message: merge PR #16 `Tindeq: clarify metric interpretation states`;
 - alias obsahuje `knee.vankotraining.cz`.
 
-Následný project-control evidence sync je docs-only a není novým runtime checkpointem.
+Následné project-control evidence/acceptance commity jsou docs-only a nejsou novými runtime checkpointy.
 
 ## Nasazený commit
 
@@ -41,12 +41,12 @@ Parser oprava PR #17 a responsive navigace PR #19 jsou jeho předky a zůstávaj
 
 Vercel deployment `dpl_B6i49n5RAUuTZADdN8zc3dZN8i9B` je `READY`; Vercel metadata potvrzují exact GitHub commit `6c2a08352b509d51336e368771edc6e804006008`, branch `main` a target `production`.
 
-Fresh technický smoke dne `2026-08-10`:
+Technický smoke dne `2026-08-10`:
 
 - `https://knee.vankotraining.cz/tindeq` → HTTP 200;
 - `https://knee.vankotraining.cz/tindeq/reports/demo` → HTTP 200;
 - demo report obsahuje `tindeq-report-v1`, status badge, typy pravidel a vysvětlivky PR #16;
-- `/tindeq` zároveň zachovává responsive navigaci z PR #19.
+- `/tindeq` zachovává responsive navigaci z PR #19.
 
 ## Databázové migrace použité produkční aplikací
 
@@ -83,17 +83,18 @@ Pre-merge exact-head PR #16:
 Post-merge:
 
 - GitHub PR #16: `merged: true`, `closed`;
-- `main` po merge: `6c2a08352b509d51336e368771edc6e804006008`;
+- runtime merge commit: `6c2a08352b509d51336e368771edc6e804006008`;
 - Vercel production deployment exact merge commitu: `READY`;
-- `/tindeq` a `/tindeq/reports/demo`: HTTP 200.
+- `/tindeq` a `/tindeq/reports/demo`: HTTP 200;
+- uživatel následně produkční UI výslovně potvrdil jako `v pořádku`.
 
 ## Poslední výslovné uživatelské produkční ověření
+
+`2026-08-10`: PR #16 nový interpretační model Tindeq – **produkčně potvrzen uživatelem jako `v pořádku`** po merge a production rollout.
 
 `2026-08-10`: parser live new-client upload/save workflow – potvrzeno uživatelem jako v pořádku.
 
 `2026-08-09`: responsive oprava PR #19 – potvrzena uživatelem na skutečném telefonu.
-
-PR #16 má uživatelsky schválený Preview review před mergem, ale **samostatné produkční funkční potvrzení po rollout zatím chybí**.
 
 ## Produkční stav Tindeq
 
@@ -102,10 +103,9 @@ PR #16 má uživatelsky schválený Preview review před mergem, ale **samostatn
 - responsive oprava PR #19 je nasazená a produkčně uživatelsky ověřená;
 - PR #16 je nasazený v produkci přes `main@6c2a08352...` / `dpl_B6i49n5RAUuTZADdN8zc3dZN8i9B`;
 - nový UI model je `3stupňová barevná škála + neutrální stav`; šedá není čtvrtý hodnoticí stupeň;
-- technický rollout PR #16 je zelený; zbývá pouze explicitní uživatelský production acceptance.
+- PR #16 je technicky i uživatelsky produkčně ověřený a jeho rollout je uzavřený.
 
 ## Známé produkční problémy
 
-- žádný známý technický blocker související s PR #16 po merge/deploymentu;
-- PR #16 zatím nemá samostatné uživatelské produkční potvrzení po rollout;
+- žádný známý technický ani acceptance blocker související s PR #16;
 - dříve existující shared-production Supabase advisory nálezy zůstávají mimo scope PR #16.
