@@ -16,13 +16,17 @@ import {
   targetForceKg,
 } from "@/lib/knee-metrics";
 import {
+  prepareAthleteIdentity,
+  reconcileAthleteIdentityUpdate,
+} from "@/lib/athlete-identity";
+import {
   createBrowserSupabaseClient,
   hasSupabaseConfig,
 } from "@/lib/supabase-browser";
 import type { SelectedClient } from "./selected-client";
 
 type LoadState = "idle" | "ready" | "error";
-type ActivePanel = "athlete" | "test" | null;
+type ActivePanel = "athlete" | "edit-athlete" | "test" | null;
 type MobileTab = "measurements" | "compare" | "client";
 
 type KneeDashboardProps = {
@@ -126,16 +130,6 @@ function todayIsoDate() {
 
 function toNumber(value: string) {
   return Number(value.replace(",", "."));
-}
-
-function nameKey(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
 }
 
 function formatDate(value: string | null | undefined) {
@@ -521,7 +515,9 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
   const [athleteForm, setAthleteForm] = useState<AthleteForm>({ display_name: "", birth_date: "", body_weight_kg: "", shin_length_cm: "33", note: "" });
   const [testForm, setTestForm] = useState<TestForm>({ test_date: todayIsoDate(), right_force_kg: "", left_force_kg: "", body_weight_kg: "", shin_length_cm: "33", note: "" });
   const [editTestForm, setEditTestForm] = useState<TestForm>({ test_date: todayIsoDate(), right_force_kg: "", left_force_kg: "", body_weight_kg: "", shin_length_cm: "33", note: "" });
+  const [editAthleteName, setEditAthleteName] = useState("");
   const [isSavingAthlete, setIsSavingAthlete] = useState(false);
+  const [isUpdatingAthlete, setIsUpdatingAthlete] = useState(false);
   const [isSavingTest, setIsSavingTest] = useState(false);
   const [isUpdatingTest, setIsUpdatingTest] = useState(false);
 
@@ -626,6 +622,8 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
 
     setExpandedTestId(null);
     setEditingTestId(null);
+    setActivePanel((current) => current === "edit-athlete" ? null : current);
+    setEditAthleteName("");
     setTestForm((current) => ({
       ...current,
       body_weight_kg: selectedAthlete.latestProfile?.body_weight_kg?.toString() ?? current.body_weight_kg,
@@ -647,6 +645,22 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
 
   function updateEditTestForm(key: keyof TestForm, value: string) {
     setEditTestForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function openEditAthlete() {
+    if (!selectedAthlete) return;
+
+    setEditAthleteName(selectedAthlete.display_name);
+    setActivePanel("edit-athlete");
+    setEditingTestId(null);
+    setExpandedTestId(null);
+    setMobileTab("client");
+    setMessage("");
+  }
+
+  function closeEditAthlete() {
+    setEditAthleteName("");
+    setActivePanel(null);
   }
 
   function openEditTest(test: KneeExtensionTest) {
@@ -712,14 +726,20 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
 
   async function handleCreateAthlete(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase || !athleteForm.display_name.trim()) return;
+    if (!supabase) return;
+
+    const { payload: identityPayload, error: identityError } = prepareAthleteIdentity(athleteForm.display_name);
+    if (!identityPayload) {
+      setMessage(identityError ?? "Jméno klienta není platné.");
+      return;
+    }
 
     setIsSavingAthlete(true);
     setMessage("");
 
     const { data: athlete, error } = await supabase
       .from("athletes")
-      .insert({ display_name: athleteForm.display_name.trim(), name_key: nameKey(athleteForm.display_name), note: athleteForm.note.trim() || null })
+      .insert({ ...identityPayload, note: athleteForm.note.trim() || null })
       .select("id,display_name,name_key,note")
       .single();
 
@@ -755,6 +775,58 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
     setActivePanel(null);
     setMobileTab("measurements");
     setMessage("Klient byl založen.");
+  }
+
+  async function handleUpdateAthlete(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !selectedAthlete) return;
+
+    const expectedAthleteId = selectedAthlete.id;
+    const { payload, error: identityError } = prepareAthleteIdentity(editAthleteName);
+    if (!payload) {
+      setMessage(identityError ?? "Jméno klienta není platné.");
+      return;
+    }
+
+    setIsUpdatingAthlete(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("athletes")
+      .update(payload)
+      .eq("id", expectedAthleteId)
+      .select("id,display_name,name_key,note")
+      .single();
+
+    setIsUpdatingAthlete(false);
+
+    const reconciliation = reconcileAthleteIdentityUpdate(
+      athletes,
+      expectedAthleteId,
+      data as Athlete | null,
+      error,
+    );
+
+    if (reconciliation.errorMessage || !reconciliation.updatedAthlete) {
+      setMessage(
+        reconciliation.errorMessage ??
+          "Klienta se nepodařilo upravit. Původní jméno zůstalo beze změny.",
+      );
+      return;
+    }
+
+    const updatedAthlete = reconciliation.updatedAthlete;
+    setAthletes((current) =>
+      current.map((athlete) =>
+        athlete.id === expectedAthleteId ? updatedAthlete : athlete,
+      ),
+    );
+    setSelectedAthleteId(expectedAthleteId);
+    setQuery("");
+    setEditAthleteName("");
+    setActivePanel(null);
+    setMobileTab("client");
+    setMessage("Jméno klienta bylo upraveno.");
   }
 
   async function handleCreateTest(event: FormEvent<HTMLFormElement>) {
@@ -861,6 +933,36 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
         <div className="form-actions">
           <button disabled={isSavingAthlete}>{isSavingAthlete ? "Ukládám..." : "Založit klienta"}</button>
           <button className="ghost-button" type="button" onClick={() => setActivePanel(null)}>Zrušit</button>
+        </div>
+      </form>
+    );
+  }
+
+  function renderAthleteIdentityForm() {
+    if (!selectedAthlete) return null;
+
+    return (
+      <form className="stack-form compact-form" onSubmit={handleUpdateAthlete}>
+        <div className="test-detail-header">
+          <div>
+            <strong>Upravit klienta</strong>
+            <p>Upravuješ: <strong>{selectedAthlete.display_name}</strong>. Mění se pouze jméno klienta.</p>
+          </div>
+          <span className="pill">identita</span>
+        </div>
+        <label>
+          Jméno
+          <input
+            value={editAthleteName}
+            onChange={(event) => setEditAthleteName(event.target.value)}
+            required
+          />
+        </label>
+        <div className="form-actions">
+          <button disabled={isUpdatingAthlete || !editAthleteName.trim()}>
+            {isUpdatingAthlete ? "Ukládám..." : "Uložit"}
+          </button>
+          <button className="ghost-button" type="button" onClick={closeEditAthlete}>Zrušit</button>
         </div>
       </form>
     );
@@ -1256,6 +1358,17 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
               {selectedAthlete ? (
                 <>
                   <section aria-labelledby="mobile-tab-client" className={mobileTab === "client" ? "mobile-tab-page client-page is-active" : "mobile-tab-page client-page"} id="mobile-panel-client" role="tabpanel" tabIndex={0}>
+                    <div className="form-actions">
+                      <button
+                        className="ghost-button"
+                        disabled={activePanel === "edit-athlete"}
+                        type="button"
+                        onClick={openEditAthlete}
+                      >
+                        {activePanel === "edit-athlete" ? "Upravuješ klienta" : "Upravit klienta"}
+                      </button>
+                    </div>
+                    {activePanel === "edit-athlete" ? renderAthleteIdentityForm() : null}
                     <div className="profile-grid">
                       <div className="profile-metric"><span>Datum narození</span><strong>{formatDate(selectedAthlete.latestProfile?.birth_date)}</strong></div>
                       <div className="profile-metric"><span>Váha</span><strong>{formatNumber(selectedAthlete.latestProfile?.body_weight_kg, 1, " kg")}</strong></div>
