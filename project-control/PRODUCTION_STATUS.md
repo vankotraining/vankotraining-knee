@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-10` (Europe/Prague), po merge PR #16, Vercel production rollout ověření, HTTP smoke testu `/tindeq` a `/tindeq/reports/demo` a následném explicitním uživatelském produkčním acceptance `v pořádku`.
+`2026-08-11` (Europe/Prague), po explicitním uživatelském souhlasu s nasazením PR #20, squash merge, Vercel production rollout a technickém HTTP smoke testu. Funkční produkční acceptance editace klienta zatím uživatel explicitně nepotvrdil.
 
 ## Produkční URL
 
@@ -18,79 +18,76 @@
 
 Aktuální runtime-changing production deployment:
 
-`dpl_B6i49n5RAUuTZADdN8zc3dZN8i9B`
+`dpl_2MpCHrW6vhsReXuWn5kJyZL958SV`
 
 - state: `READY`;
 - target: `production`;
 - branch: `main`;
-- exact runtime-changing commit: `6c2a08352b509d51336e368771edc6e804006008`;
-- GitHub commit message: merge PR #16 `Tindeq: clarify metric interpretation states`;
+- exact runtime-changing commit: `1b48da7ed9340e8f53f591f3b427d4d6758246e1`;
+- GitHub commit message: `Add safe client name editing (#20)`;
 - alias obsahuje `knee.vankotraining.cz`.
 
-Následné project-control evidence/acceptance commity jsou docs-only a nejsou novými runtime checkpointy.
+Následné project-control sync commity jsou docs-only a nejsou novými runtime checkpointy.
 
 ## Nasazený commit
 
 Runtime-changing commit:
 
-`6c2a08352b509d51336e368771edc6e804006008` – merge PR #16 `Tindeq: clarify metric interpretation states`.
+`1b48da7ed9340e8f53f591f3b427d4d6758246e1` – squash merge PR #20 `Add safe client name editing`.
 
-Parser oprava PR #17 a responsive navigace PR #19 jsou jeho předky a zůstávají součástí aktuálního produkčního runtime.
+PR #20 přidává pouze editaci identity existujícího klienta (`display_name` + synchronní `name_key`) a nemění profilové parametry, měření, Tindeq parser/persistence ani DB schéma/security.
 
 ## Čas a výsledek deploymentu
 
-Vercel deployment `dpl_B6i49n5RAUuTZADdN8zc3dZN8i9B` je `READY`; Vercel metadata potvrzují exact GitHub commit `6c2a08352b509d51336e368771edc6e804006008`, branch `main` a target `production`.
+Vercel deployment `dpl_2MpCHrW6vhsReXuWn5kJyZL958SV` je `READY`; Vercel metadata potvrzují exact GitHub commit `1b48da7ed9340e8f53f591f3b427d4d6758246e1`, branch `main` a target `production`.
 
-Technický smoke dne `2026-08-10`:
+Technický smoke dne `2026-08-11`:
 
+- `https://knee.vankotraining.cz/` → HTTP 200;
 - `https://knee.vankotraining.cz/tindeq` → HTTP 200;
-- `https://knee.vankotraining.cz/tindeq/reports/demo` → HTTP 200;
-- demo report obsahuje `tindeq-report-v1`, status badge, typy pravidel a vysvětlivky PR #16;
-- `/tindeq` zachovává responsive navigaci z PR #19.
+- Vercel lookup produkční domény `knee.vankotraining.cz` vrací deployment `dpl_2MpCHrW6vhsReXuWn5kJyZL958SV` s exact SHA `1b48da7...`.
 
 ## Databázové migrace použité produkční aplikací
 
 Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-Aktivní dedupe invariant:
+PR #20 neprovedl žádnou DB migraci, DDL, RLS/policy/grant/Auth změnu ani produkční datový write.
 
-- CHECK `tindeq_sessions_source_session_id_valid`;
-- partial unique index `tindeq_sessions_active_source_session_uidx`.
+Fresh read-only audit před implementací potvrdil, že `public.athletes` už obsahuje potřebné non-blank constraints, unikátní `name_key`, UPDATE RLS a auditní/`updated_at` triggery.
 
-Poslední fresh read-only post-check po live parser acceptance:
-
-- sessions celkem: `40`;
-- aktivní sessions: `27`;
-- soft-deleted sessions: `13`;
-- aktivní klienti: `8`;
-- invalid source session IDs: `0`;
-- active duplicate groups: `0`;
-- aktivní sessions s chybějícím nebo nekladným `detected_repetitions`: `0`.
-
-PR #16 neprovádí žádnou databázovou migraci ani write/DDL změnu.
+Aktivní Tindeq dedupe invariant zůstává beze změny.
 
 ## Provedené smoke testy
 
-Pre-merge exact-head PR #16:
+Pre-merge exact-head PR #20:
 
-- head `bfc9ba06f165a7659dcf2451a8cc2fdeb9ddf4cc`;
-- `behind_by: 0` proti `main@2aad506...`;
-- `Project control` run 70: `success`;
-- `Verify Tindeq client view` run 214: `success`;
-- Vercel Preview `dpl_2k8WvSyHCaPrTM8uxNEXtyFaamNs`: `READY`;
-- uživatel Preview funkčně zkontroloval a výslovně uvedl `v pořádku`.
+- base `main@350d450e336d15fffcd7fc3d33ff41e342f5cd0d`;
+- head `de98726c5bcd76d042b57af6f0228c505891f5ac`;
+- `behind_by: 0`;
+- PR mergeable;
+- `npm test`: 118/118 passed, včetně 7 testů editace identity klienta;
+- lint comparison proti `main`: stejný baseline 3 errors + 1 warning, bez nové regrese;
+- `npm run build`: passed;
+- `npx tsc --noEmit`: passed;
+- `npm run project:check`: passed;
+- `git diff --check origin/main...HEAD`: passed;
+- Playwright: 12/12 passed;
+- GitHub Actions `Verify Tindeq client view` run #217: success;
+- GitHub Actions `Project control` run #75: success;
+- Preview `dpl_6xn3UAZt9BA8JDVzh5w4Vc2Y9TWT`: `READY`, exact head `de98726...`.
 
 Post-merge:
 
-- GitHub PR #16: `merged: true`, `closed`;
-- runtime merge commit: `6c2a08352b509d51336e368771edc6e804006008`;
-- Vercel production deployment exact merge commitu: `READY`;
-- `/tindeq` a `/tindeq/reports/demo`: HTTP 200;
-- uživatel následně produkční UI výslovně potvrdil jako `v pořádku`.
+- PR #20: merged / closed;
+- squash merge commit: `1b48da7ed9340e8f53f591f3b427d4d6758246e1`;
+- production deployment exact merge commitu: `dpl_2MpCHrW6vhsReXuWn5kJyZL958SV`, `READY`;
+- `/` a `/tindeq`: HTTP 200.
 
 ## Poslední výslovné uživatelské produkční ověření
 
-`2026-08-10`: PR #16 nový interpretační model Tindeq – **produkčně potvrzen uživatelem jako `v pořádku`** po merge a production rollout.
+PR #20: **zatím ne**. Uživatel dne `2026-08-11` explicitně schválil nasazení, ale zatím nepotvrdil funkční produkční rename workflow po rollout.
+
+`2026-08-10`: PR #16 nový interpretační model Tindeq – produkčně potvrzen uživatelem jako `v pořádku`.
 
 `2026-08-10`: parser live new-client upload/save workflow – potvrzeno uživatelem jako v pořádku.
 
@@ -98,14 +95,10 @@ Post-merge:
 
 ## Produkční stav Tindeq
 
-- Tindeq runtime je produkčně nasazený;
-- parser PR #17 je nasazený a produkčně uživatelsky ověřený;
-- responsive oprava PR #19 je nasazená a produkčně uživatelsky ověřená;
-- PR #16 je nasazený v produkci přes `main@6c2a08352...` / `dpl_B6i49n5RAUuTZADdN8zc3dZN8i9B`;
-- nový UI model je `3stupňová barevná škála + neutrální stav`; šedá není čtvrtý hodnoticí stupeň;
-- PR #16 je technicky i uživatelsky produkčně ověřený a jeho rollout je uzavřený.
+Tindeq runtime, parser PR #17, responsive oprava PR #19 a interpretační model PR #16 zůstávají produkčně nasazené; PR #20 jejich parser, persistence ani prezentaci nemění.
 
 ## Známé produkční problémy
 
-- žádný známý technický ani acceptance blocker související s PR #16;
-- dříve existující shared-production Supabase advisory nálezy zůstávají mimo scope PR #16.
+- PR #20 nemá známý technický rollout blocker; funkční produkční acceptance čeká na uživatele;
+- full-repo lint baseline obsahuje 3 předexistující chyby a 1 warning, PR #20 nepřidal další;
+- dříve existující shared-production Supabase advisory nálezy zůstávají mimo scope PR #20.
