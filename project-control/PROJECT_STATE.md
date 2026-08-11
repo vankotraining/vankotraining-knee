@@ -117,7 +117,4 @@ PR #20: **ne** – není v `main`, není produkčně nasazený a uživatel jej z
 
 ## Další krok
 
-- fresh ověřit exact PR #20 head/base, mergeability a CI;
-- potvrdit, že finální Vercel Preview je `READY` a používá pouze dev Supabase `twndqnmrvefhwuwuglju`;
-- uživatel na Preview ručně ověří rename + reload + zachování existujících měření;
-- bez explicitního uživatelského souhlasu PR #20 nemergovat.
+- Fresh ověřit exact PR #20 head/base, mergeability, CI a dev-Supabase Preview; poté uživatel na Preview ručně ověří rename + reload + zachování existujících měření; bez explicitního uživatelského souhlasu PR #20 nemergovat.
