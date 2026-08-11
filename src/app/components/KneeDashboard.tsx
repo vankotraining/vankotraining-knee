@@ -515,6 +515,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
   const [athleteForm, setAthleteForm] = useState<AthleteForm>({ display_name: "", birth_date: "", body_weight_kg: "", shin_length_cm: "33", note: "" });
   const [testForm, setTestForm] = useState<TestForm>({ test_date: todayIsoDate(), right_force_kg: "", left_force_kg: "", body_weight_kg: "", shin_length_cm: "33", note: "" });
   const [editTestForm, setEditTestForm] = useState<TestForm>({ test_date: todayIsoDate(), right_force_kg: "", left_force_kg: "", body_weight_kg: "", shin_length_cm: "33", note: "" });
+  const [editingAthleteId, setEditingAthleteId] = useState<string | null>(null);
   const [editAthleteName, setEditAthleteName] = useState("");
   const [isSavingAthlete, setIsSavingAthlete] = useState(false);
   const [isUpdatingAthlete, setIsUpdatingAthlete] = useState(false);
@@ -623,6 +624,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
     setExpandedTestId(null);
     setEditingTestId(null);
     setActivePanel((current) => current === "edit-athlete" ? null : current);
+    setEditingAthleteId(null);
     setEditAthleteName("");
     setTestForm((current) => ({
       ...current,
@@ -650,6 +652,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
   function openEditAthlete() {
     if (!selectedAthlete) return;
 
+    setEditingAthleteId(selectedAthlete.id);
     setEditAthleteName(selectedAthlete.display_name);
     setActivePanel("edit-athlete");
     setEditingTestId(null);
@@ -659,6 +662,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
   }
 
   function closeEditAthlete() {
+    setEditingAthleteId(null);
     setEditAthleteName("");
     setActivePanel(null);
   }
@@ -779,9 +783,9 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
 
   async function handleUpdateAthlete(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase || !selectedAthlete) return;
+    if (!supabase || !editingAthleteId) return;
 
-    const expectedAthleteId = selectedAthlete.id;
+    const expectedAthleteId = editingAthleteId;
     const { payload, error: identityError } = prepareAthleteIdentity(editAthleteName);
     if (!payload) {
       setMessage(identityError ?? "Jméno klienta není platné.");
@@ -823,6 +827,7 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
     );
     setSelectedAthleteId(expectedAthleteId);
     setQuery("");
+    setEditingAthleteId(null);
     setEditAthleteName("");
     setActivePanel(null);
     setMobileTab("client");
@@ -939,14 +944,17 @@ export default function KneeDashboard({ onSelectedClientChange }: KneeDashboardP
   }
 
   function renderAthleteIdentityForm() {
-    if (!selectedAthlete) return null;
+    const editingAthlete = editingAthleteId
+      ? athletes.find((athlete) => athlete.id === editingAthleteId) ?? null
+      : null;
+    if (!editingAthlete) return null;
 
     return (
       <form className="stack-form compact-form" onSubmit={handleUpdateAthlete}>
         <div className="test-detail-header">
           <div>
             <strong>Upravit klienta</strong>
-            <p>Upravuješ: <strong>{selectedAthlete.display_name}</strong>. Mění se pouze jméno klienta.</p>
+            <p>Upravuješ: <strong>{editingAthlete.display_name}</strong>. Mění se pouze jméno klienta.</p>
           </div>
           <span className="pill">identita</span>
         </div>
