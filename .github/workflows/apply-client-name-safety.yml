@@ -1,0 +1,91 @@
+name: Apply client name safety fix
+
+on:
+  push:
+    branches: [feature/edit-client-name]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/edit-client-name
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Pin edit target to the opened client id
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("src/app/components/KneeDashboard.tsx")
+          text = path.read_text()
+
+          def replace_once(old: str, new: str, label: str):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one match, found {count}")
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              '  const [editAthleteName, setEditAthleteName] = useState("");',
+              '  const [editingAthleteId, setEditingAthleteId] = useState<string | null>(null);\n  const [editAthleteName, setEditAthleteName] = useState("");',
+              "editing athlete id state",
+          )
+          replace_once(
+              '    setActivePanel((current) => current === "edit-athlete" ? null : current);\n    setEditAthleteName("");',
+              '    setActivePanel((current) => current === "edit-athlete" ? null : current);\n    setEditingAthleteId(null);\n    setEditAthleteName("");',
+              "selection change reset",
+          )
+          replace_once(
+              '    setEditAthleteName(selectedAthlete.display_name);\n    setActivePanel("edit-athlete");',
+              '    setEditingAthleteId(selectedAthlete.id);\n    setEditAthleteName(selectedAthlete.display_name);\n    setActivePanel("edit-athlete");',
+              "capture edit target",
+          )
+          replace_once(
+              '  function closeEditAthlete() {\n    setEditAthleteName("");\n    setActivePanel(null);\n  }',
+              '  function closeEditAthlete() {\n    setEditingAthleteId(null);\n    setEditAthleteName("");\n    setActivePanel(null);\n  }',
+              "close edit target",
+          )
+          replace_once(
+              '    if (!supabase || !selectedAthlete) return;\n\n    const expectedAthleteId = selectedAthlete.id;\n    const { payload, error: identityError } = prepareAthleteIdentity(editAthleteName);',
+              '    if (!supabase || !editingAthleteId) return;\n\n    const expectedAthleteId = editingAthleteId;\n    const { payload, error: identityError } = prepareAthleteIdentity(editAthleteName);',
+              "fixed update target",
+          )
+          replace_once(
+              '    setQuery("");\n    setEditAthleteName("");\n    setActivePanel(null);',
+              '    setQuery("");\n    setEditingAthleteId(null);\n    setEditAthleteName("");\n    setActivePanel(null);',
+              "clear successful edit target",
+          )
+          replace_once(
+              '  function renderAthleteIdentityForm() {\n    if (!selectedAthlete) return null;\n\n    return (',
+              '  function renderAthleteIdentityForm() {\n    const editingAthlete = editingAthleteId\n      ? athletes.find((athlete) => athlete.id === editingAthleteId) ?? null\n      : null;\n    if (!editingAthlete) return null;\n\n    return (',
+              "render captured athlete",
+          )
+          replace_once(
+              '<p>Upravuješ: <strong>{selectedAthlete.display_name}</strong>. Mění se pouze jméno klienta.</p>',
+              '<p>Upravuješ: <strong>{editingAthlete.display_name}</strong>. Mění se pouze jméno klienta.</p>',
+              "captured athlete label",
+          )
+
+          path.write_text(text)
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: git diff --check
+      - name: Commit safety fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/components/KneeDashboard.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Pin client name edit target by id"
+          git push origin HEAD:feature/edit-client-name
