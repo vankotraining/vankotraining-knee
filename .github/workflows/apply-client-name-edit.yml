@@ -1,0 +1,111 @@
+name: Apply client name edit
+
+on:
+  push:
+    branches: [feature/edit-client-name]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/edit-client-name
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply deterministic KneeDashboard patch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("src/app/components/KneeDashboard.tsx")
+          text = path.read_text()
+
+          def replace_once(old: str, new: str, label: str):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one match, found {count}")
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              '} from "@/lib/knee-metrics";\nimport {\n  createBrowserSupabaseClient,',
+              '} from "@/lib/knee-metrics";\nimport {\n  prepareAthleteIdentity,\n  reconcileAthleteIdentityUpdate,\n} from "@/lib/athlete-identity";\nimport {\n  createBrowserSupabaseClient,',
+              "athlete identity import",
+          )
+
+          replace_once(
+              'type ActivePanel = "athlete" | "test" | null;',
+              'type ActivePanel = "athlete" | "edit-athlete" | "test" | null;',
+              "active panel type",
+          )
+
+          replace_once(
+              '''function nameKey(value: string) {\n  return value\n    .trim()\n    .toLowerCase()\n    .normalize("NFD")\n    .replace(/[\\u0300-\\u036f]/g, "")\n    .replace(/[^a-z0-9]+/g, "-")\n    .replace(/^-|-$/g, "");\n}\n\n''',
+              "",
+              "remove local nameKey",
+          )
+
+          replace_once(
+              '  const [editTestForm, setEditTestForm] = useState<TestForm>({ test_date: todayIsoDate(), right_force_kg: "", left_force_kg: "", body_weight_kg: "", shin_length_cm: "33", note: "" });\n  const [isSavingAthlete, setIsSavingAthlete] = useState(false);\n  const [isSavingTest, setIsSavingTest] = useState(false);\n  const [isUpdatingTest, setIsUpdatingTest] = useState(false);',
+              '  const [editTestForm, setEditTestForm] = useState<TestForm>({ test_date: todayIsoDate(), right_force_kg: "", left_force_kg: "", body_weight_kg: "", shin_length_cm: "33", note: "" });\n  const [editAthleteName, setEditAthleteName] = useState("");\n  const [isSavingAthlete, setIsSavingAthlete] = useState(false);\n  const [isUpdatingAthlete, setIsUpdatingAthlete] = useState(false);\n  const [isSavingTest, setIsSavingTest] = useState(false);\n  const [isUpdatingTest, setIsUpdatingTest] = useState(false);',
+              "athlete edit state",
+          )
+
+          replace_once(
+              '    setExpandedTestId(null);\n    setEditingTestId(null);\n    setTestForm((current) => ({',
+              '    setExpandedTestId(null);\n    setEditingTestId(null);\n    setActivePanel((current) => current === "edit-athlete" ? null : current);\n    setEditAthleteName("");\n    setTestForm((current) => ({',
+              "reset identity editor on selection change",
+          )
+
+          replace_once(
+              '''  function updateEditTestForm(key: keyof TestForm, value: string) {\n    setEditTestForm((current) => ({ ...current, [key]: value }));\n  }\n\n  function openEditTest(test: KneeExtensionTest) {''',
+              '''  function updateEditTestForm(key: keyof TestForm, value: string) {\n    setEditTestForm((current) => ({ ...current, [key]: value }));\n  }\n\n  function openEditAthlete() {\n    if (!selectedAthlete) return;\n\n    setEditAthleteName(selectedAthlete.display_name);\n    setActivePanel("edit-athlete");\n    setEditingTestId(null);\n    setExpandedTestId(null);\n    setMobileTab("client");\n    setMessage("");\n  }\n\n  function closeEditAthlete() {\n    setEditAthleteName("");\n    setActivePanel(null);\n  }\n\n  function openEditTest(test: KneeExtensionTest) {''',
+              "identity editor controls",
+          )
+
+          replace_once(
+              '''  async function handleCreateAthlete(event: FormEvent<HTMLFormElement>) {\n    event.preventDefault();\n    if (!supabase || !athleteForm.display_name.trim()) return;\n\n    setIsSavingAthlete(true);\n    setMessage("");\n\n    const { data: athlete, error } = await supabase\n      .from("athletes")\n      .insert({ display_name: athleteForm.display_name.trim(), name_key: nameKey(athleteForm.display_name), note: athleteForm.note.trim() || null })''',
+              '''  async function handleCreateAthlete(event: FormEvent<HTMLFormElement>) {\n    event.preventDefault();\n    if (!supabase) return;\n\n    const { payload: identityPayload, error: identityError } = prepareAthleteIdentity(athleteForm.display_name);\n    if (!identityPayload) {\n      setMessage(identityError ?? "Jméno klienta není platné.");\n      return;\n    }\n\n    setIsSavingAthlete(true);\n    setMessage("");\n\n    const { data: athlete, error } = await supabase\n      .from("athletes")\n      .insert({ ...identityPayload, note: athleteForm.note.trim() || null })''',
+              "create athlete normalization",
+          )
+
+          replace_once(
+              '''    setMessage("Klient byl založen.");\n  }\n\n  async function handleCreateTest(event: FormEvent<HTMLFormElement>) {''',
+              '''    setMessage("Klient byl založen.");\n  }\n\n  async function handleUpdateAthlete(event: FormEvent<HTMLFormElement>) {\n    event.preventDefault();\n    if (!supabase || !selectedAthlete) return;\n\n    const expectedAthleteId = selectedAthlete.id;\n    const { payload, error: identityError } = prepareAthleteIdentity(editAthleteName);\n    if (!payload) {\n      setMessage(identityError ?? "Jméno klienta není platné.");\n      return;\n    }\n\n    setIsUpdatingAthlete(true);\n    setMessage("");\n\n    const { data, error } = await supabase\n      .from("athletes")\n      .update(payload)\n      .eq("id", expectedAthleteId)\n      .select("id,display_name,name_key,note")\n      .single();\n\n    setIsUpdatingAthlete(false);\n\n    const reconciliation = reconcileAthleteIdentityUpdate(\n      athletes,\n      expectedAthleteId,\n      data as Athlete | null,\n      error,\n    );\n\n    if (reconciliation.errorMessage || !reconciliation.updatedAthlete) {\n      setMessage(\n        reconciliation.errorMessage ??\n          "Klienta se nepodařilo upravit. Původní jméno zůstalo beze změny.",\n      );\n      return;\n    }\n\n    const updatedAthlete = reconciliation.updatedAthlete;\n    setAthletes((current) =>\n      current.map((athlete) =>\n        athlete.id === expectedAthleteId ? updatedAthlete : athlete,\n      ),\n    );\n    setSelectedAthleteId(expectedAthleteId);\n    setQuery("");\n    setEditAthleteName("");\n    setActivePanel(null);\n    setMobileTab("client");\n    setMessage("Jméno klienta bylo upraveno.");\n  }\n\n  async function handleCreateTest(event: FormEvent<HTMLFormElement>) {''',
+              "athlete update handler",
+          )
+
+          replace_once(
+              '''  function renderTestForm({\n    form,''',
+              '''  function renderAthleteIdentityForm() {\n    if (!selectedAthlete) return null;\n\n    return (\n      <form className="stack-form compact-form" onSubmit={handleUpdateAthlete}>\n        <div className="test-detail-header">\n          <div>\n            <strong>Upravit klienta</strong>\n            <p>Upravuješ: <strong>{selectedAthlete.display_name}</strong>. Mění se pouze jméno klienta.</p>\n          </div>\n          <span className="pill">identita</span>\n        </div>\n        <label>\n          Jméno\n          <input\n            value={editAthleteName}\n            onChange={(event) => setEditAthleteName(event.target.value)}\n            required\n          />\n        </label>\n        <div className="form-actions">\n          <button disabled={isUpdatingAthlete || !editAthleteName.trim()}>\n            {isUpdatingAthlete ? "Ukládám..." : "Uložit"}\n          </button>\n          <button className="ghost-button" type="button" onClick={closeEditAthlete}>Zrušit</button>\n        </div>\n      </form>\n    );\n  }\n\n  function renderTestForm({\n    form,''',
+              "identity edit form",
+          )
+
+          replace_once(
+              '''                  <section aria-labelledby="mobile-tab-client" className={mobileTab === "client" ? "mobile-tab-page client-page is-active" : "mobile-tab-page client-page"} id="mobile-panel-client" role="tabpanel" tabIndex={0}>\n                    <div className="profile-grid">''',
+              '''                  <section aria-labelledby="mobile-tab-client" className={mobileTab === "client" ? "mobile-tab-page client-page is-active" : "mobile-tab-page client-page"} id="mobile-panel-client" role="tabpanel" tabIndex={0}>\n                    <div className="form-actions">\n                      <button\n                        className="ghost-button"\n                        disabled={activePanel === "edit-athlete"}\n                        type="button"\n                        onClick={openEditAthlete}\n                      >\n                        {activePanel === "edit-athlete" ? "Upravuješ klienta" : "Upravit klienta"}\n                      </button>\n                    </div>\n                    {activePanel === "edit-athlete" ? renderAthleteIdentityForm() : null}\n                    <div className="profile-grid">''',
+              "identity edit action",
+          )
+
+          path.write_text(text)
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+      - run: git diff --check
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/components/KneeDashboard.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Add safe client name editing"
+          git push origin HEAD:feature/edit-client-name
