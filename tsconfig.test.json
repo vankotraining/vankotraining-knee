@@ -9,6 +9,8 @@
     "types": ["node"]
   },
   "include": [
+    "src/lib/athlete-identity.ts",
+    "src/lib/athlete-identity.test.ts",
     "src/lib/knee-metrics.ts",
     "src/lib/knee-metrics.test.ts",
     "src/lib/tindeq-auth-flow.test.ts",
