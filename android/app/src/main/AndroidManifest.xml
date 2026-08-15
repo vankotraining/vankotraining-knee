@@ -45,6 +45,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:host="${kneeHost}"
+                    android:pathPrefix="/tindeq"
                     android:scheme="https" />
             </intent-filter>
         </activity>
