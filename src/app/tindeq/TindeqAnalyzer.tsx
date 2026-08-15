@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { importTindeqArchive, type TindeqSession } from "@/lib/tindeq-browser";
+import { attachTindeqNativeShareReceiver } from "@/lib/tindeq-native-share-client";
 import type { SaveTindeqSessionResult } from "@/lib/tindeq-persistence";
 import TindeqSessionResult from "./TindeqSessionResult";
 import { formatTindeqDate } from "./tindeq-presentation";
@@ -45,15 +46,18 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveResults, setSaveResults] = useState<Record<string, SaveTindeqSessionResult>>({});
   const [saveAthleteId, setSaveAthleteId] = useState<string | null>(null);
+  const [nativeShareStatus, setNativeShareStatus] = useState<string | null>(null);
+  const [nativeShareError, setNativeShareError] = useState<string | null>(null);
   const activeSaveState = saveAthleteId === selectedAthlete?.id ? saveState : "idle";
   const activeSaveResults = saveAthleteId === selectedAthlete?.id ? saveResults : {};
 
   const selected = sessions.find((session) => session.id === selectedId) ?? sessions[0] ?? null;
 
-  async function handleFile(file: File | null) {
+  const handleFile = useCallback(async (file: File | null) => {
     if (!file) return;
     setState("loading");
     setMessage(null);
+    setNativeShareError(null);
     setSessions([]);
     setErrors([]);
     setSaveState("idle");
@@ -72,7 +76,13 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
       setMessage(error instanceof Error ? error.message : "Soubor se nepodařilo zpracovat.");
       setState("error");
     }
-  }
+  }, []);
+
+  useEffect(() => attachTindeqNativeShareReceiver({
+    onFile: handleFile,
+    onStatus: setNativeShareStatus,
+    onError: (error) => setNativeShareError(error || null),
+  }), [handleFile]);
 
   async function handleSave() {
     if (!selectedAthlete || activeSaveState === "saving") return;
@@ -126,6 +136,11 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
 
   return (
     <div className={styles.analyzer}>
+      {nativeShareStatus ? (
+        <p className={styles.privacyNote} role="status">{nativeShareStatus}</p>
+      ) : null}
+      {nativeShareError ? <div className={styles.errorBox}>{nativeShareError}</div> : null}
+
       {sessions.length === 0 ? (
         <section className={styles.uploadCard}>
           <label className={styles.uploadLabel}>
