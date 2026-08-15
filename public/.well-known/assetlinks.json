@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.use_as_origin"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "cz.vankotraining.knee",
+      "sha256_cert_fingerprints": [
+        "B9:7F:94:BA:0D:C6:EC:46:FC:94:8B:3C:57:24:EC:A7:95:B9:92:7E:F9:4C:F9:E9:33:C1:B9:B7:C5:E2:D7:2A"
+      ]
+    }
+  }
+]

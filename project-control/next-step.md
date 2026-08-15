@@ -1,84 +1,30 @@
 # Next Step
 
-## Aktualni faze
+## Aktuální fáze
 
-Finalni stabilizace interniho MVP.
+Draft PR #21 implementuje nativní Android příjem Tindeq ZIP přes systémové `Sdílet` bez serverového uploadu originálního archivu.
 
-Hlavni workflow funguje, export a provozni dokumentace jsou pripravene a zobrazeni procenta vuci norme bylo zpresneno. Zbyvaji 3 uzaviraci kroky.
+Kód, Android build, Android unit testy, web testy a Vercel Preview jsou připravené. Funkce zatím není produkčně nasazená ani produkčně ověřená.
 
-## Posledni dokoncena zmena
+## Aktuální blocker
 
-V detailu leve a prave nohy se uz neukazuje nejednoznacne `Chybi X %`.
+Preview alias PR #21 je chráněný Vercel Authentication. Android Digital Asset Links potřebuje veřejně načíst přesný `/.well-known/assetlinks.json` bez Vercel login cookie nebo share-query bypassu.
 
-Nove se zobrazuje veta:
+Preferovaný postup je branch-specific Deployment Protection Exception pouze pro:
 
-- pod normou: `Norma je splnena na X %. Do normy chybi Y kg.`
-- nad normou: `Norma je splnena na X %. Norma je prekrocena o Y kg.`
+`vankotraining-knee-git-agent-tin-19838f-vankotrainings-projects.vercel.app`
 
-Ciselne hodnoty jsou zvyraznene. Procento se pocita jako `aktualni sila / cilova sila * 100` a neni zastropovane na 100 %.
+Pokud současný Vercel plan tuto výjimku neumožňuje, případné dočasné vypnutí Preview Authentication pro celý projekt vyžaduje explicitní rozhodnutí uživatele, protože by zpřístupnilo i ostatní Preview deploymenty.
 
-## Zbyvaji 3 kroky
+## Po odblokování Preview
 
-### 1. Finalni technicky uklid
+1. ověřit veřejný HTTP 200 JSON na `/.well-known/assetlinks.json`;
+2. nainstalovat finální preview APK artifact z workflow run `31911229864`;
+3. provést reálný Android tok `Tindeq → Sdílet → Knee → automatický import`;
+4. ověřit ruční výběr klienta a explicitní save;
+5. ověřit duplicate protection a odmítnutí nepodporovaného souboru;
+6. teprve po explicitním uživatelském acceptance rozhodnout o merge PR #21.
 
-Cil:
+## Důležitý invariant
 
-- Odstranit legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
-- Zkontrolovat, ze v kodu nezustava nepouzivana archivacni/DOM logika.
-- Sjednotit kompaktni mobilni souhrn s novou terminologii splneni normy; aktualne muze stale pouzivat popisek `Chybi`.
-- Nezavadet novou funkcionalitu.
-
-Definice hotovo:
-
-- Supabase konfigurace spoleha na Vercel env promenne.
-- Terminologie je konzistentni na desktopu i mobilu.
-- Build/lint projde.
-- Produkcni web dal nacita data.
-
-### 2. Regresni ochrana
-
-Cil:
-
-- Rozsirit ochranu pred regresi na hlavni kriticke toky.
-- Minimalne mit jasny opakovatelny smoke-test checklist, idealne i maly automatizovany smoke-test tam, kde to dava smysl.
-
-Toky k hlidani:
-
-- vytvoreni mereni,
-- editace mereni,
-- archivace/obnova mereni,
-- archivace/obnova klienta,
-- aktivni seznam nesmi ukazovat archivovane klienty,
-- export musi obsahovat aktivni i archivovana data,
-- splneni normy pod 100 %, presne 100 % a nad 100 %,
-- chovani pri chybejicich nebo neplatnych datech.
-
-Definice hotovo:
-
-- Pred dalsi zmenou existuje jasny testovaci postup.
-- Vypocty knee metrik zustavaji kryte testem.
-- Kriticka archivacni logika a nova prezentace normy jsou overitelne.
-
-### 3. Finalni uzavreni MVP
-
-Cil:
-
-- Projit finalni rucni akceptacni test.
-- Vizualne overit novou vetu o splneni normy na desktopu i mobilu.
-- Aktualizovat `project-control` jako uzavrene interni MVP.
-- Rozhodnout, ze dalsi produktove napady patri do v2.
-
-Definice hotovo:
-
-- Projekt ma finalni stavovy zapis.
-- Je jasne, jak aplikaci pouzivat, zalohovat a obnovit data.
-- Dalsi funkcionalita neni blokujici pro pouzivani.
-
-## Co uz ted nepatri do MVP
-
-- Interpretacni karta klienta.
-- Tisk detailu klienta.
-- Dalsi klinicke doporucovaci funkce.
-- Vetsi redesign mobilniho UI.
-
-Tyto veci patri do dalsi faze az po uzavreni MVP.
+PR #21 se před real-device acceptance nemerguje. Originální Tindeq ZIP se nesmí stát serverovým uploadem ani trvalým cloudovým artefaktem.

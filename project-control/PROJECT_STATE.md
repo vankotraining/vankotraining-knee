@@ -2,107 +2,120 @@
 
 ## Datum poslední kontroly
 
-`2026-08-11` (Europe/Prague), po explicitním uživatelském produkčním potvrzení funkčnosti PR #20. Produkční databáze nebyla v rámci rollout ani acceptance měněna. Uživatel současně zaznamenal neblokující UX poznámku, že akce `Upravit klienta` na první pohled nepůsobila dostatečně jako tlačítko.
+`2026-08-15` (Europe/Prague), během implementace izolovaného Android native share receiveru pro Tindeq ZIP v draft PR #21. Fresh audit ověřil `main`, otevřené PR, Tindeq parser/persistence/auth, test stack a Vercel deploymenty. Produkční aplikace ani produkční databáze nebyly v rámci PR #21 měněny.
 
 ## Aktuální `main` commit
 
-Runtime-changing checkpoint po merge PR #20:
+Aktuální `main`:
+
+`d829c086c8013187cb38e26ea77bc63b178fcff2` – `Record PR #20 production acceptance`.
+
+Aktuální runtime-changing produkční checkpoint zůstává:
 
 `1b48da7ed9340e8f53f591f3b427d4d6758246e1` – `Add safe client name editing (#20)`.
 
-Následné `project-control` commity jsou docs-only a aplikační runtime ani databázi nemění.
+Následné `project-control` commity na `main` jsou docs-only a aplikační runtime ani databázi nemění.
 
 ## Aktivní větev a PR
 
-PR #20 `Add safe client name editing` je **merged / closed**.
+Draft PR #21 `Add local Android Tindeq share receiver` je otevřený a **nesmí být mergován před reálným Android acceptance gate**.
 
-- feature branch: `feature/edit-client-name`;
-- exact pre-merge base: `main@350d450e336d15fffcd7fc3d33ff41e342f5cd0d`;
-- exact pre-merge head: `de98726c5bcd76d042b57af6f0228c505891f5ac`;
-- pre-merge `behind_by: 0`;
-- pre-merge PR byl mergeable;
-- uživatel dne `2026-08-11` explicitně schválil přechod na nasazení;
-- squash merge commit: `1b48da7ed9340e8f53f591f3b427d4d6758246e1`;
-- uživatel následně dne `2026-08-11` explicitně potvrdil funkčnost na produkci.
+- branch: `agent/tindeq-android-share-receiver`;
+- exact base: `main@d829c086c8013187cb38e26ea77bc63b178fcff2`;
+- implementační head před tímto dokumentačním syncem: `d1d98ec91948c252b0cbc74f8422f722e55fbd4b`;
+- PR vznikl z fresh `main` a před implementací nebyl otevřený jiný PR;
+- scope je pouze Android share receiver + lokální web transport do existujícího Tindeq parseru + testy/dokumentace;
+- žádná DB migrace, Supabase schema/policy změna ani serverový ZIP endpoint.
 
 ## Produkční runtime commit
 
-Runtime-changing production checkpoint:
+Runtime-changing production checkpoint zůstává PR #20:
 
 - commit: `1b48da7ed9340e8f53f591f3b427d4d6758246e1`;
 - deployment: `dpl_2MpCHrW6vhsReXuWn5kJyZL958SV`;
 - stav: `READY`;
 - target: `production`;
-- branch: `main`;
-- alias zahrnoval `knee.vankotraining.cz`;
-- Vercel metadata potvrzují exact GitHub SHA `1b48da7ed9340e8f53f591f3b427d4d6758246e1`.
+- branch: `main`.
 
-Následný docs-only produkční deployment `dpl_8EHXGTZuGpkgoFJxkVgxGGxkxjj6` je `READY` nad `main@551e99d8637397b67f85de9667ba7b81d679fb1f`; runtime kód PR #20 tím není změněn.
+Fresh poslední produkční deployment nad aktuálním `main@d829c086c8013187cb38e26ea77bc63b178fcff2` je docs-only `dpl_B5ogPtD6BNsTbUdahMwX31e8zfzj`, `READY`. Runtime kód PR #20 tím není změněn.
 
-Technický post-rollout smoke:
-
-- `https://knee.vankotraining.cz/` → HTTP 200;
-- `https://knee.vankotraining.cz/tindeq` → HTTP 200.
+PR #21 je pouze na Preview a není produkčně nasazený.
 
 ## Stav databázových migrací
 
 Produkční Supabase: `zxvndqicslyulrinbpyn`.
 
-PR #20 nevyžadoval a neprovedl DB migraci, DDL, produkční datový write, změnu RLS, policies, grants ani Auth.
+PR #21 nevyžaduje a neprovádí žádnou DB migraci, DDL, RLS/policy/grant/Auth změnu ani produkční datový write. Tindeq structured-result persistence a existující dedupe invariant zůstávají beze změny.
 
-Fresh read-only audit před implementací potvrdil pro `public.athletes` existující:
-
-- `display_name` a `name_key` s non-blank ochranou;
-- unikátní constraint/index nad `name_key`;
-- UPDATE RLS pro oprávněného Knee uživatele;
-- auditní a `updated_at` UPDATE triggery.
-
-Phase-5 Tindeq dedupe invariant zůstává beze změny.
+Originální Tindeq ZIP se v PR #21 nepřidává do Supabase Storage, databáze ani jiného serverového úložiště.
 
 ## Aktuální fáze
 
-PR #20 je **implementovaný v `main`, automatizovaně otestovaný na exact pre-merge headu, produkčně nasazený, technicky smoke-testovaný a produkčně uživatelsky ověřený**.
+PR #21 je **implementovaný na feature branch, automatizovaně build/test ověřený a nasazený na Vercel Preview**, ale zatím není možné provést platný Android Digital Asset Links acceptance test, protože branch Preview je chráněný Vercel Authentication a anonymní request je přesměrován na Vercel SSO.
 
-Uživatel dne `2026-08-11` po rollout explicitně potvrdil funkčnost přejmenování existujícího klienta. UX poznámka k vizuální rozpoznatelnosti tlačítka není funkční blocker a není součástí uzavřeného rollout scope.
+Android CI nad implementací úspěšně sestavil podepsaný preview APK a prošel Android unit testy. Webová CI nad stejnou webovou implementací prošla unit testy, lint baseline comparison, build, TypeScript, project-control, whitespace a Playwright E2E.
 
 ## Implementováno v `main`
 
-- editace `athletes.display_name` v kontextu vybraného klienta;
-- synchronní přepočet `athletes.name_key` stejným normalizačním pravidlem jako při vytvoření klienta;
-- UPDATE fixovaný na `athlete.id` zachycené při otevření editace;
-- lokální state se mění až po potvrzeném DB úspěchu;
-- vybraný klient zůstává po úspěšném přejmenování zachovaný;
-- `Uložit` / `Zrušit`, odmítnutí whitespace-only jména a srozumitelná chyba při unique konfliktu;
-- DB chyba nebo neočekávané ID failne closed bez korupce původního lokálního stavu;
-- žádné změny profilových parametrů, měření, Tindeq parseru/persistence ani DB security.
+PR #21 zatím není v `main`.
 
-Stávající Knee a Tindeq runtime z předchozích PR zůstává beze změny.
+Produkční implementace z PR #20 a dřívějších Tindeq PR zůstává beze změny.
 
 ## Rozpracováno mimo `main`
 
-- žádná rozpracovaná implementační změna PR #20;
-- UX zvýraznění akce `Upravit klienta` je pouze zaznamenaný follow-up návrh, nikoli schválený scope.
+PR #21 implementuje:
+
+- Android `ACTION_SEND` receiver pro jeden ZIP;
+- lokální kopii pouze do app-private `cacheDir/tindeq-share`, max. 32 MB, TTL 30 minut;
+- validaci podporovaného ZIPu a ZIP signature před browser transferem;
+- Trusted Web Activity / Custom Tabs `postMessage` transport po úspěšném Digital Asset Links origin validation;
+- chunkovaný lokální transport 128 KiB a SHA-256 kontrolu integrity;
+- rekonstrukci browser `File` a předání do stejného `importTindeqArchive(file)` jako ruční upload;
+- zachování explicitního `Uložit měření ke klientovi`; share import sám nic do Supabase neukládá;
+- App Link omezený na `/tindeq` pro bezpečný auth/resume flow;
+- `public/.well-known/assetlinks.json` pro aktuální ephemeral preview signing fingerprint.
+
+Preview origin připnutý v Android buildu:
+
+`https://vankotraining-knee-git-agent-tin-19838f-vankotrainings-projects.vercel.app`
+
+Aktuální preview signing fingerprint:
+
+`B9:7F:94:BA:0D:C6:EC:46:FC:94:8B:3C:57:24:EC:A7:95:B9:92:7E:F9:4C:F9:E9:33:C1:B9:B7:C5:E2:D7:2A`.
 
 ## Nasazeno
 
-- PR #20 runtime merge: `1b48da7ed9340e8f53f591f3b427d4d6758246e1`;
-- runtime-changing Vercel production deployment: `dpl_2MpCHrW6vhsReXuWn5kJyZL958SV`, `READY`;
-- následný docs-only deployment: `dpl_8EHXGTZuGpkgoFJxkVgxGGxkxjj6`, `READY`;
-- produkční alias: `knee.vankotraining.cz`;
-- technický HTTP smoke `/` a `/tindeq`: HTTP 200.
+Produkce:
+
+- PR #21: **ne**.
+
+Preview:
+
+- Vercel deployment `dpl_9xDFinsNq3Du1E99uEYYrg3mKLAa`: `READY` nad `d1d98ec91948c252b0cbc74f8422f722e55fbd4b` před následným assetlinks/docs syncem;
+- stable branch alias: `https://vankotraining-knee-git-agent-tin-19838f-vankotrainings-projects.vercel.app`;
+- Android workflow run `31911229864`: success;
+- preview APK artifact ID `9253720882`;
+- APK signing fingerprint viz výše.
+
+Vercel Preview je aktuálně chráněný Vercel Authentication. To je blocker pro veřejné načtení `/.well-known/assetlinks.json` Androidem/Chromem a tedy pro platné DAL/TWA device ověření.
 
 ## Produkčně ověřeno
 
-PR #20: **ano** – uživatel dne `2026-08-11` na produkci explicitně potvrdil funkčnost přejmenování klienta. Současně uvedl pouze neblokující UX připomínku, že `Upravit klienta` vizuálně nebylo na první pohled zřejmé jako tlačítko.
+PR #21: **ne**.
 
-Dřívější produkční acceptance PR #16, parseru PR #17 a responsive opravy PR #19 zůstávají platné.
+Android Share Target workflow nesmí být označen jako produkčně ověřený na základě CI, Vercel Preview nebo desktop/browser testu. Vyžaduje explicitní potvrzení uživatele po testu na skutečném Android telefonu.
+
+Dřívější produkční acceptance PR #16, parseru PR #17, responsive opravy PR #19 a PR #20 zůstávají platné.
 
 ## Známé problémy
 
-- neblokující UX discoverability: `Upravit klienta` nemusí na první pohled působit dostatečně jako tlačítko; změna zatím není schválená ani implementovaná;
-- full-repo lint baseline nadále obsahuje 3 předexistující `react-hooks/set-state-in-effect` chyby a 1 warning; PR #20 nepřidal žádnou novou lint chybu ani warning;
-- dříve existující shared-production Supabase advisory nálezy zůstávají mimo scope PR #20.
+- blocker PR #21 Preview acceptance: Vercel Authentication chrání branch Preview a anonymní request na Preview origin je redirectován na Vercel SSO; Digital Asset Links potřebuje veřejně dostupný přesný `/.well-known/assetlinks.json` bez auth cookie/query bypassu;
+- preferovaná oprava je Deployment Protection Exception pouze pro přesný preview alias, pokud ji aktuální Vercel plan umožňuje; projektové vypnutí Preview Authentication by zpřístupnilo i ostatní preview a nesmí se provést bez explicitního rozhodnutí uživatele;
+- preview APK používá ephemeral signing certifikát; jakýkoli nový Android rebuild změní fingerprint a vyžaduje nový `assetlinks.json` i přeinstalaci APK;
+- produkční Android distribuce/signing zatím není součástí PR #21; po acceptance bude potřeba persistentní release nebo Play App Signing certifikát;
+- full-repo lint baseline nadále obsahuje předexistující chyby/warning; PR CI ověřuje, že PR nepřidává lint regresi;
+- neblokující UX discoverability `Upravit klienta` zůstává mimo scope.
 
 ## Další krok
 
-- PR #20 rollout je uzavřen; případné vizuální zvýraznění `Upravit klienta` řešit pouze jako samostatný schválený UX task.
+- Zpřístupnit pouze přesný PR #21 Preview origin pro Digital Asset Links (preferovaně branch-specific Deployment Protection Exception), ověřit veřejný HTTP 200 JSON na `/.well-known/assetlinks.json` a teprve poté provést reálný Android Sharesheet acceptance test s finálním APK artifactem.
