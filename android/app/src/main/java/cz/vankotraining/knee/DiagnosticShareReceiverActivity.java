@@ -19,19 +19,22 @@ import androidx.browser.customtabs.CustomTabsServiceConnection;
 import androidx.browser.customtabs.CustomTabsSession;
 import androidx.browser.trusted.TrustedWebActivityIntentBuilder;
 
+import org.json.JSONObject;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
  * Preview-only diagnostic receiver.
  *
- * It deliberately stops before transferring the ZIP. Its only purpose is to identify the nearest
+ * It deliberately stops before transferring ZIP bytes. Its only purpose is to identify the nearest
  * failing native TWA/postMessage step without changing the parser, web assembly, or persistence.
  */
 public final class DiagnosticShareReceiverActivity extends Activity {
     private static final String CHANNEL_MARKER = "knee-native-share-v1";
     private static final String PREFS = "knee-twa-diagnostic";
     private static final String KEY_TRACE = "trace";
+    private static final String DIAGNOSTIC_SHARE_ID = "diag-12345678";
 
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -42,6 +45,7 @@ public final class DiagnosticShareReceiverActivity extends Activity {
     private CustomTabsSession session;
     private CustomTabsServiceConnection serviceConnection;
     private boolean serviceBound;
+    private boolean diagnosticMetaSent;
 
     private final CustomTabsCallback callback = new CustomTabsCallback() {
         @Override
@@ -82,6 +86,7 @@ public final class DiagnosticShareReceiverActivity extends Activity {
         public void onPostMessage(String message, Bundle extras) {
             super.onPostMessage(message, extras);
             recordStep("web reply received");
+            handleDiagnosticWebMessage(message);
         }
     };
 
@@ -165,6 +170,43 @@ public final class DiagnosticShareReceiverActivity extends Activity {
         recordStep("service bind=" + serviceBound);
     }
 
+    private void handleDiagnosticWebMessage(String message) {
+        if (session == null) return;
+        try {
+            JSONObject value = new JSONObject(message);
+            if (value.optInt("v", -1) != 1) return;
+            String type = value.optString("type", "");
+
+            if ("ready".equals(type) && !diagnosticMetaSent) {
+                JSONObject meta = new JSONObject()
+                        .put("v", 1)
+                        .put("type", "meta")
+                        .put("shareId", DIAGNOSTIC_SHARE_ID)
+                        .put("name", "diagnostic.zip")
+                        .put("mimeType", "application/zip")
+                        .put("size", 1)
+                        .put("sha256", "0000000000000000000000000000000000000000000000000000000000000000")
+                        .put("chunks", 1)
+                        .put("chunkSize", 16 * 1024);
+                int result = session.postMessage(meta.toString(), null);
+                diagnosticMetaSent = true;
+                recordStep("diagnostic meta post result=" + result);
+                return;
+            }
+
+            if ("next".equals(type)) {
+                recordStep("web next received index=" + value.optInt("index", -1));
+                return;
+            }
+
+            if ("nack".equals(type)) {
+                recordStep("web nack received");
+            }
+        } catch (Exception ignored) {
+            // The preview bootstrap also sends a fixed plain-text acknowledgement. Ignore its body.
+        }
+    }
+
     private void recordStep(String step) {
         mainHandler.post(() -> {
             String previous = preferences.getString(KEY_TRACE, "");
@@ -179,7 +221,7 @@ public final class DiagnosticShareReceiverActivity extends Activity {
         view.setText(
                 "Knee Android share diagnostika\n\n"
                         + trace
-                        + "\n\nTento build ZIP nepřenáší do webu. Po návratu z Knee pošli screenshot této obrazovky.");
+                        + "\n\nTento build ZIP nepřenáší do webu. Posílá jen syntetické bezpečné meta a čeká na odpověď next.");
         view.setTextSize(17f);
         view.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         view.setPadding(48, 48, 48, 48);
