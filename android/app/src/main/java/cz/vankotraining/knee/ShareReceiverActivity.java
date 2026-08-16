@@ -121,7 +121,8 @@ public final class ShareReceiverActivity extends Activity {
     }
 
     private void handleIncomingIntent(Intent intent) {
-        setLoadingView(Intent.ACTION_SEND.equals(intent.getAction())
+        boolean incomingShare = Intent.ACTION_SEND.equals(intent.getAction());
+        setLoadingView(incomingShare
                 ? "Načítám sdílené Tindeq měření…"
                 : "Otevírám Knee…");
 
@@ -133,7 +134,7 @@ public final class ShareReceiverActivity extends Activity {
         ioExecutor.execute(() -> {
             try {
                 PendingShare nextPending;
-                if (Intent.ACTION_SEND.equals(intent.getAction())) {
+                if (incomingShare) {
                     Uri sharedUri = getSharedUri(intent);
                     if (sharedUri == null) {
                         throw new IllegalArgumentException("Sdílený Tindeq ZIP nebyl nalezen.");
@@ -147,7 +148,11 @@ public final class ShareReceiverActivity extends Activity {
                     pendingShare = nextPending;
                     launchUri = nextLaunchUri;
                     resetTransferState();
-                    ensureBrowserSessionAndLaunch();
+                    if (incomingShare) {
+                        startFreshShareSessionAndLaunch();
+                    } else {
+                        ensureBrowserSessionAndLaunch();
+                    }
                 });
             } catch (Exception error) {
                 Log.e(TAG, "Unable to prepare shared Tindeq file", error);
@@ -157,10 +162,31 @@ public final class ShareReceiverActivity extends Activity {
         });
     }
 
+    private void startFreshShareSessionAndLaunch() {
+        // singleTask delivers repeated shares through onNewIntent() and Android clears the TWA
+        // that was above this Activity. A CustomTabsSession from that TWA must not be reused.
+        customTabsSession = null;
+        relationshipValidated = false;
+        relationshipValidationFinished = false;
+
+        if (customTabsClient != null) {
+            createBrowserSessionAndLaunch();
+            return;
+        }
+
+        // If the previous browser service disconnected while the TWA was cleared, bind again.
+        serviceBound = false;
+        ensureBrowserSessionAndLaunch();
+    }
+
     private void ensureBrowserSessionAndLaunch() {
         if (customTabsSession != null) {
             if (!relationshipValidated) requestRelationshipValidation();
             launchTrustedWebActivity();
+            return;
+        }
+        if (customTabsClient != null) {
+            createBrowserSessionAndLaunch();
             return;
         }
         if (serviceBound) return;
@@ -176,15 +202,7 @@ public final class ShareReceiverActivity extends Activity {
             public void onCustomTabsServiceConnected(ComponentName name, CustomTabsClient client) {
                 customTabsClient = client;
                 client.warmup(0L);
-                customTabsSession = client.newSession(customTabsCallback);
-                relationshipValidated = false;
-                relationshipValidationFinished = false;
-                if (customTabsSession == null) {
-                    showFatalError("Nepodařilo se vytvořit bezpečnou browser session pro Knee.");
-                    return;
-                }
-                requestRelationshipValidation();
-                launchTrustedWebActivity();
+                createBrowserSessionAndLaunch();
             }
 
             @Override
@@ -201,6 +219,23 @@ public final class ShareReceiverActivity extends Activity {
         if (!serviceBound) {
             showFatalError("Nepodařilo se připojit k Android prohlížeči. ZIP nebyl odeslán na server.");
         }
+    }
+
+    private void createBrowserSessionAndLaunch() {
+        CustomTabsClient client = customTabsClient;
+        if (client == null) {
+            showFatalError("Nepodařilo se připojit k Android prohlížeči. ZIP nebyl odeslán na server.");
+            return;
+        }
+        customTabsSession = client.newSession(customTabsCallback);
+        relationshipValidated = false;
+        relationshipValidationFinished = false;
+        if (customTabsSession == null) {
+            showFatalError("Nepodařilo se vytvořit bezpečnou browser session pro Knee.");
+            return;
+        }
+        requestRelationshipValidation();
+        launchTrustedWebActivity();
     }
 
     private void requestRelationshipValidation() {
