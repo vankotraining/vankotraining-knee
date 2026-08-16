@@ -23,6 +23,15 @@ type NativeShareBootstrapWindow = Window & {
 
 const NATIVE_SHARE_PORT_EVENT = "knee-native-share-port";
 
+function isExpectedAndroidSharePortEvent(event: MessageEvent) {
+  const url = new URL(window.location.href);
+  return (
+    url.searchParams.get("nativeShare") === "1" &&
+    event.origin === `android-app://${url.hostname}` &&
+    Boolean(event.ports?.[0])
+  );
+}
+
 export function attachTindeqNativeShareReceiver(options: NativeShareReceiverOptions) {
   let port: MessagePort | null = null;
   let assembler: NativeShareAssembler | null = null;
@@ -43,8 +52,8 @@ export function attachTindeqNativeShareReceiver(options: NativeShareReceiverOpti
   async function handlePortMessage(event: MessageEvent) {
     if (closed) return;
 
-    // Chrome delivers the native channel marker on the established MessagePort.
-    // It is a transport handshake, not a protocol payload, so do not treat it as malformed data.
+    // Chrome may deliver the native channel marker on the established MessagePort.
+    // It is a transport handshake, not a protocol payload.
     if (event.data === TINDEQ_NATIVE_SHARE_CHANNEL_MARKER) return;
 
     const message = parseNativeShareMessage(event.data);
@@ -145,15 +154,7 @@ export function attachTindeqNativeShareReceiver(options: NativeShareReceiverOpti
   }
 
   function handleWindowMessage(event: MessageEvent) {
-    if (
-      closed ||
-      event.origin !== window.location.origin ||
-      event.data !== TINDEQ_NATIVE_SHARE_CHANNEL_MARKER ||
-      !event.ports?.[0]
-    ) {
-      return;
-    }
-
+    if (closed || !isExpectedAndroidSharePortEvent(event)) return;
     adoptPort(event.ports[0]);
   }
 
