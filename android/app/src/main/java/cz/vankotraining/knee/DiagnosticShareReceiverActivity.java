@@ -27,14 +27,18 @@ import java.util.concurrent.Executors;
 /**
  * Preview-only diagnostic receiver.
  *
- * It deliberately stops before transferring ZIP bytes. Its only purpose is to identify the nearest
- * failing native TWA/postMessage step without changing the parser, web assembly, or persistence.
+ * It deliberately stops before transferring real ZIP bytes. Its only purpose is to identify the
+ * nearest failing native TWA/postMessage step without changing the parser, web assembly, or
+ * persistence.
  */
 public final class DiagnosticShareReceiverActivity extends Activity {
     private static final String CHANNEL_MARKER = "knee-native-share-v1";
     private static final String PREFS = "knee-twa-diagnostic";
     private static final String KEY_TRACE = "trace";
     private static final String DIAGNOSTIC_SHARE_ID = "diag-12345678";
+    private static final String DIAGNOSTIC_CHUNK_BASE64 = "UEsDBA==";
+    private static final String DIAGNOSTIC_SHA256 =
+            "8dcc7e601606217f3b754766511182a916b17e9a26a94c9d887104eba92e9bb2";
 
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -46,6 +50,7 @@ public final class DiagnosticShareReceiverActivity extends Activity {
     private CustomTabsServiceConnection serviceConnection;
     private boolean serviceBound;
     private boolean diagnosticMetaSent;
+    private boolean diagnosticChunkSent;
 
     private final CustomTabsCallback callback = new CustomTabsCallback() {
         @Override
@@ -184,8 +189,8 @@ public final class DiagnosticShareReceiverActivity extends Activity {
                         .put("shareId", DIAGNOSTIC_SHARE_ID)
                         .put("name", "diagnostic.zip")
                         .put("mimeType", "application/zip")
-                        .put("size", 1)
-                        .put("sha256", "0000000000000000000000000000000000000000000000000000000000000000")
+                        .put("size", 4)
+                        .put("sha256", DIAGNOSTIC_SHA256)
                         .put("chunks", 1)
                         .put("chunkSize", 16 * 1024);
                 int result = session.postMessage(meta.toString(), null);
@@ -195,7 +200,24 @@ public final class DiagnosticShareReceiverActivity extends Activity {
             }
 
             if ("next".equals(type)) {
-                recordStep("web next received index=" + value.optInt("index", -1));
+                int index = value.optInt("index", -1);
+                recordStep("web next received index=" + index);
+                if (index == 0 && !diagnosticChunkSent) {
+                    JSONObject chunk = new JSONObject()
+                            .put("v", 1)
+                            .put("type", "chunk")
+                            .put("shareId", DIAGNOSTIC_SHARE_ID)
+                            .put("index", 0)
+                            .put("data", DIAGNOSTIC_CHUNK_BASE64);
+                    int result = session.postMessage(chunk.toString(), null);
+                    diagnosticChunkSent = true;
+                    recordStep("diagnostic chunk post result=" + result);
+                }
+                return;
+            }
+
+            if ("complete-request".equals(type)) {
+                recordStep("web complete-request received");
                 return;
             }
 
@@ -221,7 +243,7 @@ public final class DiagnosticShareReceiverActivity extends Activity {
         view.setText(
                 "Knee Android share diagnostika\n\n"
                         + trace
-                        + "\n\nTento build ZIP nepřenáší do webu. Posílá jen syntetické bezpečné meta a čeká na odpověď next.");
+                        + "\n\nTento build nepřenáší skutečný ZIP do webu. Posílá jen bezpečné syntetické meta a 4 bajty ZIP signatury a čeká na complete-request.");
         view.setTextSize(17f);
         view.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         view.setPadding(48, 48, 48, 48);
