@@ -42,6 +42,11 @@ export function attachTindeqNativeShareReceiver(options: NativeShareReceiverOpti
 
   async function handlePortMessage(event: MessageEvent) {
     if (closed) return;
+
+    // Chrome delivers the native channel marker on the established MessagePort.
+    // It is a transport handshake, not a protocol payload, so do not treat it as malformed data.
+    if (event.data === TINDEQ_NATIVE_SHARE_CHANNEL_MARKER) return;
+
     const message = parseNativeShareMessage(event.data);
     if (!message) {
       fail("Nativní Android přenos poslal neplatná data.");
