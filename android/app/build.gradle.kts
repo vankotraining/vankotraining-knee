@@ -9,6 +9,7 @@ val kneeOrigin = providers.gradleProperty("kneeOrigin")
     .get()
     .trimEnd('/')
 val kneeHost = URI(kneeOrigin).host ?: error("kneeOrigin must contain a valid HTTPS host")
+val kneeAssetStatements = "[{ \\"relation\\": [\\"delegate_permission/common.handle_all_urls\\"], \\"target\\": { \\"namespace\\": \\"web\\", \\"site\\": \\"$kneeOrigin\\" } }]"
 
 val signingStorePath = providers.gradleProperty("kneeSigningStore").orNull
 val signingStorePassword = providers.gradleProperty("kneeSigningStorePassword").orNull
@@ -33,6 +34,7 @@ android {
         versionName = "0.1.0"
 
         buildConfigField("String", "KNEE_ORIGIN", "\"$kneeOrigin\"")
+        resValue("string", "asset_statements", kneeAssetStatements)
         manifestPlaceholders["kneeHost"] = kneeHost
     }
 
