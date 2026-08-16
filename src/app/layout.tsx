@@ -22,18 +22,31 @@ const nativeShareBootstrap = `
     markerMatched: false,
     portPresent: false,
     accepted: false,
+    events: [],
   };
 
   window.addEventListener("message", (event) => {
     const debug = window[debugKey];
+    const markerMatched = event.data === marker;
+    const portPresent = Boolean(event.ports && event.ports[0]);
+    const origin = event.origin || "";
+
     debug.messages += 1;
-    debug.lastOrigin = event.origin || "";
-    debug.markerMatched = event.data === marker;
-    debug.portPresent = Boolean(event.ports && event.ports[0]);
+    debug.lastOrigin = origin;
+    debug.markerMatched = debug.markerMatched || markerMatched;
+    debug.portPresent = debug.portPresent || portPresent;
+    debug.events.push({
+      origin,
+      markerMatched,
+      portPresent,
+      ports: event.ports ? event.ports.length : 0,
+      dataType: typeof event.data,
+    });
+    if (debug.events.length > 8) debug.events.shift();
 
     const accepted =
-      event.origin === window.location.origin &&
-      event.data === marker &&
+      origin === window.location.origin &&
+      markerMatched &&
       event.ports &&
       event.ports[0];
 
