@@ -129,6 +129,7 @@ export function attachTindeqNativeShareReceiver(options: NativeShareReceiverOpti
       nextPort.close();
       return;
     }
+    if (port === nextPort) return;
 
     port?.close();
     assembler = null;
