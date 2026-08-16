@@ -51,6 +51,7 @@ public final class DiagnosticShareReceiverActivity extends Activity {
     private boolean serviceBound;
     private boolean diagnosticMetaSent;
     private boolean diagnosticChunkSent;
+    private boolean diagnosticCompleteSent;
 
     private final CustomTabsCallback callback = new CustomTabsCallback() {
         @Override
@@ -218,11 +219,21 @@ public final class DiagnosticShareReceiverActivity extends Activity {
 
             if ("complete-request".equals(type)) {
                 recordStep("web complete-request received");
+                if (!diagnosticCompleteSent) {
+                    JSONObject complete = new JSONObject()
+                            .put("v", 1)
+                            .put("type", "complete")
+                            .put("shareId", DIAGNOSTIC_SHARE_ID);
+                    int result = session.postMessage(complete.toString(), null);
+                    diagnosticCompleteSent = true;
+                    recordStep("diagnostic complete post result=" + result);
+                }
                 return;
             }
 
             if ("nack".equals(type)) {
-                recordStep("web nack received");
+                String reason = value.optString("message", "");
+                recordStep(reason.isBlank() ? "web nack received" : "web nack received: " + reason);
             }
         } catch (Exception ignored) {
             // The preview bootstrap also sends a fixed plain-text acknowledgement. Ignore its body.
@@ -243,7 +254,7 @@ public final class DiagnosticShareReceiverActivity extends Activity {
         view.setText(
                 "Knee Android share diagnostika\n\n"
                         + trace
-                        + "\n\nTento build nepřenáší skutečný ZIP do webu. Posílá jen bezpečné syntetické meta a 4 bajty ZIP signatury a čeká na complete-request.");
+                        + "\n\nTento build nepřenáší skutečný ZIP do webu. Posílá jen bezpečné syntetické meta, 4 bajty ZIP signatury a complete. Očekává odmítnutí záměrně neúplného ZIPu parserem.");
         view.setTextSize(17f);
         view.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         view.setPadding(48, 48, 48, 48);
