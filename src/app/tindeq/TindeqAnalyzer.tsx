@@ -53,8 +53,8 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
 
   const selected = sessions.find((session) => session.id === selectedId) ?? sessions[0] ?? null;
 
-  const handleFile = useCallback(async (file: File | null) => {
-    if (!file) return;
+  const handleFile = useCallback(async (file: File | null): Promise<string | null> => {
+    if (!file) return null;
     setState("loading");
     setMessage(null);
     setNativeShareError(null);
@@ -72,9 +72,12 @@ export default function TindeqAnalyzer({ selectedAthlete, onSaveSessions }: Tind
       setErrors(result.errors);
       setSelectedId(result.sessions[0].id);
       setState("ready");
+      return null;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Soubor se nepodařilo zpracovat.");
+      const errorMessage = error instanceof Error ? error.message : "Soubor se nepodařilo zpracovat.";
+      setMessage(errorMessage);
       setState("error");
+      return errorMessage;
     }
   }, []);
 
