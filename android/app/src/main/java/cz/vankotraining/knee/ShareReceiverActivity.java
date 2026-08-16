@@ -45,6 +45,8 @@ public final class ShareReceiverActivity extends Activity {
     private CustomTabsSession customTabsSession;
     private CustomTabsServiceConnection serviceConnection;
     private boolean serviceBound;
+    private boolean relationshipValidated;
+    private boolean relationshipValidationFinished;
     private boolean navigationFinished;
     private boolean channelRequested;
     private boolean webReady;
@@ -61,8 +63,12 @@ public final class ShareReceiverActivity extends Activity {
                 Bundle extras) {
             super.onRelationshipValidationResult(relation, requestedOrigin, result, extras);
             if (relation != CustomTabsService.RELATION_USE_AS_ORIGIN) return;
+            relationshipValidationFinished = true;
+            relationshipValidated = result;
             Log.d(TAG, "Digital Asset Links use_as_origin validation for " + requestedOrigin + ": " + result);
-            if (!result && pendingShare != null) {
+            if (result) {
+                maybeRequestPostMessageChannel();
+            } else if (pendingShare != null) {
                 Toast.makeText(
                         ShareReceiverActivity.this,
                         "Bezpečné spojení s Knee se nepodařilo ověřit. ZIP zůstal pouze v zařízení.",
@@ -153,6 +159,7 @@ public final class ShareReceiverActivity extends Activity {
 
     private void ensureBrowserSessionAndLaunch() {
         if (customTabsSession != null) {
+            if (!relationshipValidated) requestRelationshipValidation();
             launchTrustedWebActivity();
             return;
         }
@@ -170,10 +177,13 @@ public final class ShareReceiverActivity extends Activity {
                 customTabsClient = client;
                 client.warmup(0L);
                 customTabsSession = client.newSession(customTabsCallback);
+                relationshipValidated = false;
+                relationshipValidationFinished = false;
                 if (customTabsSession == null) {
                     showFatalError("Nepodařilo se vytvořit bezpečnou browser session pro Knee.");
                     return;
                 }
+                requestRelationshipValidation();
                 launchTrustedWebActivity();
             }
 
@@ -181,6 +191,8 @@ public final class ShareReceiverActivity extends Activity {
             public void onServiceDisconnected(ComponentName name) {
                 customTabsClient = null;
                 customTabsSession = null;
+                relationshipValidated = false;
+                relationshipValidationFinished = false;
                 serviceBound = false;
             }
         };
@@ -188,6 +200,27 @@ public final class ShareReceiverActivity extends Activity {
         serviceBound = CustomTabsClient.bindCustomTabsService(this, packageName, serviceConnection);
         if (!serviceBound) {
             showFatalError("Nepodařilo se připojit k Android prohlížeči. ZIP nebyl odeslán na server.");
+        }
+    }
+
+    private void requestRelationshipValidation() {
+        if (customTabsSession == null || relationshipValidated) return;
+        relationshipValidationFinished = false;
+        boolean accepted = customTabsSession.validateRelationship(
+                CustomTabsService.RELATION_USE_AS_ORIGIN,
+                sourceOrigin,
+                null);
+        Log.d(TAG, "Requested Digital Asset Links use_as_origin validation: " + accepted);
+        if (!accepted) {
+            relationshipValidationFinished = true;
+            relationshipValidated = false;
+            if (pendingShare != null) {
+                Toast.makeText(
+                        this,
+                        "Android prohlížeč odmítl bezpečnostní ověření Knee. ZIP zůstal pouze v zařízení.",
+                        Toast.LENGTH_LONG)
+                        .show();
+            }
         }
     }
 
@@ -209,12 +242,13 @@ public final class ShareReceiverActivity extends Activity {
         if (pendingShare == null
                 || customTabsSession == null
                 || !navigationFinished
+                || !relationshipValidated
                 || channelRequested) {
+            if (pendingShare != null && navigationFinished && relationshipValidationFinished && !relationshipValidated) {
+                Log.d(TAG, "Not requesting postMessage channel because use_as_origin validation failed.");
+            }
             return;
         }
-        // Chrome's TWA postMessage flow performs use_as_origin validation as part of
-        // requestPostMessageChannel(). Do not gate this request on a separate pre-navigation
-        // validateRelationship() callback: that can prevent the channel from ever being requested.
         channelRequested = customTabsSession.requestPostMessageChannel(
                 sourceOrigin,
                 sourceOrigin,
