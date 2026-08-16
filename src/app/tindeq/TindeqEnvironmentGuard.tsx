@@ -28,6 +28,8 @@ type NativeShareDebugWindow = Window & {
     markerMatched?: boolean;
     portPresent?: boolean;
     accepted?: boolean;
+    acceptedReason?: string;
+    replySent?: boolean;
     events?: NativeShareDebugEvent[];
   };
 };
@@ -63,6 +65,8 @@ function getNativeShareDebugSnapshot() {
     `marker kdykoli=${debug?.markerMatched ? "ano" : "ne"}`,
     `port kdykoli=${debug?.portPresent ? "ano" : "ne"}`,
     `přijato=${debug?.accepted ? "ano" : "ne"}`,
+    `důvod=${debug?.acceptedReason || "—"}`,
+    `odpověď=${debug?.replySent ? "odeslána" : "ne"}`,
     `buffer=${shareWindow.__kneeNativeSharePort ? "ano" : "ne"}`,
   ].join(" · ");
 
