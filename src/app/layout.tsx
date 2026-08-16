@@ -22,6 +22,8 @@ const nativeShareBootstrap = `
     markerMatched: false,
     portPresent: false,
     accepted: false,
+    acceptedReason: "",
+    replySent: false,
     events: [],
   };
 
@@ -30,6 +32,11 @@ const nativeShareBootstrap = `
     const markerMatched = event.data === marker;
     const portPresent = Boolean(event.ports && event.ports[0]);
     const origin = event.origin || "";
+    const url = new URL(window.location.href);
+    const isPreviewNativeShare =
+      url.hostname.endsWith(".vercel.app") &&
+      url.searchParams.get("nativeShare") === "1";
+    const expectedAndroidOrigin = "android-app://" + url.hostname;
 
     debug.messages += 1;
     debug.lastOrigin = origin;
@@ -44,11 +51,19 @@ const nativeShareBootstrap = `
     });
     if (debug.events.length > 8) debug.events.shift();
 
-    const accepted =
+    const strictAccepted =
       origin === window.location.origin &&
       markerMatched &&
       event.ports &&
       event.ports[0];
+
+    const diagnosticAccepted =
+      isPreviewNativeShare &&
+      origin === expectedAndroidOrigin &&
+      event.ports &&
+      event.ports[0];
+
+    const accepted = strictAccepted || diagnosticAccepted;
 
     if (accepted) {
       const previous = window[portKey];
@@ -56,8 +71,20 @@ const nativeShareBootstrap = `
         previous.close();
       }
 
+      const port = event.ports[0];
       debug.accepted = true;
-      window[portKey] = event.ports[0];
+      debug.acceptedReason = strictAccepted ? "strict-marker" : "preview-android-origin";
+      window[portKey] = port;
+
+      if (diagnosticAccepted) {
+        try {
+          port.postMessage("knee-web-port-accepted-v1");
+          debug.replySent = true;
+        } catch {
+          debug.replySent = false;
+        }
+      }
+
       window.dispatchEvent(new Event(readyEvent));
     }
 
