@@ -10,11 +10,15 @@ import android.os.Process;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 public final class DiagnosticApplication extends Application {
     private static final String PREFS = "knee_lifecycle_diag";
     private static final String TRACE = "trace";
     private static final int MAX_EVENTS = 40;
+
+    private final Map<Activity, Intent> lastReceiverIntent = new WeakHashMap<>();
 
     @Override
     public void onCreate() {
@@ -27,6 +31,7 @@ public final class DiagnosticApplication extends Application {
             public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
                 if (!isShareReceiver(activity)) return;
                 Intent intent = activity.getIntent();
+                lastReceiverIntent.put(activity, intent);
                 appendEvent(activity,
                         "receiver onCreate task=" + activity.getTaskId()
                                 + " action=" + safeAction(intent)
@@ -43,9 +48,17 @@ public final class DiagnosticApplication extends Application {
 
             @Override
             public void onActivityResumed(Activity activity) {
-                if (isShareReceiver(activity)) {
-                    appendEvent(activity, "receiver onResume task=" + activity.getTaskId());
+                if (!isShareReceiver(activity)) return;
+                Intent currentIntent = activity.getIntent();
+                Intent previousIntent = lastReceiverIntent.get(activity);
+                if (previousIntent != null && currentIntent != previousIntent) {
+                    appendEvent(activity,
+                            "receiver intent replaced before resume task=" + activity.getTaskId()
+                                    + " action=" + safeAction(currentIntent)
+                                    + " flags=" + flags(currentIntent));
+                    lastReceiverIntent.put(activity, currentIntent);
                 }
+                appendEvent(activity, "receiver onResume task=" + activity.getTaskId());
             }
 
             @Override
@@ -76,6 +89,7 @@ public final class DiagnosticApplication extends Application {
                         "receiver onDestroy task=" + activity.getTaskId()
                                 + " finishing=" + activity.isFinishing()
                                 + " changingConfig=" + activity.isChangingConfigurations());
+                lastReceiverIntent.remove(activity);
             }
         });
     }
