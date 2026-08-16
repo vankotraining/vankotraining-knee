@@ -23,7 +23,7 @@ Draft PR #21 `Add local Android Tindeq share receiver` je otevřený a nesmí b�
 - scope: Android `ACTION_SEND` receiver + lokální TWA/MessagePort transport do existujícího Tindeq parseru + testy/dokumentace;
 - žádná DB migrace, Supabase schema/policy změna ani serverový ZIP endpoint.
 
-## Produkční runtime
+## Produkční runtime commit
 
 Produkční runtime checkpoint zůstává PR #20:
 
@@ -35,7 +35,7 @@ Produkční runtime checkpoint zůstává PR #20:
 
 PR #21 je pouze na Preview a není produkčně nasazený.
 
-## Databáze
+## Stav databázových migrací
 
 Produkční Supabase: `zxvndqicslyulrinbpyn`.
 
@@ -43,7 +43,7 @@ PR #21 neprovádí žádnou DB migraci, DDL, RLS/policy/grant/Auth změnu ani au
 
 Originální Tindeq ZIP se nepřidává do Supabase Storage, databáze ani jiného serverového úložiště.
 
-## Aktuální fáze PR #21
+## Aktuální fáze
 
 PR #21 je **implementovaný, automatizovaně ověřený a real-device Preview gate výrazně pokročil**.
 
@@ -57,44 +57,65 @@ Na skutečném Android telefonu bylo prokázáno:
 - metadata, binární chunky a complete protokol fungují;
 - SHA-256 + existující Tindeq parser zpracují skutečný ZIP;
 - skutečný ZIP skončil `ack` z parseru;
-- normální `ShareReceiverActivity` byl následně ověřen přes `Tindeq → Sdílet → Knee` a analýza se zobrazila bez diagnostického receiveru;
+- normální `ShareReceiverActivity` byl ověřen přes `Tindeq → Sdílet → Knee` a analýza se zobrazila bez diagnostického receiveru;
 - Vercel runtime log při real-ZIP gate neukázal žádný POST/upload archivu.
 
-## Stabilizace po úspěšném gate
+## Implementováno v `main`
 
-Po úspěšném normálním UX testu byly odstraněny diagnostické vrstvy:
+PR #21 zatím není v `main`.
 
-- `DiagnosticShareReceiverActivity` odstraněna;
-- manifest obsahuje pouze normální `ShareReceiverActivity` jako `ACTION_SEND` target;
-- webové debug počítadlo/history a diagnostická odpověď odstraněny;
-- before-interactive bootstrap přijímá native share port pouze při `nativeShare=1`, exact `android-app://<current-host>` originu a přítomném `MessagePort`;
-- běžný receiver používá `meta → chunk → complete → ack/nack` a po `ack` volá `ShareFileStore.consume()`.
+Produkční implementace z PR #20 a dřívějších Tindeq PR zůstává beze změny.
+
+## Rozpracováno mimo `main`
+
+PR #21 na branchi implementuje:
+
+- Android `ACTION_SEND` receiver pro jeden ZIP;
+- lokální kopii pouze do app-private `cacheDir/tindeq-share`, max. 32 MB, TTL 30 minut;
+- validaci podporovaného ZIPu a ZIP signature před browser transferem;
+- Trusted Web Activity / Custom Tabs `postMessage` transport;
+- chunkovaný lokální transport 128 KiB a SHA-256 kontrolu integrity;
+- rekonstrukci browser `File` a předání do stejného `importTindeqArchive(file)` jako ruční upload;
+- zachování explicitního `Uložit měření ke klientovi`; share import sám nic do Supabase neukládá;
+- App Link omezený na `/tindeq`;
+- `public/.well-known/assetlinks.json` pro přesně vybraný Preview APK fingerprint.
+
+Po úspěšném normálním UX gate byly odstraněny diagnostické vrstvy: `DiagnosticShareReceiverActivity`, její manifest entry, webové debug počítadlo/history a diagnostická port reply. Produkční bootstrap přijímá native share port pouze při `nativeShare=1`, exact `android-app://<current-host>` originu a přítomném `MessagePort`.
+
+## Nasazeno
+
+Produkce:
+
+- PR #21: **ne**.
+
+Preview:
+
+- stable branch alias: `https://vankotraining-knee-git-agent-tin-19838f-vankotrainings-projects.vercel.app`;
+- Preview je dostupné a Digital Asset Links byly na skutečném telefonu úspěšně použity;
+- post-cleanup head čeká na poslední CI + výběr canonical APK + připnutí jeho fingerprintu.
+
+## Produkčně ověřeno
+
+PR #21: **ne**.
+
+Real-device Preview test je úspěšný důkaz implementace, ale není produkční ověření. Produkční rollout vyžaduje samostatný signing/distribuční krok a explicitní souhlas uživatele.
+
+Dřívější produkční acceptance PR #16, parseru PR #17, responsive opravy PR #19 a PR #20 zůstávají platné.
+
+## Známé problémy
+
+- Preview APK používá ephemeral signing certifikát; každý nový Android rebuild změní fingerprint a vyžaduje nový `assetlinks.json` i přeinstalaci APK;
+- produkční Android distribuce/signing zatím není součástí hotového rollout plánu; bude potřeba persistentní release nebo Play App Signing certifikát;
+- zbývá post-cleanup real-device test s druhým skutečným ZIPem, ideálně když už je Knee otevřené, aby se ověřil `singleTask/onNewIntent` tok;
+- zbývá fail-closed test nepodporovaného souboru a duplicate protection při explicitním save;
+- full-repo lint baseline nadále obsahuje předexistující chyby/warning; PR CI má ověřit, že PR nepřidává lint regresi.
 
 ## Privacy invariant
 
-Originální Tindeq ZIP během share toku existuje pouze jako:
+Originální Tindeq ZIP během share toku existuje pouze jako sender `content://` zdroj, app-private Android cache a transientní native/browser paměťové bloky.
 
-- sender `content://` zdroj;
-- app-private Android cache;
-- transientní native/browser paměťové bloky.
-
-PR #21 nepřidává ZIP upload route, form POST, Vercel Function, Supabase Storage objekt, raw ZIP DB write ani server-side ZIP logování.
-
-## Preview signing
-
-Preview APK workflow používá ephemeral signing certifikát. Každý rebuild generuje nový fingerprint, takže manuální test musí vždy používat přesně artifact, jehož fingerprint je následně připnutý do Preview `/.well-known/assetlinks.json`.
-
-Produkční rollout vyžaduje persistentní release certifikát nebo Play App Signing; Preview ephemeral signing není produkční strategie.
-
-## Známé zbývající body
-
-- ověřit post-cleanup build se **druhým skutečným ZIPem**, ideálně když už je Knee otevřené, aby se ověřil `singleTask/onNewIntent` tok;
-- znovu ověřit Vercel runtime log bez POST/uploadu;
-- ověřit fail-closed odmítnutí nepodporovaného souboru;
-- při explicitním save ověřit duplicate protection;
-- rozhodnout produkční Android signing/distribuci;
-- PR #21 zůstává draft a není produkčně ověřený.
+PR #21 nepřidává ZIP upload route, form POST, Vercel Function, Supabase Storage objekt, raw ZIP DB write ani server-side ZIP logování. Android po webovém `ack` volá `ShareFileStore.consume()` a maže pending cache copy; bez `ack` zůstává pouze lokálně do TTL cleanupu.
 
 ## Další krok
 
-Dokončit CI nad post-cleanup headem, vybrat jeho canonical Preview APK, připnout přesný fingerprint do `assetlinks.json`, nainstalovat tento APK a provést druhý real-ZIP test při již otevřeném Knee. Bez explicitního uživatelského schválení nemergovat.
+- Dokončit CI nad post-cleanup headem, vybrat jeho canonical Preview APK, připnout přesný fingerprint do `assetlinks.json`, nainstalovat tento APK a provést druhý real-ZIP test při již otevřeném Knee; bez explicitního uživatelského schválení nemergovat.
