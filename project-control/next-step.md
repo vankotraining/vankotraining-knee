@@ -2,29 +2,37 @@
 
 ## Aktuální fáze
 
-Draft PR #21 implementuje nativní Android příjem Tindeq ZIP přes systémové `Sdílet` bez serverového uploadu originálního archivu.
+Draft PR #21 implementuje nativní Android příjem jednoho Tindeq ZIP přes systémové `Sdílet` bez serverového uploadu originálního archivu.
 
-Kód, Android build, Android unit testy, web testy a Vercel Preview jsou připravené. Funkce zatím není produkčně nasazená ani produkčně ověřená.
+Real-device Preview gate na Android telefonu už prokázal celý technický tok:
 
-## Aktuální blocker
+`Tindeq ACTION_SEND → app-private cache → Chrome/TWA MessagePort → SHA-256 → existující Tindeq parser → zobrazená analýza`.
 
-Preview alias PR #21 je chráněný Vercel Authentication. Android Digital Asset Links potřebuje veřejně načíst přesný `/.well-known/assetlinks.json` bez Vercel login cookie nebo share-query bypassu.
+Normální `ShareReceiverActivity` je nyní systémový `ACTION_SEND` receiver. Dočasné diagnostické Activity/UI byly po úspěšném gate odstraněny. Funkce stále není v `main`, není produkčně nasazená a PR #21 zůstává draft.
 
-Preferovaný postup je branch-specific Deployment Protection Exception pouze pro:
+## Ověřené invarianty
 
-`vankotraining-knee-git-agent-tin-19838f-vankotrainings-projects.vercel.app`
+- skutečný Tindeq ZIP byl na telefonu přenesen přes lokální TWA `postMessage` kanál a existující parser jej přijal;
+- Vercel runtime log v době real-ZIP testu neukázal žádný POST/upload request;
+- share import nevolá automatické uložení do Supabase;
+- klient se nadále vybírá explicitně;
+- Android dočasnou kopii maže po webovém `ack`; bez `ack` zůstává pouze lokálně do TTL cleanupu;
+- žádný serverový ZIP endpoint nebyl přidán.
 
-Pokud současný Vercel plan tuto výjimku neumožňuje, případné dočasné vypnutí Preview Authentication pro celý projekt vyžaduje explicitní rozhodnutí uživatele, protože by zpřístupnilo i ostatní Preview deploymenty.
+## Nejbližší manuální gate
 
-## Po odblokování Preview
+Po sestavení a připnutí finálního stabilizačního Preview APK:
 
-1. ověřit veřejný HTTP 200 JSON na `/.well-known/assetlinks.json`;
-2. nainstalovat finální preview APK artifact z workflow run `31911229864`;
-3. provést reálný Android tok `Tindeq → Sdílet → Knee → automatický import`;
-4. ověřit ruční výběr klienta a explicitní save;
-5. ověřit duplicate protection a odmítnutí nepodporovaného souboru;
-6. teprve po explicitním uživatelském acceptance rozhodnout o merge PR #21.
+1. nainstalovat přesně APK, jehož fingerprint je publikovaný v Preview `/.well-known/assetlinks.json`;
+2. otevřít Knee a ponechat jej běžet;
+3. sdílet **druhý platný skutečný Tindeq ZIP** přes `Tindeq → Sdílet → Knee`;
+4. ověřit, že se bez diagnostické obrazovky automaticky zobrazí správná analýza;
+5. nic neukládat do Supabase, pokud účelem testu není explicitně ověřit save;
+6. zopakovat share při již otevřeném Knee, aby se ověřil `singleTask/onNewIntent` tok;
+7. ověřit Vercel runtime log: žádný POST/upload ZIPu.
+
+Po tomto gate zbývá před merge zejména odmítnutí nepodporovaného souboru, duplicate protection při explicitním save a rozhodnutí o produkčním Android signing/distribuci.
 
 ## Důležitý invariant
 
-PR #21 se před real-device acceptance nemerguje. Originální Tindeq ZIP se nesmí stát serverovým uploadem ani trvalým cloudovým artefaktem.
+PR #21 se nemerguje bez explicitního uživatelského schválení. Originální Tindeq ZIP se nesmí stát serverovým uploadem ani trvalým cloudovým artefaktem.
