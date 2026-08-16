@@ -386,10 +386,15 @@ public final class ShareReceiverActivity extends Activity {
             }
 
             String shareId = value.optString("shareId", "");
-            if (!pendingShare.id.equals(shareId)) return;
+            boolean shareMatches = pendingShare.id.equals(shareId);
+            if ("next".equals(type)) {
+                recordDiagnostic("web next received shareMatch=" + shareMatches);
+            }
+            if (!shareMatches) return;
 
             if ("next".equals(type)) {
                 int index = value.optInt("index", -1);
+                recordDiagnostic("web next index=" + index + " expected=" + expectedChunkIndex);
                 if (index != expectedChunkIndex) {
                     sendNativeError("Web požádal o neočekávaný blok sdíleného ZIPu.");
                     return;
@@ -466,7 +471,9 @@ public final class ShareReceiverActivity extends Activity {
                             || expectedChunkIndex != index) {
                         return;
                     }
-                    if (sendJson(payload)) expectedChunkIndex += 1;
+                    boolean sent = sendJson(payload);
+                    if (index == 0) recordDiagnostic("first chunk sent=" + sent);
+                    if (sent) expectedChunkIndex += 1;
                 });
             } catch (Exception error) {
                 Log.e(TAG, "Unable to read local share chunk", error);
