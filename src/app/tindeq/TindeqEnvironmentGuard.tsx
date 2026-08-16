@@ -57,10 +57,10 @@ function getServerHref() {
 
 function getNativeShareDebugSnapshot() {
   const shareWindow = window as NativeShareDebugWindow;
-  const currentUrl = new URL(window.location.href);
+  const debugUrl = new URL(window.location.href);
   const debug = shareWindow.__kneeNativeShareDebug;
   const summary = [
-    `intent=${currentUrl.searchParams.get("nativeShare") === "1" ? "ano" : "ne"}`,
+    `intent=${debugUrl.searchParams.get("nativeShare") === "1" ? "ano" : "ne"}`,
     `zprávy=${debug?.messages ?? 0}`,
     `marker kdykoli=${debug?.markerMatched ? "ano" : "ne"}`,
     `port kdykoli=${debug?.portPresent ? "ano" : "ne"}`,
