@@ -33,16 +33,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="application/zip" />
-                <data android:mimeType="application/x-zip-compressed" />
-                <data android:mimeType="application/x-zip" />
-                <data android:mimeType="application/octet-stream" />
-                <data android:mimeType="application/x-compressed" />
-            </intent-filter>
-
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -51,6 +41,21 @@
                     android:host="${kneeHost}"
                     android:pathPrefix="/tindeq"
                     android:scheme="https" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".DiagnosticShareReceiverActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="application/x-zip" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/x-compressed" />
             </intent-filter>
         </activity>
     </application>
