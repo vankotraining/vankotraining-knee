@@ -17,6 +17,12 @@ type WebToNativeMessage =
   | { v: 1; type: "ack"; shareId: string }
   | { v: 1; type: "nack"; shareId?: string; message: string };
 
+type NativeShareBootstrapWindow = Window & {
+  __kneeNativeSharePort?: MessagePort;
+};
+
+const NATIVE_SHARE_PORT_EVENT = "knee-native-share-port";
+
 export function attachTindeqNativeShareReceiver(options: NativeShareReceiverOptions) {
   let port: MessagePort | null = null;
   let assembler: NativeShareAssembler | null = null;
@@ -98,6 +104,35 @@ export function attachTindeqNativeShareReceiver(options: NativeShareReceiverOpti
     }
   }
 
+  function adoptPort(nextPort: MessagePort) {
+    if (closed) {
+      nextPort.close();
+      return;
+    }
+
+    port?.close();
+    assembler = null;
+    port = nextPort;
+    port.onmessage = (portEvent) => {
+      void handlePortMessage(portEvent);
+    };
+    port.start();
+    send({ v: 1, type: "ready" });
+  }
+
+  function adoptBootstrappedPort() {
+    const shareWindow = window as NativeShareBootstrapWindow;
+    const bootstrappedPort = shareWindow.__kneeNativeSharePort;
+    if (!bootstrappedPort) return false;
+    delete shareWindow.__kneeNativeSharePort;
+    adoptPort(bootstrappedPort);
+    return true;
+  }
+
+  function handleBootstrapPort() {
+    adoptBootstrappedPort();
+  }
+
   function handleWindowMessage(event: MessageEvent) {
     if (
       closed ||
@@ -108,21 +143,17 @@ export function attachTindeqNativeShareReceiver(options: NativeShareReceiverOpti
       return;
     }
 
-    port?.close();
-    assembler = null;
-    port = event.ports[0];
-    port.onmessage = (portEvent) => {
-      void handlePortMessage(portEvent);
-    };
-    port.start();
-    send({ v: 1, type: "ready" });
+    adoptPort(event.ports[0]);
   }
 
   window.addEventListener("message", handleWindowMessage);
+  window.addEventListener(NATIVE_SHARE_PORT_EVENT, handleBootstrapPort);
+  adoptBootstrappedPort();
 
   return () => {
     closed = true;
     window.removeEventListener("message", handleWindowMessage);
+    window.removeEventListener(NATIVE_SHARE_PORT_EVENT, handleBootstrapPort);
     port?.close();
     port = null;
     assembler = null;
