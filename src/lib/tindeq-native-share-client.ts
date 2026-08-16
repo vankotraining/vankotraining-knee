@@ -5,7 +5,7 @@ import {
 } from "./tindeq-native-share";
 
 type NativeShareReceiverOptions = {
-  onFile: (file: File) => Promise<void>;
+  onFile: (file: File) => Promise<string | null>;
   onStatus: (message: string | null) => void;
   onError: (message: string) => void;
 };
@@ -96,7 +96,13 @@ export function attachTindeqNativeShareReceiver(options: NativeShareReceiverOpti
           lastModified: Date.now(),
         });
         options.onStatus("Analyzuji sdílené Tindeq měření…");
-        await options.onFile(file);
+        const importError = await options.onFile(file);
+        if (importError) {
+          options.onStatus(null);
+          send({ v: 1, type: "nack", shareId: active.meta.shareId, message: importError });
+          assembler = null;
+          return;
+        }
         send({ v: 1, type: "ack", shareId: active.meta.shareId });
         assembler = null;
         options.onStatus(null);
