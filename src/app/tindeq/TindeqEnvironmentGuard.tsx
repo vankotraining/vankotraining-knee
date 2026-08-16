@@ -12,8 +12,28 @@ type TindeqEnvironmentGuardProps = {
   children: ReactNode;
 };
 
+type NativeShareDebugWindow = Window & {
+  __kneeNativeSharePort?: MessagePort;
+  __kneeNativeShareDebug?: {
+    messages?: number;
+    lastOrigin?: string;
+    markerMatched?: boolean;
+    portPresent?: boolean;
+    accepted?: boolean;
+  };
+};
+
 function subscribeToLocation() {
   return () => {};
+}
+
+function subscribeToNativeShareDebug(callback: () => void) {
+  window.addEventListener("knee-native-share-debug", callback);
+  window.addEventListener("knee-native-share-port", callback);
+  return () => {
+    window.removeEventListener("knee-native-share-debug", callback);
+    window.removeEventListener("knee-native-share-port", callback);
+  };
 }
 
 function getBrowserHref() {
@@ -24,8 +44,32 @@ function getServerHref() {
   return "";
 }
 
+function getNativeShareDebugSnapshot() {
+  const shareWindow = window as NativeShareDebugWindow;
+  const currentUrl = new URL(window.location.href);
+  const debug = shareWindow.__kneeNativeShareDebug;
+  return [
+    `intent=${currentUrl.searchParams.get("nativeShare") === "1" ? "ano" : "ne"}`,
+    `zprávy=${debug?.messages ?? 0}`,
+    `marker=${debug?.markerMatched ? "ano" : "ne"}`,
+    `port=${debug?.portPresent ? "ano" : "ne"}`,
+    `přijato=${debug?.accepted ? "ano" : "ne"}`,
+    `buffer=${shareWindow.__kneeNativeSharePort ? "ano" : "ne"}`,
+    debug?.lastOrigin ? `origin=${debug.lastOrigin}` : "origin=—",
+  ].join(" · ");
+}
+
+function getServerNativeShareDebugSnapshot() {
+  return "";
+}
+
 export default function TindeqEnvironmentGuard({ children }: TindeqEnvironmentGuardProps) {
   const href = useSyncExternalStore(subscribeToLocation, getBrowserHref, getServerHref);
+  const nativeShareDebug = useSyncExternalStore(
+    subscribeToNativeShareDebug,
+    getNativeShareDebugSnapshot,
+    getServerNativeShareDebugSnapshot,
+  );
 
   if (!href) {
     return <div className={styles.authState}>Kontroluji Knee prostředí a databázi…</div>;
@@ -71,6 +115,11 @@ export default function TindeqEnvironmentGuard({ children }: TindeqEnvironmentGu
           </p>
           <p>Magic link z této stránky bude požadovat návrat na:</p>
           <p className={styles.authMessage}><strong>{redirectUrl}</strong></p>
+          <p>
+            <strong>Android share diagnostika:</strong>
+            <br />
+            {nativeShareDebug || "čekám na klientskou diagnostiku…"}
+          </p>
         </section>
       ) : null}
       {children}
