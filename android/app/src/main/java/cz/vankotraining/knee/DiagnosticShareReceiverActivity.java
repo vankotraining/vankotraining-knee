@@ -9,6 +9,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Base64;
 import android.view.Gravity;
 import android.widget.TextView;
 
@@ -21,37 +22,37 @@ import androidx.browser.trusted.TrustedWebActivityIntentBuilder;
 
 import org.json.JSONObject;
 
+import java.io.RandomAccessFile;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
  * Preview-only diagnostic receiver.
  *
- * It deliberately stops before transferring real ZIP bytes. Its only purpose is to identify the
- * nearest failing native TWA/postMessage step without changing the parser, web assembly, or
- * persistence.
+ * This gate transfers the real staged ZIP only through the already-validated local TWA
+ * postMessage channel. It does not upload the ZIP, call a server endpoint, or persist analysis.
+ * The existing web parser decides whether the reconstructed File is valid and replies ack/nack.
  */
 public final class DiagnosticShareReceiverActivity extends Activity {
     private static final String CHANNEL_MARKER = "knee-native-share-v1";
     private static final String PREFS = "knee-twa-diagnostic";
     private static final String KEY_TRACE = "trace";
-    private static final String DIAGNOSTIC_SHARE_ID = "diag-12345678";
-    private static final String DIAGNOSTIC_CHUNK_BASE64 = "UEsDBA==";
-    private static final String DIAGNOSTIC_SHA256 =
-            "8dcc7e601606217f3b754766511182a916b17e9a26a94c9d887104eba92e9bb2";
+    private static final int PROTOCOL_VERSION = 1;
+    private static final int CHUNK_BYTES = 128 * 1024;
 
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private SharedPreferences preferences;
     private ShareFileStore shareFileStore;
+    private PendingShare pendingShare;
     private Uri sourceOrigin;
     private CustomTabsSession session;
     private CustomTabsServiceConnection serviceConnection;
     private boolean serviceBound;
-    private boolean diagnosticMetaSent;
-    private boolean diagnosticChunkSent;
-    private boolean diagnosticCompleteSent;
+    private boolean metadataSent;
+    private boolean completeSent;
+    private int expectedChunkIndex;
 
     private final CustomTabsCallback callback = new CustomTabsCallback() {
         @Override
@@ -92,7 +93,7 @@ public final class DiagnosticShareReceiverActivity extends Activity {
         public void onPostMessage(String message, Bundle extras) {
             super.onPostMessage(message, extras);
             recordStep("web reply received");
-            handleDiagnosticWebMessage(message);
+            handleWebMessage(message);
         }
     };
 
@@ -122,8 +123,15 @@ public final class DiagnosticShareReceiverActivity extends Activity {
 
         ioExecutor.execute(() -> {
             try {
-                shareFileStore.stage(sharedUri, intent.getType(), System.currentTimeMillis());
+                PendingShare staged = shareFileStore.stage(
+                        sharedUri,
+                        intent.getType(),
+                        System.currentTimeMillis());
                 mainHandler.post(() -> {
+                    pendingShare = staged;
+                    metadataSent = false;
+                    completeSent = false;
+                    expectedChunkIndex = 0;
                     recordStep("ZIP staged locally");
                     bindBrowserAndLaunch();
                 });
@@ -176,58 +184,66 @@ public final class DiagnosticShareReceiverActivity extends Activity {
         recordStep("service bind=" + serviceBound);
     }
 
-    private void handleDiagnosticWebMessage(String message) {
-        if (session == null) return;
+    private void handleWebMessage(String message) {
+        PendingShare share = pendingShare;
+        if (session == null || share == null) return;
         try {
             JSONObject value = new JSONObject(message);
-            if (value.optInt("v", -1) != 1) return;
+            if (value.optInt("v", -1) != PROTOCOL_VERSION) return;
             String type = value.optString("type", "");
 
-            if ("ready".equals(type) && !diagnosticMetaSent) {
+            if ("ready".equals(type) && !metadataSent) {
                 JSONObject meta = new JSONObject()
-                        .put("v", 1)
+                        .put("v", PROTOCOL_VERSION)
                         .put("type", "meta")
-                        .put("shareId", DIAGNOSTIC_SHARE_ID)
-                        .put("name", "diagnostic.zip")
-                        .put("mimeType", "application/zip")
-                        .put("size", 4)
-                        .put("sha256", DIAGNOSTIC_SHA256)
-                        .put("chunks", 1)
-                        .put("chunkSize", 16 * 1024);
+                        .put("shareId", share.id)
+                        .put("name", share.displayName)
+                        .put("mimeType", share.mimeType)
+                        .put("size", share.size)
+                        .put("sha256", share.sha256)
+                        .put("chunks", chunkCount(share))
+                        .put("chunkSize", CHUNK_BYTES);
                 int result = session.postMessage(meta.toString(), null);
-                diagnosticMetaSent = true;
-                recordStep("diagnostic meta post result=" + result);
+                metadataSent = result == CustomTabsService.RESULT_SUCCESS;
+                recordStep("real meta post result=" + result + " chunks=" + chunkCount(share));
                 return;
             }
 
+            String shareId = value.optString("shareId", "");
+            if (!share.id.equals(shareId)) return;
+
             if ("next".equals(type)) {
                 int index = value.optInt("index", -1);
-                recordStep("web next received index=" + index);
-                if (index == 0 && !diagnosticChunkSent) {
-                    JSONObject chunk = new JSONObject()
-                            .put("v", 1)
-                            .put("type", "chunk")
-                            .put("shareId", DIAGNOSTIC_SHARE_ID)
-                            .put("index", 0)
-                            .put("data", DIAGNOSTIC_CHUNK_BASE64);
-                    int result = session.postMessage(chunk.toString(), null);
-                    diagnosticChunkSent = true;
-                    recordStep("diagnostic chunk post result=" + result);
+                if (index != expectedChunkIndex) {
+                    recordStep("stop: unexpected web chunk index=" + index);
+                    return;
                 }
+                sendRealChunk(share, index);
                 return;
             }
 
             if ("complete-request".equals(type)) {
                 recordStep("web complete-request received");
-                if (!diagnosticCompleteSent) {
-                    JSONObject complete = new JSONObject()
-                            .put("v", 1)
-                            .put("type", "complete")
-                            .put("shareId", DIAGNOSTIC_SHARE_ID);
-                    int result = session.postMessage(complete.toString(), null);
-                    diagnosticCompleteSent = true;
-                    recordStep("diagnostic complete post result=" + result);
+                if (expectedChunkIndex != chunkCount(share)) {
+                    recordStep("stop: complete requested before all chunks");
+                    return;
                 }
+                if (!completeSent) {
+                    JSONObject complete = new JSONObject()
+                            .put("v", PROTOCOL_VERSION)
+                            .put("type", "complete")
+                            .put("shareId", share.id);
+                    int result = session.postMessage(complete.toString(), null);
+                    completeSent = result == CustomTabsService.RESULT_SUCCESS;
+                    recordStep("real complete post result=" + result);
+                }
+                return;
+            }
+
+            if ("ack".equals(type)) {
+                recordStep("web ack received: parser accepted real ZIP");
+                shareFileStore.consume(share.id);
+                pendingShare = null;
                 return;
             }
 
@@ -238,6 +254,51 @@ public final class DiagnosticShareReceiverActivity extends Activity {
         } catch (Exception ignored) {
             // The preview bootstrap also sends a fixed plain-text acknowledgement. Ignore its body.
         }
+    }
+
+    private void sendRealChunk(PendingShare share, int index) {
+        ioExecutor.execute(() -> {
+            try (RandomAccessFile file = new RandomAccessFile(share.file, "r")) {
+                long offset = (long) index * CHUNK_BYTES;
+                int expected = (int) Math.min(CHUNK_BYTES, share.size - offset);
+                if (expected <= 0) throw new IllegalArgumentException("Invalid chunk boundary");
+
+                byte[] bytes = new byte[expected];
+                file.seek(offset);
+                file.readFully(bytes);
+                String base64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
+                JSONObject chunk = new JSONObject()
+                        .put("v", PROTOCOL_VERSION)
+                        .put("type", "chunk")
+                        .put("shareId", share.id)
+                        .put("index", index)
+                        .put("data", base64);
+
+                mainHandler.post(() -> {
+                    PendingShare active = pendingShare;
+                    if (active == null
+                            || !active.id.equals(share.id)
+                            || expectedChunkIndex != index
+                            || session == null) {
+                        return;
+                    }
+                    int result = session.postMessage(chunk.toString(), null);
+                    if (result == CustomTabsService.RESULT_SUCCESS) {
+                        expectedChunkIndex += 1;
+                    }
+                    int totalChunks = chunkCount(share);
+                    if (index == 0 || index == totalChunks - 1 || result != CustomTabsService.RESULT_SUCCESS) {
+                        recordStep("real chunk index=" + index + " post result=" + result);
+                    }
+                });
+            } catch (Exception error) {
+                mainHandler.post(() -> recordStep("stop: real ZIP chunk read failed"));
+            }
+        });
+    }
+
+    private static int chunkCount(PendingShare share) {
+        return (int) ((share.size + CHUNK_BYTES - 1L) / CHUNK_BYTES);
     }
 
     private void recordStep(String step) {
@@ -254,7 +315,7 @@ public final class DiagnosticShareReceiverActivity extends Activity {
         view.setText(
                 "Knee Android share diagnostika\n\n"
                         + trace
-                        + "\n\nTento build nepřenáší skutečný ZIP do webu. Posílá jen bezpečné syntetické meta, 4 bajty ZIP signatury a complete. Očekává odmítnutí záměrně neúplného ZIPu parserem.");
+                        + "\n\nTento gate přenáší skutečný ZIP pouze lokálně přes TWA MessagePort do existujícího webového parseru. Neprovádí serverový upload ani automatické uložení výsledku do Supabase.");
         view.setTextSize(17f);
         view.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         view.setPadding(48, 48, 48, 48);
