@@ -12,6 +12,14 @@ type TindeqEnvironmentGuardProps = {
   children: ReactNode;
 };
 
+type NativeShareDebugEvent = {
+  origin?: string;
+  markerMatched?: boolean;
+  portPresent?: boolean;
+  ports?: number;
+  dataType?: string;
+};
+
 type NativeShareDebugWindow = Window & {
   __kneeNativeSharePort?: MessagePort;
   __kneeNativeShareDebug?: {
@@ -20,6 +28,7 @@ type NativeShareDebugWindow = Window & {
     markerMatched?: boolean;
     portPresent?: boolean;
     accepted?: boolean;
+    events?: NativeShareDebugEvent[];
   };
 };
 
@@ -48,15 +57,20 @@ function getNativeShareDebugSnapshot() {
   const shareWindow = window as NativeShareDebugWindow;
   const currentUrl = new URL(window.location.href);
   const debug = shareWindow.__kneeNativeShareDebug;
-  return [
+  const summary = [
     `intent=${currentUrl.searchParams.get("nativeShare") === "1" ? "ano" : "ne"}`,
     `zprávy=${debug?.messages ?? 0}`,
-    `marker=${debug?.markerMatched ? "ano" : "ne"}`,
-    `port=${debug?.portPresent ? "ano" : "ne"}`,
+    `marker kdykoli=${debug?.markerMatched ? "ano" : "ne"}`,
+    `port kdykoli=${debug?.portPresent ? "ano" : "ne"}`,
     `přijato=${debug?.accepted ? "ano" : "ne"}`,
     `buffer=${shareWindow.__kneeNativeSharePort ? "ano" : "ne"}`,
-    debug?.lastOrigin ? `origin=${debug.lastOrigin}` : "origin=—",
   ].join(" · ");
+
+  const events = (debug?.events ?? []).map((event, index) => {
+    return `${index + 1}. origin=${event.origin || "—"} · marker=${event.markerMatched ? "ano" : "ne"} · port=${event.portPresent ? "ano" : "ne"} · ports=${event.ports ?? 0} · data=${event.dataType ?? "—"}`;
+  });
+
+  return events.length > 0 ? `${summary}\n${events.join("\n")}` : `${summary}\nžádná message událost`;
 }
 
 function getServerNativeShareDebugSnapshot() {
@@ -118,7 +132,7 @@ export default function TindeqEnvironmentGuard({ children }: TindeqEnvironmentGu
           <p>
             <strong>Android share diagnostika:</strong>
             <br />
-            {nativeShareDebug || "čekám na klientskou diagnostiku…"}
+            <span style={{ whiteSpace: "pre-wrap" }}>{nativeShareDebug || "čekám na klientskou diagnostiku…"}</span>
           </p>
         </section>
       ) : null}
