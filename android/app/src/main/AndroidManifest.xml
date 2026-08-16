@@ -53,10 +53,5 @@
                 <data android:mimeType="application/x-compressed" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".DiagnosticShareReceiverActivity"
-            android:exported="true"
-            android:launchMode="singleTask" />
     </application>
 </manifest>
