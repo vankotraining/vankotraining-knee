@@ -2,94 +2,135 @@
 
 ## Datum poslední kontroly
 
-`2026-08-15` (Europe/Prague), během fresh ověření produkčního stavu před/po přípravě draft PR #21 Android Tindeq share receiveru. PR #21 není produkčně nasazený a produkční databáze nebyla měněna.
+`2026-08-22` (Europe/Prague), po merge PR #21, produkčním Vercel deploymentu, ověření produkčního Digital Asset Links a úspěšném automatickém production Android release buildu.
 
 ## Produkční URL
 
 `https://knee.vankotraining.cz`
 
-## Vercel project ID
+## Vercel project
 
 - project: `vankotraining-knee`;
 - project ID: `prj_WLfkUldcNfXn43KmsXpJAClaKOsI`;
 - team ID: `team_alNcbbTIb9p5enXHSpEJZpLt`.
 
-## Deployment ID
+## PR #21 rollout
 
-Runtime-changing production deployment PR #20:
+PR #21 `Add local Android Tindeq share receiver` je **merged a produkčně nasazený**.
 
-`dpl_2MpCHrW6vhsReXuWn5kJyZL958SV`
+- merge commit: `1260333236f657da71cf8a31fd98937a704140e6`;
+- merge time: `2026-08-22T13:46:17Z`;
+- runtime-changing production deployment: `dpl_2oDEJabfCarrNgbG1P5EnXs3yirU`;
+- deployment state: `READY`;
+- target: `production`;
+- branch: `main`.
+
+Následné commity `41ffc6dc868c9c2a4043f51f8919c37567ed7f47` a `58305016e466b59fdde16ee4b539743b7e81cb56` upravují pouze osobní Android release workflow. Poslední auditovaný production deployment před tímto project-control syncem byl:
+
+`dpl_ApgmvdMe72ifV63uhj2vrsUQwxoH`
 
 - state: `READY`;
 - target: `production`;
-- branch: `main`;
-- exact runtime-changing commit: `1b48da7ed9340e8f53f591f3b427d4d6758246e1`;
-- GitHub commit message: `Add safe client name editing (#20)`.
+- commit: `58305016e466b59fdde16ee4b539743b7e81cb56`;
+- alias obsahuje `knee.vankotraining.cz`.
 
-Fresh poslední produkční deployment je docs-only:
+Project-control synchronizační commity po tomto auditu mohou vytvořit další docs-only Vercel deploymenty; runtime checkpoint PR #21 tím není změněn.
 
-`dpl_B5ogPtD6BNsTbUdahMwX31e8zfzj`
+## Produkční Digital Asset Links
 
-- state: `READY`;
-- target: `production`;
-- branch: `main`;
-- exact commit: `d829c086c8013187cb38e26ea77bc63b178fcff2`;
-- GitHub commit message: `Record PR #20 production acceptance`.
+`https://knee.vankotraining.cz/.well-known/assetlinks.json` při auditu vrací HTTP 200.
 
-Tento docs-only deployment nemění runtime checkpoint PR #20.
+Publikovaný Android package:
 
-## Nasazený commit
+`cz.vankotraining.knee`
 
-Runtime-changing commit:
+Produkční certificate SHA-256:
 
-`1b48da7ed9340e8f53f591f3b427d4d6758246e1` – squash merge PR #20 `Add safe client name editing`.
+`B3:42:51:D0:89:42:CE:86:A3:93:14:9E:44:6B:1B:1D:57:9E:3B:90:0D:87:56:6E:66:38:99:32:E9:25:1D:08`
 
-Aktuální `main` je `d829c086c8013187cb38e26ea77bc63b178fcff2`; následné změny po runtime checkpointu jsou project-control sync.
+Stejný fingerprint je fail-closed očekáván v production Android release workflow.
 
-PR #21 Android Tindeq share receiver je pouze na feature branch / Preview a **není součástí produkce**.
+## Osobní production Android release
 
-## Čas a výsledek deploymentu
+Workflow `Knee personal Android release` byl úspěšně dokončen:
 
-Runtime-changing Vercel deployment `dpl_2MpCHrW6vhsReXuWn5kJyZL958SV` zůstává `READY`.
+- run ID: `32577314441`;
+- head SHA: `58305016e466b59fdde16ee4b539743b7e81cb56`;
+- status: `completed`;
+- conclusion: `success`;
+- artifact: `knee-personal-production-apk`;
+- release origin: `https://knee.vankotraining.cz`.
 
-Fresh docs-only Vercel production deployment `dpl_B5ogPtD6BNsTbUdahMwX31e8zfzj` je `READY` nad aktuálním `main@d829c086c8013187cb38e26ea77bc63b178fcff2`.
+Workflow před uploadem artifactu:
 
-Poslední potvrzený technický production smoke zůstává:
+- obnoví dlouhodobý osobní signing key z GitHub repository secrets;
+- ověří jeho přesný SHA-256 fingerprint;
+- spustí Android unit testy a sestaví release APK;
+- ověří výsledný APK podpis přes Android build-tools `apksigner` proti stejnému očekávanému fingerprintu;
+- teprve poté uploaduje production APK artifact.
 
-- `https://knee.vankotraining.cz/` → HTTP 200;
-- `https://knee.vankotraining.cz/tindeq` → HTTP 200.
-
-## Databázové migrace použité produkční aplikací
+## Databázové migrace
 
 Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-PR #21 neprovedl žádnou DB migraci, DDL, RLS/policy/grant/Auth změnu ani produkční datový write. Produkční databázové schéma a Tindeq dedupe invariant zůstávají beze změny.
+PR #21 neprovedl žádnou DB migraci, DDL, RLS/policy/grant/Auth změnu ani automatický produkční datový write. Produkční databázové schéma a Tindeq dedupe invariant zůstávají beze změny.
 
-## Provedené smoke testy
+Originální Tindeq ZIP se neukládá do Supabase Storage ani databáze.
 
-Produkční acceptance PR #20 zůstává platná: merge/deployment `READY`, `/` a `/tindeq` HTTP 200 a uživatel dne `2026-08-11` explicitně potvrdil funkčnost přejmenování klienta.
+## Provedené produkční technické kontroly
 
-PR #21 je oddělený Preview-only task. Jeho CI/Preview výsledky nejsou produkční smoke test a nejsou důkaz produkčního nasazení.
+Při auditu `2026-08-22`:
+
+- produkční Vercel deployment je `READY`;
+- `https://knee.vankotraining.cz/tindeq` → HTTP 200;
+- produkční `/.well-known/assetlinks.json` → HTTP 200;
+- DAL obsahuje správný package a production signing fingerprint;
+- GitHub status `Vercel` je success;
+- GitHub status `Knee personal Android release` je success;
+- production Android release workflow run `32577314441` má conclusion `success`;
+- v auditovaném hodinovém okně nebyly nalezeny Vercel runtime `error`/`fatal` logy.
+
+## Real-device evidence před merge
+
+Clean canonical Preview APK prošel na skutečném Android telefonu:
+
+- dvěma po sobě jdoucími skutečnými Tindeq ZIP share importy bez restartu Knee;
+- repeated-share / lifecycle gate;
+- fail-closed testem neplatného ZIPu;
+- lokálním transportem bez serverového POST/uploadu originálního archivu.
+
+Toto je silný důkaz funkčnosti implementace, ale není náhradou za finální smoke test production-signed APK artifactu.
 
 ## Poslední výslovné uživatelské produkční ověření
 
-`2026-08-11`: PR #20 bezpečná editace jména klienta – **produkčně potvrzena uživatelem jako funkční**.
+PR #21 production Android share flow: **zatím není uživatelem potvrzen na APK z production workflow**.
 
-`2026-08-10`: PR #16 nový interpretační model Tindeq – produkčně potvrzen uživatelem jako `v pořádku`.
+Dřívější potvrzené acceptance zůstávají platné:
 
-`2026-08-10`: parser live new-client upload/save workflow – potvrzeno uživatelem jako v pořádku.
-
-`2026-08-09`: responsive oprava PR #19 – potvrzena uživatelem na skutečném telefonu.
+- `2026-08-11`: PR #20 bezpečná editace jména klienta – produkčně potvrzena uživatelem jako funkční;
+- `2026-08-10`: PR #16 nový interpretační model Tindeq – produkčně potvrzen uživatelem jako v pořádku;
+- `2026-08-10`: parser live new-client upload/save workflow – potvrzen jako v pořádku;
+- `2026-08-09`: responsive oprava PR #19 – potvrzena na skutečném telefonu.
 
 ## Produkční stav Tindeq
 
-Tindeq runtime, parser PR #17, responsive oprava PR #19, interpretační model PR #16 a client-name edit PR #20 zůstávají produkčně nasazené/ověřené v dříve zaznamenaném rozsahu.
+Tindeq runtime nyní zahrnuje také PR #21 Android native share receiver.
 
-Android native share receiver PR #21 je **implementovaný pouze mimo `main` a nasazený pouze na Preview**. Nesmí být označen jako produkčně nasazený ani produkčně ověřený před merge, production rollout a explicitní real-device acceptance.
+Stav PR #21 rozlišujeme takto:
 
-## Známé produkční problémy
+- implementováno v `main`: **ano**;
+- webově produkčně nasazeno: **ano**;
+- produkční DAL nasazeno: **ano**;
+- production APK automaticky sestaveno a podpisově ověřeno: **ano**;
+- production share tok na skutečném telefonu uživatelem ověřen: **ne**.
 
-- PR #21 nevytváří žádný nový produkční problém, protože není v produkci;
-- neblokující UX discoverability: `Upravit klienta` nemusí na první pohled působit dostatečně jako tlačítko;
+## Známé produkční problémy / otevřené gate
+
+- jediný otevřený rollout gate PR #21 je instalace přesného artifactu `knee-personal-production-apk` z runu `32577314441` a jeden reálný `Tindeq → Sdílet → Knee → analýza` production smoke test;
+- neblokující UX discoverability `Upravit klienta` zůstává mimo scope;
 - full-repo lint baseline obsahuje předexistující chyby/warning;
 - dříve existující shared-production Supabase advisory nálezy zůstávají mimo scope.
+
+## Privacy invariant
+
+Originální Tindeq ZIP během share toku není HTTP request body a nesmí se stát serverovým uploadem ani trvalým cloudovým artefaktem. Existuje pouze jako sender `content://`, app-private Android cache a transientní native/browser paměťové bloky; do databáze se ukládá pouze explicitně potvrzený strukturovaný výsledek.
