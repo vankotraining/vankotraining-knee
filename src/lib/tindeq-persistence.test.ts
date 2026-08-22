@@ -157,13 +157,59 @@ test("opakovaný import stejné session pro stejného klienta je idempotentní",
   assert.deepEqual(duplicateQueries[0], { tindeqSessionId: session.id });
 });
 
+test("re-export stejného měření s jiným legacy session ID je stále duplicita", async () => {
+  const session = await fixture();
+  const payload = mapTindeqSessionToInsert(session, athleteId);
+  const legacyExisting = {
+    ...payload,
+    id: "db-legacy",
+    imported_at: "2026-08-01T10:00:00.000Z",
+    created_at: "2026-08-01T10:00:00.000Z",
+    source_filename: "older-export-name.zip",
+    raw_metadata: {
+      ...payload.raw_metadata,
+      tindeqSessionId: "aaaaaaaaaaaaaaaaaaaa",
+    },
+  };
+  const { client, inserted } = saveClient({ duplicates: [[], [legacyExisting]] });
+  const results = await saveTindeqSessions(client, [session], athleteId);
+  assert.equal(results[0].ok, true);
+  if (results[0].ok) assert.equal(results[0].duplicate, true);
+  assert.equal(inserted.length, 0);
+});
+
+test("stejný čas nestačí k označení odlišného obsahu jako duplicity", async () => {
+  const session = await fixture();
+  const payload = mapTindeqSessionToInsert(session, athleteId);
+  const differentExisting = {
+    ...payload,
+    id: "db-different",
+    imported_at: "2026-08-01T10:00:00.000Z",
+    created_at: "2026-08-01T10:00:00.000Z",
+    repetitions: structuredClone(payload.repetitions),
+    raw_metadata: {
+      ...payload.raw_metadata,
+      tindeqSessionId: "bbbbbbbbbbbbbbbbbbbb",
+    },
+  };
+  differentExisting.repetitions[0].durationSeconds += 0.01;
+  const { client, inserted } = saveClient({
+    duplicates: [[], [differentExisting]],
+    outcomes: [{ data: { id: "db-new" }, error: null }],
+  });
+  const results = await saveTindeqSessions(client, [session], athleteId);
+  assert.equal(results[0].ok, true);
+  if (results[0].ok) assert.equal(results[0].duplicate, false);
+  assert.equal(inserted.length, 1);
+});
+
 test("více sessions se ukládá samostatně v pořadí importu", async () => {
   const first = await fixture({ tag: "Klient A" });
   const secondResult = await importTindeqArchive(
     fileFromBytes("second.zip", syntheticTindeqZip({ tag: "Klient B" })),
   );
   const { client, inserted } = saveClient({
-    duplicates: [[], []],
+    duplicates: [[], [], [], []],
     outcomes: [
       { data: { id: "db-1" }, error: null },
       { data: { id: "db-2" }, error: null },
@@ -180,7 +226,7 @@ test("částečné selhání je transparentní pro každou session", async () =>
     fileFromBytes("second.zip", syntheticTindeqZip({ tag: "Klient B" })),
   );
   const { client } = saveClient({
-    duplicates: [[], []],
+    duplicates: [[], [], [], []],
     outcomes: [
       { data: { id: "db-1" }, error: null },
       { data: null, error: { message: "RLS rejected insert" } },
