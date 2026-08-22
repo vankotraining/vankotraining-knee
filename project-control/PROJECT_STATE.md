@@ -2,137 +2,120 @@
 
 ## Datum poslední kontroly
 
-`2026-08-22` (Europe/Prague), po dokončení produkčního real-device smoke testu PR #21 na osobním production Android APK.
+`2026-08-22` (Europe/Prague), po produkčním real-device ověření Android share toku PR #21 a po odhalení skutečné chyby duplicate protection při opakovaném re-exportu stejného Tindeq měření.
 
-## Aktuální `main`
+## Aktuální `main` commit
 
-Aktuální `main` před tímto acceptance syncem:
+Aktuální `main`:
 
-`4689f89a4263505ed2d2ad57b3e07a1db6590356` – `Record PR #21 production rollout status`.
+`133c5bfdc9b0273c1784ef9257010ab736c6fb73` – `Close PR #21 rollout gate`.
 
 PR #21 byl mergován merge commitem:
 
 `1260333236f657da71cf8a31fd98937a704140e6` – `Merge PR #21: Add local Android Tindeq share receiver`.
 
-Runtime PR #21 se od merge nezměnil; následné commity se týkají Android release workflow a project-control dokumentace.
+## Aktivní větev a PR
 
-## PR #21
+Aktivní oprava je PR #22 `Fix Tindeq duplicate detection for re-exported ZIPs`.
 
-PR #21 `Add local Android Tindeq share receiver` je **merged, webově produkčně nasazený a produkčně ověřený na reálném telefonu**.
+- branch: `agent/tindeq-duplicate-feedback`;
+- base: `main@133c5bfdc9b0273c1784ef9257010ab736c6fb73`;
+- poslední runtime/test head před tímto project-control syncem: `584b10cac279905a2a0f58f0e42361362a7cedd5`;
+- PR je otevřený, mergeable a není mergovaný;
+- merge až po fresh zeleném CI/Preview gate a explicitním souhlasu uživatele.
 
-- merge time: `2026-08-22T13:46:17Z`;
-- merge commit: `1260333236f657da71cf8a31fd98937a704140e6`;
-- žádná DB migrace, Supabase schema/policy změna ani serverový ZIP endpoint.
+## Produkční runtime commit
 
-## Produkční runtime
+Runtime Android share receiveru PR #21 je v produkci od merge commitu:
 
-Runtime-changing production deployment PR #21:
+`1260333236f657da71cf8a31fd98937a704140e6`.
 
-- deployment: `dpl_2oDEJabfCarrNgbG1P5EnXs3yirU`;
-- commit: `1260333236f657da71cf8a31fd98937a704140e6`;
+Aktuální produkční `main` deployment před PR #22:
+
+- deployment: `dpl_2F4PbWVrEM2ataSaD89WFikV37BR`;
+- commit: `133c5bfdc9b0273c1784ef9257010ab736c6fb73`;
 - stav: `READY`;
-- target: `production`;
-- branch: `main`.
+- target: `production`.
 
-Následné production deploymenty po merge jsou workflow/project-control změny; webový runtime share receiveru zůstává checkpoint PR #21.
+PR #22 je zatím pouze na Preview a není produkčně nasazený.
 
-## Stav databáze
+## Stav databázových migrací
 
-Produkční Supabase: `zxvndqicslyulrinbpyn`.
+Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-PR #21 neprovedl žádnou DB migraci, DDL, RLS/policy/grant/Auth změnu ani automatický produkční datový write. Tindeq structured-result persistence a existující dedupe invariant zůstávají beze změny.
+PR #22 neobsahuje DB migraci, DDL, RLS/policy/grant/Auth změnu ani automatickou datovou opravu. Oprava je aplikační fallback duplicate detection nad již uloženým strukturovaným výsledkem.
 
-Originální Tindeq ZIP se nepřidává do Supabase Storage, databáze ani jiného serverového úložiště.
+Existující UNIQUE index nad `(athlete_id, analysis_version, raw_metadata->>'tindeqSessionId')` chrání pouze případy se shodným `tindeqSessionId`; produkční test ukázal, že stejný re-exportovaný obsah může dostat odlišné legacy session ID.
+
+## Aktuální fáze
+
+PR #21 share/import tok je produkčně ověřený. Následný explicitní save/duplicate test ale odhalil chybu dedupe identity:
+
+- první uložení měření Rosová Štěpánka `14. 8. 2026 14:31` vytvořilo očekávaný řádek;
+- druhý import stejného měření vytvořil další řádek místo návratu `duplicate: true`;
+- oba produkční řádky byly read-only porovnány a mají shodné uložené metriky, repetitions, summaries, warnings i `raw_metadata` kromě `tindeqSessionId`;
+- rozdílné IDs jsou `7508cd743009fa48715e` a `f90b7299be75c228bc45`;
+- příčina: legacy session ID je odvozené z bytes celého ZIP kontejneru, takže re-export může změnit ID i při identickém strukturovaném měření.
 
 ## Implementováno v `main`
 
-PR #21 obsahuje:
+V `main` zůstává produkčně ověřený PR #21:
 
-- Android `ACTION_SEND` receiver pro jeden ZIP;
-- lokální kopii pouze do app-private `cacheDir/tindeq-share`, max. 32 MB, TTL 30 minut;
-- validaci ZIPu před browser transferem;
-- Trusted Web Activity / Custom Tabs `postMessage` transport;
-- chunkovaný lokální transport 128 KiB a SHA-256 kontrolu integrity;
-- rekonstrukci browser `File` a předání do existujícího `importTindeqArchive(file)`;
-- explicitní uložení výsledku až po rozhodnutí uživatele;
-- App Link omezený na `/tindeq`;
-- `public/.well-known/assetlinks.json` pro dlouhodobý osobní production signing certifikát;
-- automatický osobní Android production release workflow.
+- Android `ACTION_SEND` receiver;
+- lokální app-private staging ZIPu;
+- TWA/Custom Tabs MessagePort transport;
+- SHA-256 kontrola přenesených bytes;
+- použití existujícího `importTindeqArchive(file)`;
+- explicitní save až po rozhodnutí uživatele;
+- production Digital Asset Links a osobní podepsaný Android release workflow.
 
-## Production Android release
+Aktuální `main` stále používá duplicate lookup založený primárně na `tindeqSessionId`, který se v produkčním re-export testu ukázal jako nedostatečný.
 
-Dlouhodobý production certificate SHA-256:
+## Rozpracováno mimo `main`
 
-`B3:42:51:D0:89:42:CE:86:A3:93:14:9E:44:6B:1B:1D:57:9E:3B:90:0D:87:56:6E:66:38:99:32:E9:25:1D:08`
+PR #22 přidává backward-compatible semantic duplicate fallback:
 
-Stejný fingerprint je publikovaný v produkčním `/.well-known/assetlinks.json`.
+- nejprve zachová rychlý exact lookup podle `tindeqSessionId`;
+- při miss vyhledá omezenou množinu aktivních kandidátů stejného klienta, `analysis_version`, `measured_at` a datasetu;
+- kandidáty porovná podle persistovaného strukturovaného výsledku a metadat;
+- při porovnání ignoruje pouze nestabilní `tindeqSessionId` a název ZIP souboru;
+- identický obsah vrátí `duplicate: true`, takže existující UI zobrazí `Měření již uloženo` / `již dříve uloženo – nevytvořen nový záznam`;
+- odlišný obsah se stejným časem není považován za duplicitu;
+- race-condition testy zůstávají zachované.
 
-Workflow `Knee personal Android release`:
+Na headu `584b10cac279905a2a0f58f0e42361362a7cedd5` prošlo `124/124` unit testů, lint comparison bez nové regrese, production build a TypeScript check. CI se zastavilo pouze na project-control checkeru kvůli dříve přejmenovaným povinným nadpisům; tento dokumentační sync je opravuje.
 
-- run ID: `32577314441`;
-- head SHA: `58305016e466b59fdde16ee4b539743b7e81cb56`;
-- conclusion: `success`;
-- artifact: `knee-personal-production-apk`;
-- artifact ID: `9476883922`;
-- artifact digest: `sha256:6151ddf3e6ebf4c6b8af05c9210056775a6c0dbaca8732171d80d2dd18265d04`;
-- release origin: `https://knee.vankotraining.cz`;
-- výsledný APK podpis je fail-closed ověřován přes Android build-tools `apksigner`.
+## Nasazeno
 
-## Produkční real-device acceptance
+Produkce:
 
-`2026-08-22` uživatel nainstaloval production APK z výše uvedeného workflow artifactu a provedl reálný tok:
+- PR #21: ano;
+- PR #22: ne.
 
-`Tindeq → Sdílet → Knee → analýza`.
+Preview PR #22:
 
-Výsledek:
-
-- první pokus zobrazil hlášku, že operace nešla; přesný text hlášky nebyl zachycen;
-- bez další změny druhý pokus bezprostředně poté uspěl;
-- Knee zobrazil očekávanou analýzu skutečného Tindeq souboru;
-- uživatel výsledek výslovně potvrdil jako funkční.
-
-Tím je produkční real-device gate PR #21 **splněn**. První jednorázový fail je evidován jako transientní pozorování, nikoli jako vysvětlená nebo reprodukovaná chyba.
-
-## Serverová kontrola po acceptance
-
-V časovém okně přibližně `2026-08-22 16:18–16:38` Europe/Prague:
-
-- production Vercel logy obsahovaly pouze běžné requesty na `/`, `/tindeq` a `/tindeq/reports`;
-- nebyl nalezen žádný `warning`, `error` ani `fatal`;
-- full-text kontrola `POST` vrátila nula výsledků;
-- full-text kontrola `zip` vrátila nula výsledků.
-
-Dostupná serverová evidence tedy neukazuje serverovou chybu ani upload originálního ZIPu při tomto smoke testu. Přesnou příčinu prvního neúspěšného pokusu z těchto logů určit nelze.
+- deployment pro head `584b10cac279905a2a0f58f0e42361362a7cedd5`: `dpl_D3JxpEErMCpbvehTLnCCrL3WEyN3`;
+- stav: `READY`;
+- target: Preview.
 
 ## Produkčně ověřeno
 
-PR #21:
+PR #21 Android share/import tok: **ano**.
 
-- implementováno v `main`: **ano**;
-- webově produkčně nasazeno: **ano**;
-- produkční Digital Asset Links: **ano**;
-- production APK automaticky sestaveno a podpisově ověřeno: **ano**;
-- production share tok na skutečném telefonu: **ano**;
-- produkční acceptance: **ano, s evidovaným transientním prvním neúspěšným pokusem**.
+Production save test:
 
-Dřívější produkční acceptance PR #16, parseru PR #17, responsive opravy PR #19 a PR #20 zůstávají platné.
+- první explicitní save: **ano, funkční**;
+- opakovaný re-export stejného měření: **odhalil chybu duplicate protection**;
+- PR #22 oprava: **zatím není produkčně ověřena**, protože není mergovaná ani nasazená do produkce.
 
-## Privacy invariant
+## Známé problémy
 
-Originální Tindeq ZIP během share toku existuje pouze jako sender `content://` zdroj, app-private Android cache a transientní native/browser paměťové bloky.
-
-PR #21 nepřidává ZIP upload route, form POST, Vercel Function, Supabase Storage objekt, raw ZIP DB write ani server-side ZIP logování. Android po webovém `ack` maže pending cache copy; bez `ack` zůstává pouze lokálně do TTL cleanupu.
-
-## Známé problémy / pozorování
-
-- při prvním production share pokusu dne `2026-08-22` se jednou objevila obecná hláška neúspěchu; okamžitý druhý pokus uspěl. Bez přesného textu hlášky a reprodukce není příčina známá;
-- pokud se problém zopakuje, před změnou kódu zachytit přesný text hlášky/screenshot a čas pokusu a korelovat jej s Android lifecycle/MessagePort tokem;
-- neblokující UX discoverability `Upravit klienta` zůstává mimo scope;
-- full-repo lint baseline nadále obsahuje předexistující chyby/warning;
-- dříve existující shared-production Supabase advisory nálezy zůstávají mimo scope.
+- produkce aktuálně může vytvořit duplicitní Tindeq řádek, pokud stejný obsah dorazí v re-exportovaném ZIPu s jiným legacy `tindeqSessionId`;
+- během kontrolovaného testu vznikl potvrzený druhý duplicitní řádek `eacaecc9-9185-4cb8-8e52-561872e49cd5`; původní řádek je `b65d0e32-6e68-407c-9d3f-385112111ea9`;
+- duplicitní testovací řádek zatím nebyl smazán ani soft-deleted, protože produkční datovou mutaci je nutné provést pouze po explicitním schválení uživatele;
+- první production Android share pokus PR #21 jednou transientně selhal, další dva pokusy uspěly; příčina nebyla reprodukována;
+- full-repo lint baseline obsahuje předexistující `3 errors / 1 warning`, PR #22 nepřidává další lint regresi.
 
 ## Další krok
 
-Rollout gate PR #21 je uzavřen. Není potřeba další zásah pouze kvůli deploymentu.
-
-Pokud se první-pokusový transientní fail znovu objeví, otevřít cílenou diagnostiku až s přesnou hláškou a časem reprodukce; jinak pokračovat další prioritou projektu.
+- Dokončit zelený CI/Preview gate PR #22; poté před merge vyžádat explicitní souhlas uživatele a až po produkčním deploymentu zopakovat stejný duplicate-save test.
