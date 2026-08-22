@@ -136,11 +136,12 @@ function canonicalJson(value: unknown): string {
       .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`);
     return `{${entries.join(",")}}`;
   }
-  return JSON.stringify(value);
+  return JSON.stringify(value) ?? "undefined";
 }
 
 function withoutSessionId(metadata: StoredZipMetadata | InsertZipMetadata) {
-  const { tindeqSessionId: _tindeqSessionId, ...rest } = metadata;
+  const { tindeqSessionId: ignoredSessionId, ...rest } = metadata;
+  void ignoredSessionId;
   return rest;
 }
 
