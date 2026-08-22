@@ -154,7 +154,26 @@ test("opakovaný import stejné session pro stejného klienta je idempotentní",
   assert.equal(results[0].ok, true);
   if (results[0].ok) assert.equal(results[0].duplicate, true);
   assert.equal(inserted.length, 0);
-  assert.deepEqual(duplicateQueries[0], { tindeqSessionId: session.id });
+  const query = duplicateQueries[0] as { tindeqSessionId: string };
+  assert.match(query.tindeqSessionId, /^v2:[0-9a-f]{64}$/);
+  assert.notEqual(query.tindeqSessionId, session.id);
+});
+
+test("stable save ID nezávisí na názvu ZIPu ani legacy parser ID", async () => {
+  const first = await fixture();
+  const second = structuredClone(first) as TindeqSession;
+  second.id = "cccccccccccccccccccc";
+  second.sourceName = "same-measurement-reexport.zip";
+  const existing = { id: "db-existing", athlete_id: athleteId };
+  const firstMock = saveClient({ duplicates: [[existing]] });
+  const secondMock = saveClient({ duplicates: [[existing]] });
+
+  await saveTindeqSessions(firstMock.client, [first], athleteId);
+  await saveTindeqSessions(secondMock.client, [second], athleteId);
+
+  const firstQuery = firstMock.duplicateQueries[0] as { tindeqSessionId: string };
+  const secondQuery = secondMock.duplicateQueries[0] as { tindeqSessionId: string };
+  assert.equal(firstQuery.tindeqSessionId, secondQuery.tindeqSessionId);
 });
 
 test("re-export stejného měření s jiným legacy session ID je stále duplicita", async () => {
