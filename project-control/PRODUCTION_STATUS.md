@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-22` (Europe/Prague), po funkčním production duplicate-save acceptance testu PR #24 a read-only kontrole produkční databáze.
+`2026-08-22` (Europe/Prague), po funkčním production acceptance PR #24 a schváleném cleanupu dvou historických testovacích duplicit.
 
 ## Produkční URL
 
@@ -59,25 +59,42 @@ Existující UNIQUE index nad `(athlete_id, analysis_version, raw_metadata->>'ti
 - PR #24 pre-merge exact head `29cb44533a76bed3f0493218e336763a4e525a7d`: Project control run `32583799152` success, Verify Tindeq client view run `32583799252` success, Vercel Preview success;
 - PR #24 production deployment: `READY`, `/tindeq` HTTP 200, bez runtime warning/error/fatal;
 - PR #24 production duplicate-save acceptance na reálném telefonu: UI zobrazilo `Měření již uloženo` a `nevytvořen nový záznam`;
-- read-only produkční DB kontrola po acceptance testu: počet aktivních rows pro stejného klienta a stejné `measured_at` zůstal `3`, takže acceptance test nevytvořil nový row.
+- read-only DB kontrola po acceptance testu potvrdila, že nevznikl čtvrtý row.
 
 ## Poslední výslovné uživatelské produkční ověření
 
 - `2026-08-22`: PR #24 duplicate-save acceptance – úspěšný; aplikace správně rozpoznala již uložené měření a nevytvořila nový záznam.
+- `2026-08-22`: uživatel následně explicitně schválil cleanup dvou testovacích duplicit.
 
 ## Produkční stav Tindeq
 
 - Android share/import: **produkčně ověřeno**;
 - DB-kompatibilní 20hex stable ID: **nasazeno a ověřeno**;
 - semantic duplicate fallback s timestamp normalizací PR #24: **nasazeno a produkčně ověřeno**;
-- duplicate feedback UI: **produkčně ověřeno**.
+- duplicate feedback UI: **produkčně ověřeno**;
+- duplicate cleanup testovacích dat: **proveden a read-only ověřen**.
+
+## Produkční data po cleanupu
+
+Pro měření Rosová Štěpánka `14. 8. 2026 14:31` zůstává aktivní jediný kanonický row:
+
+- aktivní: `b65d0e32-6e68-407c-9d3f-385112111ea9`.
+
+Dvě pozdější testovací duplicity byly soft-deleted:
+
+- `eacaecc9-9185-4cb8-8e52-561872e49cd5`;
+- `a0a6e36f-6ed7-4c58-9f3c-55247e770d34`.
+
+Soft-delete timestamp: `2026-08-22T16:24:31.605156Z` (`18:24` Europe/Prague).
+
+Auditní kontext:
+
+`duplicate_cleanup_pr24_acceptance_2026_08_22`
+
+Post-cleanup read-only kontrola potvrdila `active_count = 1`. Kanonický row nebyl změněn ani soft-deleted.
 
 ## Známé produkční problémy
 
-- z předchozího ladění zůstávají pro testované měření tři aktivní rows:
-  - `b65d0e32-6e68-407c-9d3f-385112111ea9`;
-  - `eacaecc9-9185-4cb8-8e52-561872e49cd5`;
-  - `a0a6e36f-6ed7-4c58-9f3c-55247e770d34`;
-- acceptance test PR #24 nevytvořil čtvrtý row;
-- žádný z existujících tří rows nebyl bez explicitního schválení odstraněn ani soft-deleted;
+- v oblasti duplicate-save po PR #24 není aktuálně známý otevřený produkční problém;
+- první production Android share pokus PR #21 jednou transientně selhal, další pokusy uspěly;
 - full-repo lint baseline má předexistující `3 errors / 1 warning`.
