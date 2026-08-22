@@ -2,127 +2,93 @@
 
 ## Datum poslední kontroly
 
-`2026-08-22` (Europe/Prague), po produkčním real-device ověření Android share toku PR #21, odhalení skutečné chyby duplicate protection a zeleném pre-merge gate opravy PR #22.
+`2026-08-22` (Europe/Prague), po merge PR #22 a technickém ověření produkčního deploymentu.
 
 ## Aktuální `main` commit
 
-Aktuální `main`:
+Poslední runtime-changing commit před tímto docs-only syncem:
 
-`133c5bfdc9b0273c1784ef9257010ab736c6fb73` – `Close PR #21 rollout gate`.
+`ec7979e233f846e4af3cdb740c1265150722b27b` – `Merge PR #22: Fix Tindeq duplicate detection for re-exported ZIPs`.
 
-PR #21 byl mergován merge commitem:
-
-`1260333236f657da71cf8a31fd98937a704140e6` – `Merge PR #21: Add local Android Tindeq share receiver`.
+Tento project-control sync je pouze dokumentační a nemění runtime logiku.
 
 ## Aktivní větev a PR
 
-Aktivní oprava je PR #22 `Fix Tindeq duplicate detection for re-exported ZIPs`.
+PR #22 `Fix Tindeq duplicate detection for re-exported ZIPs` je **merged**.
 
-- branch: `agent/tindeq-duplicate-feedback`;
-- base: `main@133c5bfdc9b0273c1784ef9257010ab736c6fb73`;
-- poslední runtime/test head před tímto finálním project-control syncem: `c891a96fc1ebd3bd11c2958160a225523cbafe1c`;
-- PR je otevřený, mergeable a není mergovaný;
-- merge pouze po explicitním souhlasu uživatele.
+- merged at: `2026-08-22T15:17:32Z`;
+- merge commit: `ec7979e233f846e4af3cdb740c1265150722b27b`;
+- žádný další runtime PR pro tuto opravu není otevřený.
 
 ## Produkční runtime commit
 
-Runtime Android share receiveru PR #21 je v produkci od merge commitu:
+PR #22 je nasazený v produkci přes deployment:
 
-`1260333236f657da71cf8a31fd98937a704140e6`.
-
-Aktuální produkční `main` deployment před PR #22:
-
-- deployment: `dpl_2F4PbWVrEM2ataSaD89WFikV37BR`;
-- commit: `133c5bfdc9b0273c1784ef9257010ab736c6fb73`;
+- deployment: `dpl_DwAn14ANzVWFZBYk6i6bXyhttyct`;
+- commit: `ec7979e233f846e4af3cdb740c1265150722b27b`;
 - stav: `READY`;
-- target: `production`.
-
-PR #22 je zatím pouze na Preview a není produkčně nasazený.
+- target: `production`;
+- alias obsahuje `knee.vankotraining.cz`;
+- `GET /tindeq` po deploymentu vrátil HTTP 200;
+- post-deploy Vercel log check nenašel `warning`, `error` ani `fatal`.
 
 ## Stav databázových migrací
 
 Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-PR #22 neobsahuje DB migraci, DDL, RLS/policy/grant/Auth změnu ani automatickou datovou opravu.
+PR #22 nepřidává DB migraci, DDL, RLS/policy/grant/Auth změnu ani automatické čištění dat.
 
-Existující UNIQUE index nad `(athlete_id, analysis_version, raw_metadata->>'tindeqSessionId')` zůstává beze změny. PR #22 jej nově využívá lépe: nové save operace persistují stabilní SHA-256 semantic `tindeqSessionId`, takže stejný strukturovaný re-export konverguje na stejný DB unique key. Starší řádky s legacy ID pokrývá backward-compatible semantic fallback.
+Existující UNIQUE index nad `(athlete_id, analysis_version, raw_metadata->>'tindeqSessionId')` zůstává beze změny. Nové save operace nyní používají stabilní SHA-256 semantic `tindeqSessionId` ve formátu `v2:<64 hex>`; historické rows s legacy ID pokrývá semantic fallback.
 
 ## Aktuální fáze
 
-PR #21 share/import tok je produkčně ověřený. Následný explicitní save/duplicate test odhalil chybu dedupe identity:
+Implementace, merge a technický produkční deployment PR #22 jsou dokončené.
 
-- první uložení měření Rosová Štěpánka `14. 8. 2026 14:31` vytvořilo očekávaný řádek;
-- druhý import stejného měření vytvořil další řádek místo návratu `duplicate: true`;
-- oba produkční řádky byly read-only porovnány a mají shodné uložené metriky, repetitions, summaries, warnings i `raw_metadata` kromě `tindeqSessionId`;
-- rozdílné legacy IDs jsou `7508cd743009fa48715e` a `f90b7299be75c228bc45`;
-- příčina: legacy parser ID je odvozené z bytes celého ZIP kontejneru, takže re-export může změnit ID i při identickém strukturovaném měření.
-
-PR #22 je implementovaný a automatizovaně ověřený; čeká pouze na explicitní merge approval.
+Zbývá funkční produkční acceptance: na telefonu znovu sdílet stejné měření Rosová Štěpánka `14. 8. 2026 14:31` a potvrdit save. Očekávaný výsledek je `Měření již uloženo` / `již dříve uloženo – nevytvořen nový záznam` a žádný nový aktivní DB row.
 
 ## Implementováno v `main`
 
-V `main` zůstává produkčně ověřený PR #21:
+PR #22 přidává dvě vrstvy ochrany proti duplicitám:
 
-- Android `ACTION_SEND` receiver;
-- lokální app-private staging ZIPu;
-- TWA/Custom Tabs MessagePort transport;
-- SHA-256 kontrola přenesených bytes;
-- použití existujícího `importTindeqArchive(file)`;
-- explicitní save až po rozhodnutí uživatele;
-- production Digital Asset Links a osobní podepsaný Android release workflow.
+- stabilní semantic SHA-256 ID pro nové save;
+- backward-compatible obsahový fallback pro historické rows s legacy ID.
 
-Aktuální `main` stále může u re-exportovaného stejného obsahu obejít duplicate lookup přes jiné legacy `tindeqSessionId`; oprava je zatím pouze v PR #22.
+Stávající UI při `duplicate: true` zobrazuje, že měření již bylo uloženo a nový záznam nevznikl.
+
+Pre-merge exact-head gate `9590068bf04cce4807f22947f63ee3e9a051543f` prošel:
+
+- `Project control` run `32581024950`: success;
+- `Verify Tindeq client view` run `32581024910`: success;
+- Vercel Preview: success;
+- bez unresolved review threads.
 
 ## Rozpracováno mimo `main`
 
-PR #22 kombinuje dvě vrstvy ochrany:
+Pro PR #22 není rozpracovaný další runtime patch.
 
-1. **Stabilní identita pro nové save**
-   - z persistovaného strukturovaného výsledku se vytvoří canonical JSON;
-   - identita záměrně neobsahuje klienta, název vnějšího ZIPu ani legacy parser ID;
-   - SHA-256 fingerprint se ukládá jako `v2:<64 hex>` do `raw_metadata.tindeqSessionId`;
-   - opakovaný re-export stejného obsahu proto používá stejný DB unique key a existující UNIQUE index chrání i race-condition insert.
-
-2. **Backward-compatible fallback pro starší rows**
-   - při exact-ID miss se vyhledají omezení kandidáti stejného klienta, `analysis_version`, `measured_at` a datasetu;
-   - kandidáti se porovnají podle persistovaného strukturovaného výsledku a metadat;
-   - ignoruje se pouze nestabilní ID a název ZIP souboru;
-   - identický legacy row se vrátí jako `duplicate: true`;
-   - odlišný obsah se stejným časem není označen jako duplicita.
-
-Na runtime/test headu `c891a96fc1ebd3bd11c2958160a225523cbafe1c` prošly všechny unit testy včetně semantic dedupe, stable-ID a race-condition regresí, lint comparison bez nové regrese, production build, TypeScript, project-control check i browser Tindeq verification.
+Produkční funkční acceptance a případné následné vyčištění testovací duplicity jsou samostatné kroky; odstranění dat není schválené.
 
 ## Nasazeno
 
-Produkce:
-
-- PR #21: ano;
-- PR #22: ne.
-
-Preview PR #22:
-
-- Vercel status pro `c891a96fc1ebd3bd11c2958160a225523cbafe1c`: `success`;
-- `Verify Tindeq client view` run `32580870786`: `success`;
-- `Project control` run `32580870814`: `success`.
+- PR #21 Android share receiver: ano;
+- PR #22 duplicate detection fix: ano;
+- produkční deployment PR #22 `dpl_DwAn14ANzVWFZBYk6i6bXyhttyct`: `READY`.
 
 ## Produkčně ověřeno
 
-PR #21 Android share/import tok: **ano**.
-
-Production save test:
-
-- první explicitní save: **ano, funkční**;
-- opakovaný re-export stejného měření na aktuálním production main: **odhalil chybu duplicate protection**;
-- PR #22 oprava: **automatizovaně a na Preview ověřena, ale zatím není produkčně ověřena**, protože není mergovaná.
+- PR #21 Android share/import tok: **ano**;
+- PR #22 technicky nasazeno na produkci: **ano**;
+- produkční `/tindeq` po PR #22: **HTTP 200**;
+- PR #22 funkční duplicate-save acceptance na skutečném telefonu: **zatím ne**.
 
 ## Známé problémy
 
-- produkce aktuálně může vytvořit duplicitní Tindeq řádek, pokud stejný obsah dorazí v re-exportovaném ZIPu s jiným legacy `tindeqSessionId`;
-- během kontrolovaného testu vznikl potvrzený druhý duplicitní řádek `eacaecc9-9185-4cb8-8e52-561872e49cd5`; původní řádek je `b65d0e32-6e68-407c-9d3f-385112111ea9`;
-- duplicitní testovací řádek zatím nebyl smazán ani soft-deleted, protože produkční datovou mutaci je nutné provést pouze po explicitním schválení uživatele;
-- první production Android share pokus PR #21 jednou transientně selhal, další dva pokusy uspěly; příčina nebyla reprodukována;
-- full-repo lint baseline obsahuje předexistující `3 errors / 1 warning`, PR #22 nepřidává další lint regresi.
+- během původního produkčního testu vznikl potvrzený duplicitní row `eacaecc9-9185-4cb8-8e52-561872e49cd5`; původní row je `b65d0e32-6e68-407c-9d3f-385112111ea9`;
+- testovací duplicate row zůstává aktivní a nebyl bez explicitního souhlasu smazán ani soft-deleted;
+- funkční produkční acceptance PR #22 ještě čeká na opakovaný save test;
+- první production Android share pokus PR #21 jednou transientně selhal, další pokusy uspěly;
+- full-repo lint baseline obsahuje předexistující `3 errors / 1 warning`; PR #22 nepřidal novou lint regresi.
 
 ## Další krok
 
-- Vyžádat explicitní souhlas uživatele k merge PR #22; po merge ověřit production deployment a zopakovat stejný re-export/save test s očekáváním `Měření již uloženo` a bez nového DB row.
+- Na telefonu znovu sdílet stejné měření Rosová Štěpánka `14. 8. 2026 14:31`, zvolit stejného klienta a potvrdit save; poté ověřit UI duplicate hlášku a read-only zkontrolovat, že nepřibyl nový aktivní DB row.
