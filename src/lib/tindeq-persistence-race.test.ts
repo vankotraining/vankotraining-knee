@@ -63,7 +63,9 @@ function raceClient(duplicateResults: unknown[][]) {
 test("concurrent unique violation is recovered as an idempotent duplicate", async () => {
   const session = await fixture();
   const existing = { id: "db-race-winner", athlete_id: athleteId };
-  const { client, getInsertCount } = raceClient([[], [existing]]);
+  // Initial findDuplicate: exact ID miss, then semantic miss. After the racing
+  // insert returns 23505, the exact-ID retry sees the winner.
+  const { client, getInsertCount } = raceClient([[], [], [existing]]);
 
   const results = await saveTindeqSessions(client, [session], athleteId);
 
@@ -77,7 +79,9 @@ test("concurrent unique violation is recovered as an idempotent duplicate", asyn
 
 test("unresolved unique violation is not mislabeled as a duplicate", async () => {
   const session = await fixture();
-  const { client } = raceClient([[], []]);
+  // Both pre-insert and post-23505 duplicate checks miss at the exact-ID and
+  // semantic fallback stages.
+  const { client } = raceClient([[], [], [], []]);
 
   const results = await saveTindeqSessions(client, [session], athleteId);
 
