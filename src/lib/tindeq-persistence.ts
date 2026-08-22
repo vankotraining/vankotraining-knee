@@ -163,8 +163,12 @@ function semanticIdentityPayload(payload: TindeqInsertPayload) {
 async function stableSemanticSessionId(payload: TindeqInsertPayload): Promise<string> {
   const bytes = new TextEncoder().encode(canonicalJson(semanticIdentityPayload(payload)));
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
-  const hex = Array.from(digest).map((value) => value.toString(16).padStart(2, "0")).join("");
-  return `v2:${hex}`;
+  // Production DB constrains source session IDs to exactly 20 lowercase hex chars.
+  // Keep the semantic SHA-256 identity, truncated to the existing 80-bit storage contract.
+  return Array.from(digest)
+    .slice(0, 10)
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 function sameSemanticMeasurement(record: StoredTindeqSession, payload: TindeqInsertPayload): boolean {
