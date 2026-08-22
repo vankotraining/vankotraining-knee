@@ -3,10 +3,6 @@ package cz.vankotraining.knee;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.Signature;
-import android.content.pm.SigningInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -15,7 +11,6 @@ import android.os.Looper;
 import android.util.Base64;
 import android.util.Log;
 import android.view.Gravity;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -29,9 +24,6 @@ import androidx.browser.trusted.TrustedWebActivityIntentBuilder;
 import org.json.JSONObject;
 
 import java.io.RandomAccessFile;
-import java.security.MessageDigest;
-import java.util.ArrayList;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -44,7 +36,6 @@ public final class ShareReceiverActivity extends Activity {
 
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private final ArrayList<String> diagnosticTrace = new ArrayList<>();
 
     private ShareFileStore shareFileStore;
     private PendingShare pendingShare;
@@ -53,14 +44,12 @@ public final class ShareReceiverActivity extends Activity {
     private CustomTabsClient customTabsClient;
     private CustomTabsSession customTabsSession;
     private CustomTabsServiceConnection serviceConnection;
-    private String browserPackage;
     private boolean serviceBound;
     private boolean relationshipValidated;
     private boolean relationshipValidationFinished;
     private boolean navigationFinished;
     private boolean channelRequested;
     private boolean webReady;
-    private boolean twaLaunched;
     private int expectedChunkIndex;
     private int markerAttempt;
     private Runnable markerRetry;
@@ -76,7 +65,6 @@ public final class ShareReceiverActivity extends Activity {
             if (relation != CustomTabsService.RELATION_USE_AS_ORIGIN) return;
             relationshipValidationFinished = true;
             relationshipValidated = result;
-            recordDiagnostic("DAL result=" + result);
             Log.d(TAG, "Digital Asset Links use_as_origin validation for " + requestedOrigin + ": " + result);
             if (result) {
                 maybeRequestPostMessageChannel();
@@ -92,7 +80,6 @@ public final class ShareReceiverActivity extends Activity {
         @Override
         public void onNavigationEvent(int navigationEvent, Bundle extras) {
             super.onNavigationEvent(navigationEvent, extras);
-            recordDiagnostic("navigation=" + navigationEventName(navigationEvent) + " (" + navigationEvent + ")");
             if (navigationEvent != NAVIGATION_FINISHED) return;
             navigationFinished = true;
             channelRequested = false;
@@ -105,7 +92,6 @@ public final class ShareReceiverActivity extends Activity {
         @Override
         public void onMessageChannelReady(Bundle extras) {
             super.onMessageChannelReady(extras);
-            recordDiagnostic("onMessageChannelReady");
             if (pendingShare == null) return;
             markerAttempt = 0;
             sendChannelMarkerWithRetry();
@@ -123,7 +109,6 @@ public final class ShareReceiverActivity extends Activity {
         super.onCreate(savedInstanceState);
         sourceOrigin = Uri.parse(BuildConfig.KNEE_ORIGIN);
         shareFileStore = new ShareFileStore(this);
-        beginDiagnosticTrace("onCreate");
         setLoadingView("Připravuji Knee…");
         handleIncomingIntent(getIntent());
     }
@@ -132,29 +117,16 @@ public final class ShareReceiverActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        beginDiagnosticTrace("onNewIntent");
         handleIncomingIntent(intent);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (BuildConfig.DEBUG && twaLaunched) {
-            twaLaunched = false;
-            recordDiagnostic("returned from TWA");
-            renderDiagnosticTrace();
-        }
     }
 
     private void handleIncomingIntent(Intent intent) {
         boolean incomingShare = Intent.ACTION_SEND.equals(intent.getAction());
-        if (incomingShare) recordDiagnostic("ACTION_SEND received");
         setLoadingView(incomingShare
                 ? "Načítám sdílené Tindeq měření…"
                 : "Otevírám Knee…");
 
         if (Intent.ACTION_SEND_MULTIPLE.equals(intent.getAction())) {
-            recordDiagnostic("stop: ACTION_SEND_MULTIPLE rejected");
             showFatalError("Knee v této verzi přijímá vždy pouze jeden Tindeq ZIP.");
             return;
         }
@@ -168,7 +140,6 @@ public final class ShareReceiverActivity extends Activity {
                         throw new IllegalArgumentException("Sdílený Tindeq ZIP nebyl nalezen.");
                     }
                     nextPending = shareFileStore.stage(sharedUri, intent.getType(), System.currentTimeMillis());
-                    recordDiagnostic("ZIP staged locally");
                 } else {
                     nextPending = shareFileStore.load(System.currentTimeMillis());
                 }
@@ -185,7 +156,6 @@ public final class ShareReceiverActivity extends Activity {
                 });
             } catch (Exception error) {
                 Log.e(TAG, "Unable to prepare shared Tindeq file", error);
-                recordDiagnostic("stop: ZIP staging/preparation failed");
                 mainHandler.post(() -> showFatalError(
                         error.getMessage() == null ? "Sdílený ZIP se nepodařilo převzít." : error.getMessage()));
             }
@@ -193,44 +163,36 @@ public final class ShareReceiverActivity extends Activity {
     }
 
     private void startFreshShareSessionAndLaunch() {
-        recordDiagnostic("startFreshShareSessionAndLaunch");
-        boolean hadOldSession = customTabsSession != null;
+        // Every new ACTION_SEND gets a fresh CustomTabsSession. Android may either reuse this
+        // Activity or recreate it depending on task/lifecycle state, but a previous TWA session
+        // must never be reused for a new shared ZIP.
         customTabsSession = null;
         relationshipValidated = false;
         relationshipValidationFinished = false;
-        recordDiagnostic("old session removed=" + hadOldSession);
 
         if (customTabsClient != null) {
-            recordDiagnostic("CustomTabsClient=reuse" + browserPackageSuffix());
             createBrowserSessionAndLaunch();
             return;
         }
 
-        recordDiagnostic("CustomTabsClient=new bind");
+        // If the previous browser service disconnected, bind again before launching the new TWA.
         serviceBound = false;
         ensureBrowserSessionAndLaunch();
     }
 
     private void ensureBrowserSessionAndLaunch() {
         if (customTabsSession != null) {
-            recordDiagnostic("browser session=reuse");
             if (!relationshipValidated) requestRelationshipValidation();
             launchTrustedWebActivity();
             return;
         }
         if (customTabsClient != null) {
-            recordDiagnostic("CustomTabsClient=reuse" + browserPackageSuffix());
             createBrowserSessionAndLaunch();
             return;
         }
-        if (serviceBound) {
-            recordDiagnostic("browser bind already pending");
-            return;
-        }
+        if (serviceBound) return;
 
         String packageName = CustomTabsClient.getPackageName(this, null);
-        browserPackage = packageName;
-        recordDiagnostic("browser package=" + (packageName == null ? "none" : packageName));
         if (packageName == null) {
             showFatalError("Nenalezen podporovaný Android prohlížeč pro bezpečné otevření Knee.");
             return;
@@ -239,8 +201,6 @@ public final class ShareReceiverActivity extends Activity {
         serviceConnection = new CustomTabsServiceConnection() {
             @Override
             public void onCustomTabsServiceConnected(ComponentName name, CustomTabsClient client) {
-                browserPackage = name == null ? browserPackage : name.getPackageName();
-                recordDiagnostic("browser service connected" + browserPackageSuffix());
                 customTabsClient = client;
                 client.warmup(0L);
                 createBrowserSessionAndLaunch();
@@ -248,7 +208,6 @@ public final class ShareReceiverActivity extends Activity {
 
             @Override
             public void onServiceDisconnected(ComponentName name) {
-                recordDiagnostic("browser service disconnected");
                 customTabsClient = null;
                 customTabsSession = null;
                 relationshipValidated = false;
@@ -258,7 +217,6 @@ public final class ShareReceiverActivity extends Activity {
         };
 
         serviceBound = CustomTabsClient.bindCustomTabsService(this, packageName, serviceConnection);
-        recordDiagnostic("browser bind result=" + serviceBound);
         if (!serviceBound) {
             showFatalError("Nepodařilo se připojit k Android prohlížeči. ZIP nebyl odeslán na server.");
         }
@@ -267,12 +225,10 @@ public final class ShareReceiverActivity extends Activity {
     private void createBrowserSessionAndLaunch() {
         CustomTabsClient client = customTabsClient;
         if (client == null) {
-            recordDiagnostic("newSession skipped: client=null");
             showFatalError("Nepodařilo se připojit k Android prohlížeči. ZIP nebyl odeslán na server.");
             return;
         }
         customTabsSession = client.newSession(customTabsCallback);
-        recordDiagnostic("newSession=" + (customTabsSession != null));
         relationshipValidated = false;
         relationshipValidationFinished = false;
         if (customTabsSession == null) {
@@ -290,7 +246,6 @@ public final class ShareReceiverActivity extends Activity {
                 CustomTabsService.RELATION_USE_AS_ORIGIN,
                 sourceOrigin,
                 null);
-        recordDiagnostic("DAL request accepted=" + accepted);
         Log.d(TAG, "Requested Digital Asset Links use_as_origin validation: " + accepted);
         if (!accepted) {
             relationshipValidationFinished = true;
@@ -306,22 +261,14 @@ public final class ShareReceiverActivity extends Activity {
     }
 
     private void launchTrustedWebActivity() {
-        if (customTabsSession == null || launchUri == null) {
-            recordDiagnostic("TWA launch skipped: missing session/URI");
-            return;
-        }
+        if (customTabsSession == null || launchUri == null) return;
         navigationFinished = false;
         channelRequested = false;
         try {
-            recordDiagnostic("TWA launch");
-            twaLaunched = true;
             new TrustedWebActivityIntentBuilder(launchUri)
                     .build(customTabsSession)
                     .launchTrustedWebActivity(this);
-            recordDiagnostic("TWA launch dispatched=true");
         } catch (RuntimeException error) {
-            twaLaunched = false;
-            recordDiagnostic("TWA launch dispatched=false");
             Log.e(TAG, "Trusted Web Activity launch failed", error);
             showFatalError("Knee se nepodařilo bezpečně otevřít. ZIP zůstal pouze v zařízení.");
         }
@@ -334,7 +281,6 @@ public final class ShareReceiverActivity extends Activity {
                 || !relationshipValidated
                 || channelRequested) {
             if (pendingShare != null && navigationFinished && relationshipValidationFinished && !relationshipValidated) {
-                recordDiagnostic("channel request blocked: DAL failed");
                 Log.d(TAG, "Not requesting postMessage channel because use_as_origin validation failed.");
             }
             return;
@@ -343,7 +289,6 @@ public final class ShareReceiverActivity extends Activity {
                 sourceOrigin,
                 sourceOrigin,
                 new Bundle());
-        recordDiagnostic("channel request result=" + channelRequested);
         Log.d(TAG, "Requested postMessage channel: " + channelRequested);
         if (!channelRequested) {
             Toast.makeText(
@@ -359,9 +304,6 @@ public final class ShareReceiverActivity extends Activity {
         if (webReady || pendingShare == null || customTabsSession == null) return;
         markerAttempt += 1;
         int result = customTabsSession.postMessage(CHANNEL_MARKER, null);
-        recordDiagnostic("marker post attempt=" + markerAttempt
-                + " result=" + result
-                + " success=" + (result == CustomTabsService.RESULT_SUCCESS));
         Log.d(TAG, "postMessage channel marker result: " + result);
         if (result != CustomTabsService.RESULT_SUCCESS || markerAttempt >= MAX_MARKER_ATTEMPTS) return;
         long delay = Math.min(8_000L, 1_000L << (markerAttempt - 1));
@@ -378,7 +320,6 @@ public final class ShareReceiverActivity extends Activity {
 
             if ("ready".equals(type)) {
                 webReady = true;
-                recordDiagnostic("web ready=true");
                 cancelMarkerRetry();
                 expectedChunkIndex = 0;
                 sendMetadata();
@@ -386,15 +327,10 @@ public final class ShareReceiverActivity extends Activity {
             }
 
             String shareId = value.optString("shareId", "");
-            boolean shareMatches = pendingShare.id.equals(shareId);
-            if ("next".equals(type)) {
-                recordDiagnostic("web next received shareMatch=" + shareMatches);
-            }
-            if (!shareMatches) return;
+            if (!pendingShare.id.equals(shareId)) return;
 
             if ("next".equals(type)) {
                 int index = value.optInt("index", -1);
-                recordDiagnostic("web next index=" + index + " expected=" + expectedChunkIndex);
                 if (index != expectedChunkIndex) {
                     sendNativeError("Web požádal o neočekávaný blok sdíleného ZIPu.");
                     return;
@@ -434,7 +370,7 @@ public final class ShareReceiverActivity extends Activity {
     private void sendMetadata() throws Exception {
         PendingShare share = pendingShare;
         if (share == null) return;
-        boolean sent = sendJson(new JSONObject()
+        sendJson(new JSONObject()
                 .put("v", PROTOCOL_VERSION)
                 .put("type", "meta")
                 .put("shareId", share.id)
@@ -444,7 +380,6 @@ public final class ShareReceiverActivity extends Activity {
                 .put("sha256", share.sha256)
                 .put("chunks", chunkCount(share))
                 .put("chunkSize", CHUNK_BYTES));
-        recordDiagnostic("metadata sent=" + sent);
     }
 
     private void sendChunk(int index) {
@@ -471,9 +406,7 @@ public final class ShareReceiverActivity extends Activity {
                             || expectedChunkIndex != index) {
                         return;
                     }
-                    boolean sent = sendJson(payload);
-                    if (index == 0) recordDiagnostic("first chunk sent=" + sent);
-                    if (sent) expectedChunkIndex += 1;
+                    if (sendJson(payload)) expectedChunkIndex += 1;
                 });
             } catch (Exception error) {
                 Log.e(TAG, "Unable to read local share chunk", error);
@@ -547,94 +480,6 @@ public final class ShareReceiverActivity extends Activity {
         markerRetry = null;
     }
 
-    private void beginDiagnosticTrace(String lifecycle) {
-        if (!BuildConfig.DEBUG) return;
-        diagnosticTrace.clear();
-        twaLaunched = false;
-        recordDiagnostic("lifecycle=" + lifecycle);
-        recordDiagnostic("package=" + getPackageName());
-        recordDiagnostic("APK SHA-256=" + installedSigningFingerprint());
-    }
-
-    private void recordDiagnostic(String step) {
-        if (!BuildConfig.DEBUG) return;
-        if (Looper.myLooper() != Looper.getMainLooper()) {
-            mainHandler.post(() -> recordDiagnostic(step));
-            return;
-        }
-        diagnosticTrace.add(step);
-        Log.d(TAG, "diag: " + step);
-    }
-
-    private void renderDiagnosticTrace() {
-        if (!BuildConfig.DEBUG) return;
-        StringBuilder text = new StringBuilder("Knee Android share diagnostika\n\n");
-        for (int index = 0; index < diagnosticTrace.size(); index += 1) {
-            text.append(String.format(Locale.US, "%02d. %s\n", index + 1, diagnosticTrace.get(index)));
-        }
-        text.append("\nPouze lokální technický trace. Neobsahuje filename, klienta, shareId ani obsah ZIPu. ZIP se diagnostikou neodesílá na server.");
-
-        TextView view = new TextView(this);
-        view.setText(text.toString());
-        view.setTextSize(16f);
-        view.setGravity(Gravity.START);
-        view.setPadding(40, 40, 40, 40);
-        view.setTextIsSelectable(true);
-
-        ScrollView scrollView = new ScrollView(this);
-        scrollView.addView(view);
-        setContentView(scrollView);
-    }
-
-    private String browserPackageSuffix() {
-        return browserPackage == null ? "" : " package=" + browserPackage;
-    }
-
-    private String installedSigningFingerprint() {
-        try {
-            PackageManager packageManager = getPackageManager();
-            Signature[] signatures;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                PackageInfo packageInfo = packageManager.getPackageInfo(
-                        getPackageName(),
-                        PackageManager.GET_SIGNING_CERTIFICATES);
-                SigningInfo signingInfo = packageInfo.signingInfo;
-                if (signingInfo == null) return "unavailable";
-                signatures = signingInfo.hasMultipleSigners()
-                        ? signingInfo.getApkContentsSigners()
-                        : signingInfo.getSigningCertificateHistory();
-            } else {
-                //noinspection deprecation
-                PackageInfo packageInfo = packageManager.getPackageInfo(
-                        getPackageName(),
-                        PackageManager.GET_SIGNATURES);
-                //noinspection deprecation
-                signatures = packageInfo.signatures;
-            }
-            if (signatures == null || signatures.length == 0) return "unavailable";
-
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(signatures[0].toByteArray());
-            StringBuilder fingerprint = new StringBuilder();
-            for (int index = 0; index < digest.length; index += 1) {
-                if (index > 0) fingerprint.append(':');
-                fingerprint.append(String.format(Locale.US, "%02X", digest[index] & 0xFF));
-            }
-            return fingerprint.toString();
-        } catch (Exception error) {
-            return "unavailable";
-        }
-    }
-
-    private static String navigationEventName(int navigationEvent) {
-        if (navigationEvent == CustomTabsCallback.NAVIGATION_STARTED) return "NAVIGATION_STARTED";
-        if (navigationEvent == CustomTabsCallback.NAVIGATION_FINISHED) return "NAVIGATION_FINISHED";
-        if (navigationEvent == CustomTabsCallback.NAVIGATION_FAILED) return "NAVIGATION_FAILED";
-        if (navigationEvent == CustomTabsCallback.NAVIGATION_ABORTED) return "NAVIGATION_ABORTED";
-        if (navigationEvent == CustomTabsCallback.TAB_SHOWN) return "TAB_SHOWN";
-        if (navigationEvent == CustomTabsCallback.TAB_HIDDEN) return "TAB_HIDDEN";
-        return "UNKNOWN";
-    }
-
     private void setLoadingView(String text) {
         TextView view = new TextView(this);
         view.setText(text);
@@ -646,12 +491,7 @@ public final class ShareReceiverActivity extends Activity {
 
     private void showFatalError(String message) {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show();
-        if (BuildConfig.DEBUG) {
-            recordDiagnostic("fatal stop");
-            renderDiagnosticTrace();
-        } else {
-            setLoadingView(message);
-        }
+        setLoadingView(message);
     }
 
     @Override
