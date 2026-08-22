@@ -2,41 +2,26 @@
 
 ## Aktuální fáze
 
-PR #21 `Add local Android Tindeq share receiver` je mergovaný, produkčně nasazený a produkčně ověřený na skutečném Android telefonu.
+PR #21 Android native Tindeq share je produkčně nasazený a ověřený. Následný kontrolovaný save/duplicate test ale odhalil skutečnou chybu: re-export stejného měření může dostat jiné legacy `tindeqSessionId` a obejít stávající duplicate lookup.
 
-Produkční rollout zahrnuje:
+PR #22 `Fix Tindeq duplicate detection for re-exported ZIPs` je otevřený na branchi `agent/tindeq-duplicate-feedback` a přidává semantic duplicate fallback nad persistovaným strukturovaným výsledkem.
 
-- webovou produkci `https://knee.vankotraining.cz`;
-- produkční Digital Asset Links s dlouhodobým osobním signing fingerprintem;
-- production APK z workflow runu `32577314441`;
-- reálný tok `Tindeq → Sdílet → Knee → analýza` na telefonu uživatele.
+## Ověřená evidence
 
-## Výsledek production smoke testu
-
-`2026-08-22`:
-
-- první share pokus zobrazil neúspěšnou hlášku; přesný text nebyl zachycen;
-- druhý bezprostřední pokus bez další změny uspěl;
-- Knee zobrazil očekávanou analýzu;
-- uživatel funkčnost výslovně potvrdil.
-
-Produkční Vercel kontrola ve stejném časovém okně neukázala žádné `warning/error/fatal`, žádný záznam obsahující `POST` a žádný záznam obsahující `zip`.
-
-PR #21 rollout gate je proto **uzavřen**. První jednorázový neúspěch je evidován jako transientní pozorování, nikoli jako potvrzená reprodukovatelná chyba.
+- první save měření Rosová Štěpánka `14. 8. 2026 14:31` vytvořil očekávaný row;
+- druhý import stejného měření vytvořil další aktivní row s jiným `tindeqSessionId`;
+- read-only porovnání potvrdilo, že oba řádky jsou obsahově shodné kromě session ID;
+- PR #22 na headu `584b10cac279905a2a0f58f0e42361362a7cedd5` prošel `124/124` unit testy, lint comparison, production build a TypeScript check;
+- Preview deployment `dpl_D3JxpEErMCpbvehTLnCCrL3WEyN3` je `READY`;
+- poslední CI selhalo pouze na project-control checkeru kvůli dříve přejmenovaným povinným sekcím; aktuální docs sync tento stav opravuje.
 
 ## Další krok
 
-Pro PR #21 není potřeba další rollout akce.
-
-Pokud se první-pokusový neúspěch znovu objeví:
-
-1. zachytit přesný text hlášky nebo screenshot;
-2. zaznamenat přibližný čas pokusu;
-3. teprve potom korelovat problém s Android lifecycle / Custom Tabs / MessagePort tokem a produkčními logy;
-4. neprovádět preventivní změnu kódu bez reprodukce nebo konkrétní evidence.
-
-Pokud se problém neopakuje, pokračovat další prioritou projektu.
+1. Nechat proběhnout fresh CI na aktuálním PR #22 headu a ověřit zelený Preview gate.
+2. Bez explicitního souhlasu uživatele PR #22 nemergovat.
+3. Po schválení a production deploymentu zopakovat stejný re-export/save test; očekávaný výsledek je `Měření již uloženo` a žádný nový DB row.
+4. Potvrzený testovací duplicitní row v produkci nečistit bez samostatného explicitního schválení uživatele.
 
 ## Důležitý invariant
 
-Originální Tindeq ZIP se nesmí stát serverovým uploadem ani trvalým cloudovým artefaktem. Produkční share tok musí nadále zachovat lokální Android/browser transport a explicitní uložení strukturovaného výsledku až po rozhodnutí uživatele.
+Originální Tindeq ZIP se nesmí stát serverovým uploadem ani trvalým cloudovým artefaktem. Produkční datové mutace včetně odstranění testovací duplicity se provádějí pouze po explicitním schválení uživatele.
