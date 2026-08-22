@@ -2,6 +2,12 @@ name: Knee personal Android release
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "android/**"
+      - ".github/workflows/knee-android-personal-release.yml"
 
 permissions:
   contents: read
