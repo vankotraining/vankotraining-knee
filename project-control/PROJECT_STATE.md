@@ -2,81 +2,105 @@
 
 ## Datum poslední kontroly
 
-`2026-08-22` (Europe/Prague), po merge a technickém produkčním ověření hotfixu PR #23.
+`2026-08-22` (Europe/Prague), po produkčním duplicate-save testu po PR #23, který vytvořil třetí aktivní row, a po root-cause auditu timestamp porovnání.
 
 ## Aktuální `main` commit
 
-Poslední runtime-changing commit před tímto project-control syncem:
+Aktuální `main` před PR #24:
 
-`59e7f362652e2eedff1e5e7764bbc05181ee1aa2` – `Merge PR #23: Fix Tindeq stable ID DB constraint compatibility`.
+`22fd311c727c2917f730b5289bea97737a75246f` – docs-only `Set PR #23 production acceptance as next step`.
 
-Tento project-control sync je dokumentační a nemění runtime logiku.
+Poslední runtime-changing commit v `main`:
+
+`59e7f362652e2eedff1e5e7764bbc05181ee1aa2` – merge PR #23.
 
 ## Aktivní větev a PR
 
-PR #23 `Fix Tindeq stable ID DB constraint compatibility` je **merged a closed**.
+PR #24 `Fix Tindeq semantic dedupe timestamp comparison` je otevřený na branchi `agent/tindeq-time-normalization-hotfix`.
 
-- merged at: `2026-08-22T15:59:22Z`;
-- merge commit: `59e7f362652e2eedff1e5e7764bbc05181ee1aa2`;
-- pre-merge exact head: `0239093b5db96af89dab81d669894e717aa207ec`;
-- `Verify Tindeq client view` run `32582271916`: success;
-- `Project control` run `32582271918`: success;
-- Vercel Preview: success;
-- unresolved review threads: none.
+Runtime/test head před tímto project-control syncem:
+
+`b293a0ee982ea2c19359624ef79f23c169246807`.
 
 ## Produkční runtime commit
 
-PR #23 je nasazený v produkci:
+Produkce stále běží na runtime logice PR #23:
 
+- merge commit: `59e7f362652e2eedff1e5e7764bbc05181ee1aa2`;
 - deployment: `dpl_GdVMkTenqui48VLoHNBaVDPHSr4f`;
-- commit: `59e7f362652e2eedff1e5e7764bbc05181ee1aa2`;
-- state: `READY`;
+- stav: `READY`;
 - target: `production`;
-- alias: `knee.vankotraining.cz`;
-- `GET /tindeq`: HTTP 200;
-- post-deploy log check: žádný `warning`, `error` ani `fatal`.
+- alias: `knee.vankotraining.cz`.
 
 ## Stav databázových migrací
 
 Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-Fresh read-only audit potvrdil existující CHECK:
+PR #24 nepřidává DB migraci, DDL, RLS/policy/grant/Auth změnu ani automatickou datovou mutaci.
+
+Existující CHECK zůstává:
 
 `CHECK (COALESCE((raw_metadata->>'tindeqSessionId') ~ '^[0-9a-f]{20}$', false))`
 
-PR #23 nepřidává DB migraci, DDL ani RLS/policy/grant/Auth změnu. Semantic SHA-256 identita se nově ukládá jako prvních 10 bytů digestu = přesně `20` lowercase hex znaků, takže je kompatibilní s existujícím CHECK i UNIQUE indexem. Historické rows s legacy ID nadále pokrývá semantic fallback.
+Stable semantic ID z PR #23 zůstává 20 lowercase hex znaků.
 
 ## Aktuální fáze
 
-- PR #21 Android share/import: produkčně ověřen;
-- PR #22 semantic duplicate detection: implementován, ale původní `v2:<64 hex>` reprezentace selhala na DB CHECK;
-- PR #23 DB-compatibility hotfix: implementován, mergovaný a produkčně nasazený;
-- zbývá funkční production acceptance na reálném telefonu.
+Produkční test po PR #23 odstranil předchozí CHECK chybu, ale duplicate fallback stále minul starší identické rows a vytvořil třetí aktivní row.
+
+Read-only audit potvrdil, že všechny hodnoty používané semantic dedupe jsou mezi třemi rows shodné. Root cause je přímé stringové porovnání `record.measured_at === payload.measured_at`: payload používá `Date.toISOString()` (`.000Z`), zatímco PostgREST může stejný okamžik vrátit jako `+00:00`.
+
+## Implementováno v `main`
+
+- PR #21 Android native share/import tok;
+- PR #22 semantic fallback a stable semantic identity;
+- PR #23 DB-kompatibilní 20hex stable ID;
+- UI duplicate feedback při `duplicate: true`.
+
+Aktuální produkční `main` stále porovnává `measured_at` jako přesný string, což může způsobit false negative semantic dedupe.
+
+## Rozpracováno mimo `main`
+
+PR #24 mění pouze timestamp porovnání v semantic fallbacku:
+
+- `Date.parse()` obou reprezentací;
+- porovnání epoch milliseconds;
+- ostatní semantic pole beze změny;
+- nový regresní test pro `.000Z` vs `+00:00`.
+
+Na headu `b293a0ee982ea2c19359624ef79f23c169246807` prošlo `125/125` testů, lint comparison bez nové regrese, production build a TypeScript. První CI běh zastavil pouze project-control check kvůli chybějícím povinným názvům sekcí; runtime/test části byly zelené.
+
+## Nasazeno
+
+- PR #21: ano;
+- PR #22: ano;
+- PR #23: ano;
+- PR #24: ne, pouze branch/Preview do dokončení gate a merge approval.
 
 ## Produkčně ověřeno
 
-PR #23 technický deployment: **ano**.
-
-PR #23 funkční duplicate-save acceptance: **zatím ne**.
-
-Očekávaný acceptance test: znovu sdílet stejné měření Rosová Štěpánka `14. 8. 2026 14:31`, potvrdit save a očekávat `Měření již uloženo` / `již dříve uloženo – nevytvořen nový záznam`.
+- Android share/import: ano;
+- první explicitní save: ano;
+- semantic dedupe před PR #24: produkčně prokazatelně stále vadný;
+- PR #24 timestamp fix: zatím neprodukční.
 
 ## Produkční data
 
-Před PR #22 vznikly dva potvrzené aktivní rows stejného testovacího měření:
+Pro testované měření Rosová Štěpánka `14. 8. 2026 14:31` jsou nyní tři aktivní rows:
 
-- původní: `b65d0e32-6e68-407c-9d3f-385112111ea9`;
-- testovací duplicita: `eacaecc9-9185-4cb8-8e52-561872e49cd5`.
+- `b65d0e32-6e68-407c-9d3f-385112111ea9`;
+- `eacaecc9-9185-4cb8-8e52-561872e49cd5`;
+- `a0a6e36f-6ed7-4c58-9f3c-55247e770d34`.
 
-Post-PR #22 pokus s nekompatibilním ID byl CHECK constraintem odmítnut a třetí row nevznikl. Ani PR #23 neprovádí automatické čištění produkčních dat.
+Žádný row nebyl smazán ani soft-deleted.
 
 ## Známé problémy
 
-- testovací duplicate row `eacaecc9-9185-4cb8-8e52-561872e49cd5` zůstává aktivní a nebyl bez explicitního souhlasu odstraněn;
-- PR #23 ještě čeká na funkční produkční duplicate-save acceptance;
+- produkční semantic dedupe může kvůli textové reprezentaci stejného timestampu vytvořit duplicitu;
+- tři testovací rows zůstávají aktivní do samostatného schválení případného cleanupu;
 - první production Android share pokus PR #21 jednou transientně selhal, další pokusy uspěly;
-- full-repo lint baseline obsahuje předexistující chyby/warning; PR #23 nepřidal novou lint regresi.
+- full-repo lint baseline obsahuje předexistující `3 errors / 1 warning`.
 
 ## Další krok
 
-Na telefonu znovu sdílet stejné měření Rosová Štěpánka `14. 8. 2026 14:31`, zvolit stejného klienta a potvrdit save. Poté read-only ověřit, že počet aktivních DB rows zůstává `2` a UI správně hlásí duplicitu.
+- Dokončit fresh exact-head gate PR #24; po zeleném gate vyžádat explicitní merge approval a po případném produkčním deploymentu zopakovat stejný save test s očekáváním `Měření již uloženo` a počtem aktivních rows stále `3`.
