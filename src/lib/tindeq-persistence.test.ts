@@ -155,7 +155,7 @@ test("opakovaný import stejné session pro stejného klienta je idempotentní",
   if (results[0].ok) assert.equal(results[0].duplicate, true);
   assert.equal(inserted.length, 0);
   const query = duplicateQueries[0] as { tindeqSessionId: string };
-  assert.match(query.tindeqSessionId, /^v2:[0-9a-f]{64}$/);
+  assert.match(query.tindeqSessionId, /^[0-9a-f]{20}$/);
   assert.notEqual(query.tindeqSessionId, session.id);
 });
 
@@ -174,6 +174,7 @@ test("stable save ID nezávisí na názvu ZIPu ani legacy parser ID", async () =
   const firstQuery = firstMock.duplicateQueries[0] as { tindeqSessionId: string };
   const secondQuery = secondMock.duplicateQueries[0] as { tindeqSessionId: string };
   assert.equal(firstQuery.tindeqSessionId, secondQuery.tindeqSessionId);
+  assert.match(firstQuery.tindeqSessionId, /^[0-9a-f]{20}$/);
 });
 
 test("re-export stejného měření s jiným legacy session ID je stále duplicita", async () => {
