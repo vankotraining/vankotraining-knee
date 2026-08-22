@@ -2,34 +2,31 @@
 
 ## Aktuální fáze
 
-PR #23 `Fix Tindeq stable ID DB constraint compatibility` je mergovaný do `main` a produkčně nasazený.
+PR #23 je mergovaný a produkčně nasazený, ale production duplicate-save test po něm stále vytvořil nový row.
 
-- merge commit: `59e7f362652e2eedff1e5e7764bbc05181ee1aa2`;
-- production deployment: `dpl_GdVMkTenqui48VLoHNBaVDPHSr4f`;
-- deployment state: `READY`;
-- `knee.vankotraining.cz/tindeq`: HTTP 200;
-- post-deploy log check: bez `warning/error/fatal`.
+Read-only audit potvrdil, že semantic hodnoty jsou mezi třemi rows shodné. Root cause je přímé stringové porovnání `measured_at`; ekvivalentní reprezentace stejného okamžiku (`.000Z` vs `+00:00`) se přes `===` nerovnají.
 
-Hotfix zachovává semantic SHA-256 identitu, ale zapisuje ji jako `20` lowercase hex znaků kompatibilních s existujícím produkčním CHECK constraintem `^[0-9a-f]{20}$`. DB migrace není potřeba.
+PR #24 `Fix Tindeq semantic dedupe timestamp comparison` je otevřený na branchi `agent/tindeq-time-normalization-hotfix`.
+
+Oprava porovnává timestampy přes `Date.parse()` a epoch milliseconds. Stable 20hex ID z PR #23 i ostatní semantic pole zůstávají beze změny. DB migrace není potřeba.
 
 ## Další krok
 
-Na telefonu proveď jeden kontrolovaný production duplicate-save test:
-
-1. znovu sdílej stejné měření Rosová Štěpánka `14. 8. 2026 14:31` z Tindeq do Knee;
-2. vyber klienta Rosová Štěpánka;
-3. stiskni `Uložit měření ke klientovi`;
-4. očekávaná hláška je `Měření již uloženo` / `již dříve uloženo – nevytvořen nový záznam`;
-5. po výsledku provést read-only kontrolu produkční DB a potvrdit, že počet aktivních rows zůstává `2`.
+1. Dokončit fresh exact-head CI/Preview gate PR #24 po opravě project-control struktury.
+2. Pokud bude celý gate zelený, vyžádat explicitní souhlas k merge PR #24.
+3. Po případném merge ověřit production deployment.
+4. Na telefonu znovu sdílet stejné měření Rosová Štěpánka `14. 8. 2026 14:31` a potvrdit save.
+5. Očekávání: UI `Měření již uloženo` / `již dříve uloženo – nevytvořen nový záznam` a počet aktivních rows zůstane `3`.
 
 ## Produkční data
 
-Aktivní jsou stále dva dřívější testovací rows stejného měření:
+Aktivní jsou tři testovací rows stejného měření:
 
-- původní `b65d0e32-6e68-407c-9d3f-385112111ea9`;
-- testovací duplicita `eacaecc9-9185-4cb8-8e52-561872e49cd5`.
+- `b65d0e32-6e68-407c-9d3f-385112111ea9`;
+- `eacaecc9-9185-4cb8-8e52-561872e49cd5`;
+- `a0a6e36f-6ed7-4c58-9f3c-55247e770d34`.
 
-Žádný z nich zatím nemaž ani soft-delete bez samostatného explicitního schválení.
+Žádný zatím nemaž ani soft-delete bez samostatného explicitního schválení.
 
 ## Důležitý invariant
 
