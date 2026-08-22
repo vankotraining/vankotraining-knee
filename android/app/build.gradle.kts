@@ -54,6 +54,7 @@ android {
             if (previewSigning != null) signingConfig = previewSigning
         }
         release {
+            if (previewSigning != null) signingConfig = previewSigning
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
