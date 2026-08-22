@@ -2,37 +2,51 @@
 
 ## Aktuální fáze
 
-Draft PR #21 implementuje nativní Android příjem jednoho Tindeq ZIP přes systémové `Sdílet` bez serverového uploadu originálního archivu.
+PR #21 `Add local Android Tindeq share receiver` je mergovaný do `main` a webová část je produkčně nasazená.
 
-Real-device Preview gate na Android telefonu už prokázal celý technický tok:
+Produkční `/.well-known/assetlinks.json` vrací HTTP 200 a obsahuje dlouhodobý osobní production signing fingerprint:
 
-`Tindeq ACTION_SEND → app-private cache → Chrome/TWA MessagePort → SHA-256 → existující Tindeq parser → zobrazená analýza`.
+`B3:42:51:D0:89:42:CE:86:A3:93:14:9E:44:6B:1B:1D:57:9E:3B:90:0D:87:56:6E:66:38:99:32:E9:25:1D:08`.
 
-Normální `ShareReceiverActivity` je nyní systémový `ACTION_SEND` receiver. Dočasné diagnostické Activity/UI byly po úspěšném gate odstraněny. Funkce stále není v `main`, není produkčně nasazená a PR #21 zůstává draft.
+Automatický workflow `Knee personal Android release` úspěšně sestavil a podpisově ověřil production APK:
+
+- workflow run: `32577314441`;
+- head SHA: `58305016e466b59fdde16ee4b539743b7e81cb56`;
+- conclusion: `success`;
+- artifact: `knee-personal-production-apk`.
 
 ## Ověřené invarianty
 
-- skutečný Tindeq ZIP byl na telefonu přenesen přes lokální TWA `postMessage` kanál a existující parser jej přijal;
-- Vercel runtime log v době real-ZIP testu neukázal žádný POST/upload request;
+Před merge byly na skutečném Android telefonu prokázány:
+
+- `Tindeq ACTION_SEND → app-private cache → Chrome/TWA MessagePort → SHA-256 → existující Tindeq parser → zobrazená analýza`;
+- dva po sobě jdoucí reálné share importy bez restartu Knee;
+- správný repeated-share lifecycle;
+- fail-closed odmítnutí neplatného ZIPu;
+- žádný POST/upload originálního ZIPu na Vercel;
 - share import nevolá automatické uložení do Supabase;
-- klient se nadále vybírá explicitně;
-- Android dočasnou kopii maže po webovém `ack`; bez `ack` zůstává pouze lokálně do TTL cleanupu;
-- žádný serverový ZIP endpoint nebyl přidán.
+- duplicate protection byla ověřena read-only bez live DB zápisu.
+
+Po merge jsou navíc technicky ověřeny:
+
+- produkční Vercel deployment PR #21 je `READY`;
+- produkční `/tindeq` odpovídá HTTP 200;
+- produkční Digital Asset Links odpovídá HTTP 200 se správným production fingerprintem;
+- production APK build prošel unit testy, release buildem a kontrolou podpisu přes `apksigner`.
 
 ## Nejbližší manuální gate
 
-Po sestavení a připnutí finálního stabilizačního Preview APK:
+Zbývá jediný rollout gate:
 
-1. nainstalovat přesně APK, jehož fingerprint je publikovaný v Preview `/.well-known/assetlinks.json`;
-2. otevřít Knee a ponechat jej běžet;
-3. sdílet **druhý platný skutečný Tindeq ZIP** přes `Tindeq → Sdílet → Knee`;
-4. ověřit, že se bez diagnostické obrazovky automaticky zobrazí správná analýza;
-5. nic neukládat do Supabase, pokud účelem testu není explicitně ověřit save;
-6. zopakovat share při již otevřeném Knee, aby se ověřil `singleTask/onNewIntent` tok;
-7. ověřit Vercel runtime log: žádný POST/upload ZIPu.
+1. stáhnout přesně artifact `knee-personal-production-apk` z workflow runu `32577314441`;
+2. nainstalovat tento APK do telefonu;
+3. otevřít Knee / případně ponechat aplikaci běžet;
+4. v Tindeq sdílet jeden platný skutečný ZIP přes `Tindeq → Sdílet → Knee`;
+5. ověřit, že se automaticky zobrazí správná analýza bez diagnostické obrazovky;
+6. během tohoto smoke testu měření neukládat do Supabase, pokud cílem není explicitně testovat save.
 
-Po tomto gate zbývá před merge zejména odmítnutí nepodporovaného souboru, duplicate protection při explicitním save a rozhodnutí o produkčním Android signing/distribuci.
+Po úspěšném potvrzení uživatelem lze PR #21 označit jako kompletně produkčně ověřený na reálném zařízení.
 
 ## Důležitý invariant
 
-PR #21 se nemerguje bez explicitního uživatelského schválení. Originální Tindeq ZIP se nesmí stát serverovým uploadem ani trvalým cloudovým artefaktem.
+Originální Tindeq ZIP se nesmí stát serverovým uploadem ani trvalým cloudovým artefaktem. Produkční share tok musí nadále zachovat lokální Android/browser transport a explicitní uložení strukturovaného výsledku až po rozhodnutí uživatele.
