@@ -2,107 +2,120 @@
 
 ## Datum poslední kontroly
 
-`2026-08-11` (Europe/Prague), po explicitním uživatelském produkčním potvrzení funkčnosti PR #20. Produkční databáze nebyla v rámci rollout ani acceptance měněna. Uživatel současně zaznamenal neblokující UX poznámku, že akce `Upravit klienta` na první pohled nepůsobila dostatečně jako tlačítko.
+`2026-08-16` (Europe/Prague), během stabilizace Android native share receiveru pro Tindeq ZIP v draft PR #21. Produkční aplikace ani produkční databáze nebyly v rámci PR #21 měněny.
 
 ## Aktuální `main` commit
 
-Runtime-changing checkpoint po merge PR #20:
+Aktuální `main` zůstává:
+
+`d829c086c8013187cb38e26ea77bc63b178fcff2` – `Record PR #20 production acceptance`.
+
+Aktuální runtime-changing produkční checkpoint zůstává:
 
 `1b48da7ed9340e8f53f591f3b427d4d6758246e1` – `Add safe client name editing (#20)`.
 
-Následné `project-control` commity jsou docs-only a aplikační runtime ani databázi nemění.
-
 ## Aktivní větev a PR
 
-PR #20 `Add safe client name editing` je **merged / closed**.
+Draft PR #21 `Add local Android Tindeq share receiver` je otevřený a nesmí být mergován bez explicitního uživatelského schválení.
 
-- feature branch: `feature/edit-client-name`;
-- exact pre-merge base: `main@350d450e336d15fffcd7fc3d33ff41e342f5cd0d`;
-- exact pre-merge head: `de98726c5bcd76d042b57af6f0228c505891f5ac`;
-- pre-merge `behind_by: 0`;
-- pre-merge PR byl mergeable;
-- uživatel dne `2026-08-11` explicitně schválil přechod na nasazení;
-- squash merge commit: `1b48da7ed9340e8f53f591f3b427d4d6758246e1`;
-- uživatel následně dne `2026-08-11` explicitně potvrdil funkčnost na produkci.
+- branch: `agent/tindeq-android-share-receiver`;
+- base: `main@d829c086c8013187cb38e26ea77bc63b178fcff2`;
+- scope: Android `ACTION_SEND` receiver + lokální TWA/MessagePort transport do existujícího Tindeq parseru + testy/dokumentace;
+- žádná DB migrace, Supabase schema/policy změna ani serverový ZIP endpoint.
 
 ## Produkční runtime commit
 
-Runtime-changing production checkpoint:
+Produkční runtime checkpoint zůstává PR #20:
 
 - commit: `1b48da7ed9340e8f53f591f3b427d4d6758246e1`;
 - deployment: `dpl_2MpCHrW6vhsReXuWn5kJyZL958SV`;
 - stav: `READY`;
 - target: `production`;
-- branch: `main`;
-- alias zahrnoval `knee.vankotraining.cz`;
-- Vercel metadata potvrzují exact GitHub SHA `1b48da7ed9340e8f53f591f3b427d4d6758246e1`.
+- branch: `main`.
 
-Následný docs-only produkční deployment `dpl_8EHXGTZuGpkgoFJxkVgxGGxkxjj6` je `READY` nad `main@551e99d8637397b67f85de9667ba7b81d679fb1f`; runtime kód PR #20 tím není změněn.
-
-Technický post-rollout smoke:
-
-- `https://knee.vankotraining.cz/` → HTTP 200;
-- `https://knee.vankotraining.cz/tindeq` → HTTP 200.
+PR #21 je pouze na Preview a není produkčně nasazený.
 
 ## Stav databázových migrací
 
 Produkční Supabase: `zxvndqicslyulrinbpyn`.
 
-PR #20 nevyžadoval a neprovedl DB migraci, DDL, produkční datový write, změnu RLS, policies, grants ani Auth.
+PR #21 neprovádí žádnou DB migraci, DDL, RLS/policy/grant/Auth změnu ani automatický produkční datový write. Tindeq structured-result persistence a existující dedupe invariant zůstávají beze změny.
 
-Fresh read-only audit před implementací potvrdil pro `public.athletes` existující:
-
-- `display_name` a `name_key` s non-blank ochranou;
-- unikátní constraint/index nad `name_key`;
-- UPDATE RLS pro oprávněného Knee uživatele;
-- auditní a `updated_at` UPDATE triggery.
-
-Phase-5 Tindeq dedupe invariant zůstává beze změny.
+Originální Tindeq ZIP se nepřidává do Supabase Storage, databáze ani jiného serverového úložiště.
 
 ## Aktuální fáze
 
-PR #20 je **implementovaný v `main`, automatizovaně otestovaný na exact pre-merge headu, produkčně nasazený, technicky smoke-testovaný a produkčně uživatelsky ověřený**.
+PR #21 je **implementovaný, automatizovaně ověřený a real-device Preview gate výrazně pokročil**.
 
-Uživatel dne `2026-08-11` po rollout explicitně potvrdil funkčnost přejmenování existujícího klienta. UX poznámka k vizuální rozpoznatelnosti tlačítka není funkční blocker a není součástí uzavřeného rollout scope.
+Na skutečném Android telefonu bylo prokázáno:
+
+- Tindeq `ACTION_SEND` dorazí do Knee;
+- ZIP je lokálně staged v app-private cache;
+- Chrome/TWA session a Digital Asset Links `use_as_origin` validace projdou;
+- `postMessage` channel se vytvoří a MessagePort dorazí do stránky;
+- obousměrná komunikace Android ↔ web funguje;
+- metadata, binární chunky a complete protokol fungují;
+- SHA-256 + existující Tindeq parser zpracují skutečný ZIP;
+- skutečný ZIP skončil `ack` z parseru;
+- normální `ShareReceiverActivity` byl ověřen přes `Tindeq → Sdílet → Knee` a analýza se zobrazila bez diagnostického receiveru;
+- Vercel runtime log při real-ZIP gate neukázal žádný POST/upload archivu.
 
 ## Implementováno v `main`
 
-- editace `athletes.display_name` v kontextu vybraného klienta;
-- synchronní přepočet `athletes.name_key` stejným normalizačním pravidlem jako při vytvoření klienta;
-- UPDATE fixovaný na `athlete.id` zachycené při otevření editace;
-- lokální state se mění až po potvrzeném DB úspěchu;
-- vybraný klient zůstává po úspěšném přejmenování zachovaný;
-- `Uložit` / `Zrušit`, odmítnutí whitespace-only jména a srozumitelná chyba při unique konfliktu;
-- DB chyba nebo neočekávané ID failne closed bez korupce původního lokálního stavu;
-- žádné změny profilových parametrů, měření, Tindeq parseru/persistence ani DB security.
+PR #21 zatím není v `main`.
 
-Stávající Knee a Tindeq runtime z předchozích PR zůstává beze změny.
+Produkční implementace z PR #20 a dřívějších Tindeq PR zůstává beze změny.
 
 ## Rozpracováno mimo `main`
 
-- žádná rozpracovaná implementační změna PR #20;
-- UX zvýraznění akce `Upravit klienta` je pouze zaznamenaný follow-up návrh, nikoli schválený scope.
+PR #21 na branchi implementuje:
+
+- Android `ACTION_SEND` receiver pro jeden ZIP;
+- lokální kopii pouze do app-private `cacheDir/tindeq-share`, max. 32 MB, TTL 30 minut;
+- validaci podporovaného ZIPu a ZIP signature před browser transferem;
+- Trusted Web Activity / Custom Tabs `postMessage` transport;
+- chunkovaný lokální transport 128 KiB a SHA-256 kontrolu integrity;
+- rekonstrukci browser `File` a předání do stejného `importTindeqArchive(file)` jako ruční upload;
+- zachování explicitního `Uložit měření ke klientovi`; share import sám nic do Supabase neukládá;
+- App Link omezený na `/tindeq`;
+- `public/.well-known/assetlinks.json` pro přesně vybraný Preview APK fingerprint.
+
+Po úspěšném normálním UX gate byly odstraněny diagnostické vrstvy: `DiagnosticShareReceiverActivity`, její manifest entry, webové debug počítadlo/history a diagnostická port reply. Produkční bootstrap přijímá native share port pouze při `nativeShare=1`, exact `android-app://<current-host>` originu a přítomném `MessagePort`.
 
 ## Nasazeno
 
-- PR #20 runtime merge: `1b48da7ed9340e8f53f591f3b427d4d6758246e1`;
-- runtime-changing Vercel production deployment: `dpl_2MpCHrW6vhsReXuWn5kJyZL958SV`, `READY`;
-- následný docs-only deployment: `dpl_8EHXGTZuGpkgoFJxkVgxGGxkxjj6`, `READY`;
-- produkční alias: `knee.vankotraining.cz`;
-- technický HTTP smoke `/` a `/tindeq`: HTTP 200.
+Produkce:
+
+- PR #21: **ne**.
+
+Preview:
+
+- stable branch alias: `https://vankotraining-knee-git-agent-tin-19838f-vankotrainings-projects.vercel.app`;
+- Preview je dostupné a Digital Asset Links byly na skutečném telefonu úspěšně použity;
+- post-cleanup head čeká na poslední CI + výběr canonical APK + připnutí jeho fingerprintu.
 
 ## Produkčně ověřeno
 
-PR #20: **ano** – uživatel dne `2026-08-11` na produkci explicitně potvrdil funkčnost přejmenování klienta. Současně uvedl pouze neblokující UX připomínku, že `Upravit klienta` vizuálně nebylo na první pohled zřejmé jako tlačítko.
+PR #21: **ne**.
 
-Dřívější produkční acceptance PR #16, parseru PR #17 a responsive opravy PR #19 zůstávají platné.
+Real-device Preview test je úspěšný důkaz implementace, ale není produkční ověření. Produkční rollout vyžaduje samostatný signing/distribuční krok a explicitní souhlas uživatele.
+
+Dřívější produkční acceptance PR #16, parseru PR #17, responsive opravy PR #19 a PR #20 zůstávají platné.
 
 ## Známé problémy
 
-- neblokující UX discoverability: `Upravit klienta` nemusí na první pohled působit dostatečně jako tlačítko; změna zatím není schválená ani implementovaná;
-- full-repo lint baseline nadále obsahuje 3 předexistující `react-hooks/set-state-in-effect` chyby a 1 warning; PR #20 nepřidal žádnou novou lint chybu ani warning;
-- dříve existující shared-production Supabase advisory nálezy zůstávají mimo scope PR #20.
+- Preview APK používá ephemeral signing certifikát; každý nový Android rebuild změní fingerprint a vyžaduje nový `assetlinks.json` i přeinstalaci APK;
+- produkční Android distribuce/signing zatím není součástí hotového rollout plánu; bude potřeba persistentní release nebo Play App Signing certifikát;
+- zbývá post-cleanup real-device test s druhým skutečným ZIPem, ideálně když už je Knee otevřené, aby se ověřil `singleTask/onNewIntent` tok;
+- zbývá fail-closed test nepodporovaného souboru a duplicate protection při explicitním save;
+- full-repo lint baseline nadále obsahuje předexistující chyby/warning; PR CI má ověřit, že PR nepřidává lint regresi.
+
+## Privacy invariant
+
+Originální Tindeq ZIP během share toku existuje pouze jako sender `content://` zdroj, app-private Android cache a transientní native/browser paměťové bloky.
+
+PR #21 nepřidává ZIP upload route, form POST, Vercel Function, Supabase Storage objekt, raw ZIP DB write ani server-side ZIP logování. Android po webovém `ack` volá `ShareFileStore.consume()` a maže pending cache copy; bez `ack` zůstává pouze lokálně do TTL cleanupu.
 
 ## Další krok
 
-- PR #20 rollout je uzavřen; případné vizuální zvýraznění `Upravit klienta` řešit pouze jako samostatný schválený UX task.
+- Dokončit CI nad post-cleanup headem, vybrat jeho canonical Preview APK, připnout přesný fingerprint do `assetlinks.json`, nainstalovat tento APK a provést druhý real-ZIP test při již otevřeném Knee; bez explicitního uživatelského schválení nemergovat.

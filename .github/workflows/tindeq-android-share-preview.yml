@@ -1,0 +1,96 @@
+name: Tindeq Android share preview
+
+on:
+  pull_request:
+    paths:
+      - "android/**"
+      - "src/app/tindeq/TindeqAnalyzer.tsx"
+      - "src/lib/tindeq-native-share.ts"
+      - "src/lib/tindeq-native-share-client.ts"
+      - "src/lib/tindeq-native-share.test.ts"
+      - ".github/workflows/tindeq-android-share-preview.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  android-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools"
+
+      - name: Ensure Android 16 SDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Generate ephemeral preview signing certificate
+        id: signing
+        working-directory: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          STORE="$RUNNER_TEMP/knee-preview.p12"
+          STORE_PASS="knee-preview-only"
+          KEY_ALIAS="knee-preview"
+          keytool -genkeypair \
+            -keystore "$STORE" \
+            -storetype PKCS12 \
+            -storepass "$STORE_PASS" \
+            -keypass "$STORE_PASS" \
+            -alias "$KEY_ALIAS" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 30 \
+            -dname "CN=Knee Preview,O=Vanko Training,C=CZ"
+          FINGERPRINT=$(keytool -list -v \
+            -keystore "$STORE" \
+            -storepass "$STORE_PASS" \
+            -alias "$KEY_ALIAS" | awk -F'SHA256: ' '/SHA256:/{print $2; exit}')
+          echo "store=$STORE" >> "$GITHUB_OUTPUT"
+          echo "store_pass=$STORE_PASS" >> "$GITHUB_OUTPUT"
+          echo "key_alias=$KEY_ALIAS" >> "$GITHUB_OUTPUT"
+          echo "fingerprint=$FINGERPRINT" >> "$GITHUB_OUTPUT"
+          echo "PREVIEW_CERT_SHA256=$FINGERPRINT"
+          echo "### Android preview certificate" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$FINGERPRINT\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "This certificate is ephemeral and is used only for this PR APK." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Unit tests and preview APK
+        working-directory: android
+        env:
+          STORE: ${{ steps.signing.outputs.store }}
+          STORE_PASS: ${{ steps.signing.outputs.store_pass }}
+          KEY_ALIAS: ${{ steps.signing.outputs.key_alias }}
+        run: |
+          gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug \
+            -PkneeSigningStore="$STORE" \
+            -PkneeSigningStorePassword="$STORE_PASS" \
+            -PkneeSigningKeyAlias="$KEY_ALIAS" \
+            -PkneeSigningKeyPassword="$STORE_PASS"
+
+      - name: Upload installable preview APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: knee-tindeq-share-preview
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7

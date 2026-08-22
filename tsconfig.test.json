@@ -22,6 +22,8 @@
     "src/lib/tindeq-client-view.test.ts",
     "src/lib/tindeq-browser.ts",
     "src/lib/tindeq-browser.test.ts",
+    "src/lib/tindeq-native-share.ts",
+    "src/lib/tindeq-native-share.test.ts",
     "src/lib/tindeq-test-fixture.ts",
     "src/lib/tindeq-persistence-core.ts",
     "src/lib/tindeq-persistence.ts",

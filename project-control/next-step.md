@@ -1,84 +1,38 @@
 # Next Step
 
-## Aktualni faze
+## Aktuální fáze
 
-Finalni stabilizace interniho MVP.
+Draft PR #21 implementuje nativní Android příjem jednoho Tindeq ZIP přes systémové `Sdílet` bez serverového uploadu originálního archivu.
 
-Hlavni workflow funguje, export a provozni dokumentace jsou pripravene a zobrazeni procenta vuci norme bylo zpresneno. Zbyvaji 3 uzaviraci kroky.
+Real-device Preview gate na Android telefonu už prokázal celý technický tok:
 
-## Posledni dokoncena zmena
+`Tindeq ACTION_SEND → app-private cache → Chrome/TWA MessagePort → SHA-256 → existující Tindeq parser → zobrazená analýza`.
 
-V detailu leve a prave nohy se uz neukazuje nejednoznacne `Chybi X %`.
+Normální `ShareReceiverActivity` je nyní systémový `ACTION_SEND` receiver. Dočasné diagnostické Activity/UI byly po úspěšném gate odstraněny. Funkce stále není v `main`, není produkčně nasazená a PR #21 zůstává draft.
 
-Nove se zobrazuje veta:
+## Ověřené invarianty
 
-- pod normou: `Norma je splnena na X %. Do normy chybi Y kg.`
-- nad normou: `Norma je splnena na X %. Norma je prekrocena o Y kg.`
+- skutečný Tindeq ZIP byl na telefonu přenesen přes lokální TWA `postMessage` kanál a existující parser jej přijal;
+- Vercel runtime log v době real-ZIP testu neukázal žádný POST/upload request;
+- share import nevolá automatické uložení do Supabase;
+- klient se nadále vybírá explicitně;
+- Android dočasnou kopii maže po webovém `ack`; bez `ack` zůstává pouze lokálně do TTL cleanupu;
+- žádný serverový ZIP endpoint nebyl přidán.
 
-Ciselne hodnoty jsou zvyraznene. Procento se pocita jako `aktualni sila / cilova sila * 100` a neni zastropovane na 100 %.
+## Nejbližší manuální gate
 
-## Zbyvaji 3 kroky
+Po sestavení a připnutí finálního stabilizačního Preview APK:
 
-### 1. Finalni technicky uklid
+1. nainstalovat přesně APK, jehož fingerprint je publikovaný v Preview `/.well-known/assetlinks.json`;
+2. otevřít Knee a ponechat jej běžet;
+3. sdílet **druhý platný skutečný Tindeq ZIP** přes `Tindeq → Sdílet → Knee`;
+4. ověřit, že se bez diagnostické obrazovky automaticky zobrazí správná analýza;
+5. nic neukládat do Supabase, pokud účelem testu není explicitně ověřit save;
+6. zopakovat share při již otevřeném Knee, aby se ověřil `singleTask/onNewIntent` tok;
+7. ověřit Vercel runtime log: žádný POST/upload ZIPu.
 
-Cil:
+Po tomto gate zbývá před merge zejména odmítnutí nepodporovaného souboru, duplicate protection při explicitním save a rozhodnutí o produkčním Android signing/distribuci.
 
-- Odstranit legacy fallback anon key po potvrzeni stabilnich Vercel env promennych.
-- Zkontrolovat, ze v kodu nezustava nepouzivana archivacni/DOM logika.
-- Sjednotit kompaktni mobilni souhrn s novou terminologii splneni normy; aktualne muze stale pouzivat popisek `Chybi`.
-- Nezavadet novou funkcionalitu.
+## Důležitý invariant
 
-Definice hotovo:
-
-- Supabase konfigurace spoleha na Vercel env promenne.
-- Terminologie je konzistentni na desktopu i mobilu.
-- Build/lint projde.
-- Produkcni web dal nacita data.
-
-### 2. Regresni ochrana
-
-Cil:
-
-- Rozsirit ochranu pred regresi na hlavni kriticke toky.
-- Minimalne mit jasny opakovatelny smoke-test checklist, idealne i maly automatizovany smoke-test tam, kde to dava smysl.
-
-Toky k hlidani:
-
-- vytvoreni mereni,
-- editace mereni,
-- archivace/obnova mereni,
-- archivace/obnova klienta,
-- aktivni seznam nesmi ukazovat archivovane klienty,
-- export musi obsahovat aktivni i archivovana data,
-- splneni normy pod 100 %, presne 100 % a nad 100 %,
-- chovani pri chybejicich nebo neplatnych datech.
-
-Definice hotovo:
-
-- Pred dalsi zmenou existuje jasny testovaci postup.
-- Vypocty knee metrik zustavaji kryte testem.
-- Kriticka archivacni logika a nova prezentace normy jsou overitelne.
-
-### 3. Finalni uzavreni MVP
-
-Cil:
-
-- Projit finalni rucni akceptacni test.
-- Vizualne overit novou vetu o splneni normy na desktopu i mobilu.
-- Aktualizovat `project-control` jako uzavrene interni MVP.
-- Rozhodnout, ze dalsi produktove napady patri do v2.
-
-Definice hotovo:
-
-- Projekt ma finalni stavovy zapis.
-- Je jasne, jak aplikaci pouzivat, zalohovat a obnovit data.
-- Dalsi funkcionalita neni blokujici pro pouzivani.
-
-## Co uz ted nepatri do MVP
-
-- Interpretacni karta klienta.
-- Tisk detailu klienta.
-- Dalsi klinicke doporucovaci funkce.
-- Vetsi redesign mobilniho UI.
-
-Tyto veci patri do dalsi faze az po uzavreni MVP.
+PR #21 se nemerguje bez explicitního uživatelského schválení. Originální Tindeq ZIP se nesmí stát serverovým uploadem ani trvalým cloudovým artefaktem.
