@@ -2,29 +2,25 @@
 
 ## Aktuální fáze
 
-PR #22 `Fix Tindeq duplicate detection for re-exported ZIPs` je mergovaný do `main` a produkčně nasazený.
+PR #22 `Fix Tindeq duplicate detection for re-exported ZIPs` je mergovaný a produkčně nasazený, ale jeho funkční production duplicate-save test odhalil další konkrétní chybu.
 
-Runtime merge commit:
+Aktuální produkční runtime generuje stable semantic ID jako `v2:<64 hex>`, zatímco produkční Supabase CHECK constraint vyžaduje přesně `^[0-9a-f]{20}$`. Save proto skončil chybou `tindeq_sessions_source_session_id_valid` a databáze insert odmítla.
 
-`ec7979e233f846e4af3cdb740c1265150722b27b`
+Hotfix PR #23 `Fix Tindeq stable ID DB constraint compatibility` je otevřený na branchi `agent/tindeq-stable-id-check-hotfix`.
 
-Produkční deployment:
+PR #23 zachovává stejnou SHA-256 semantic identitu, ale ukládá prvních 10 bytů digestu = 20 lowercase hex znaků. DB migrace není potřeba.
 
-`dpl_DwAn14ANzVWFZBYk6i6bXyhttyct` – `READY`.
-
-Technický post-deploy check je zelený: `/tindeq` vrací HTTP 200 a nebyly nalezeny produkční `warning/error/fatal` logy.
+Runtime/test head `c423cb15fef6763918cfe5f34c150c70049e7282` prošel unit testy, lint comparison, production buildem, TypeScript checkem, project-control checkem, browser Tindeq verification a Vercel Preview statusem `success`.
 
 ## Další krok
 
-Na telefonu proveď kontrolovaný duplicate-save test:
+1. Po dokončení tohoto project-control syncu provést fresh exact-head gate PR #23.
+2. Vyžádat explicitní souhlas uživatele k merge PR #23.
+3. Po merge ověřit production Vercel deployment.
+4. Na telefonu znovu sdílet stejné měření Rosová Štěpánka `14. 8. 2026 14:31` a potvrdit save.
+5. Očekávaný výsledek: UI `Měření již uloženo` / `již dříve uloženo – nevytvořen nový záznam` a read-only DB kontrola potvrdí, že nepřibyl další aktivní row.
 
-1. v Tindeq znovu sdílej stejné měření Rosová Štěpánka `14. 8. 2026 14:31` do Knee;
-2. vyber stejného klienta;
-3. potvrď uložení výsledku;
-4. očekávaná hláška je `Měření již uloženo` / `již dříve uloženo – nevytvořen nový záznam`;
-5. po tvém potvrzení provést read-only kontrolu produkční DB, že nepřibyl třetí aktivní row.
-
-Potvrzený testovací duplicate row `eacaecc9-9185-4cb8-8e52-561872e49cd5` zatím nemaž. Případné odstranění nebo soft-delete je samostatná produkční datová mutace a vyžaduje explicitní schválení.
+Potvrzený testovací duplicate row `eacaecc9-9185-4cb8-8e52-561872e49cd5` zatím nemaž ani soft-delete bez samostatného explicitního schválení.
 
 ## Důležitý invariant
 
