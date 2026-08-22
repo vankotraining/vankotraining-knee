@@ -145,6 +145,28 @@ function withoutSessionId(metadata: StoredZipMetadata | InsertZipMetadata) {
   return rest;
 }
 
+function semanticIdentityPayload(payload: TindeqInsertPayload) {
+  const {
+    athlete_id: ignoredAthleteId,
+    source_filename: ignoredSourceFilename,
+    raw_metadata: rawMetadata,
+    ...rest
+  } = payload;
+  void ignoredAthleteId;
+  void ignoredSourceFilename;
+  return {
+    ...rest,
+    raw_metadata: withoutSessionId(rawMetadata),
+  };
+}
+
+async function stableSemanticSessionId(payload: TindeqInsertPayload): Promise<string> {
+  const bytes = new TextEncoder().encode(canonicalJson(semanticIdentityPayload(payload)));
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  const hex = Array.from(digest).map((value) => value.toString(16).padStart(2, "0")).join("");
+  return `v2:${hex}`;
+}
+
 function sameSemanticMeasurement(record: StoredTindeqSession, payload: TindeqInsertPayload): boolean {
   return (
     record.measured_at === payload.measured_at &&
@@ -168,7 +190,6 @@ function sameSemanticMeasurement(record: StoredTindeqSession, payload: TindeqIns
 
 async function findDuplicate(
   supabase: SupabaseClient,
-  session: TindeqSession,
   athleteId: string,
   payload: TindeqInsertPayload,
 ): Promise<StoredTindeqSession | null> {
@@ -177,17 +198,16 @@ async function findDuplicate(
     .select(TINDEQ_HISTORY_SELECT)
     .eq("athlete_id", athleteId)
     .eq("analysis_version", TINDEQ_ANALYSIS_VERSION)
-    .contains("raw_metadata", { tindeqSessionId: session.id })
+    .contains("raw_metadata", { tindeqSessionId: payload.raw_metadata.tindeqSessionId })
     .is("deleted_at", null)
     .limit(1);
   if (error) throw new Error(`Kontrola duplicity selhala: ${error.message}`);
   const exact = ((data ?? [])[0] as StoredTindeqSession | undefined) ?? null;
   if (exact) return exact;
 
-  // Legacy Tindeq session IDs were derived from the whole ZIP container. Re-exporting the
-  // same measurement can change ZIP metadata/compression and therefore the ID even when
-  // info.csv and data_set CSV contents are identical. Compare persisted structured content
-  // as a backwards-compatible fallback so those re-exports remain idempotent.
+  // Older rows used an ID derived from the outer ZIP container. Re-exporting the same
+  // measurement can therefore have a different legacy ID even when its structured content
+  // is identical. Keep a backwards-compatible semantic lookup for those historical rows.
   const { data: candidates, error: candidatesError } = await supabase
     .from("tindeq_sessions")
     .select(TINDEQ_HISTORY_SELECT)
@@ -215,7 +235,11 @@ export async function saveTindeqSessions(
   for (const session of sessions) {
     try {
       const payload = mapTindeqSessionToInsert(session, athleteId);
-      const duplicate = await findDuplicate(supabase, session, athleteId, payload);
+      // Persist a stable semantic ID for all new rows. It deliberately excludes the client
+      // and outer ZIP filename, so re-exported archives of the same measurement converge on
+      // the same DB unique key. Historical rows remain covered by the semantic fallback.
+      payload.raw_metadata.tindeqSessionId = await stableSemanticSessionId(payload);
+      const duplicate = await findDuplicate(supabase, athleteId, payload);
       if (duplicate) {
         results.push({ ok: true, duplicate: true, sourceSessionId: session.id, sourceTag: session.metadata.tag, record: duplicate });
         continue;
@@ -226,7 +250,7 @@ export async function saveTindeqSessions(
         .select(TINDEQ_HISTORY_SELECT)
         .single();
       if (error?.code === "23505") {
-        const racedDuplicate = await findDuplicate(supabase, session, athleteId, payload);
+        const racedDuplicate = await findDuplicate(supabase, athleteId, payload);
         if (racedDuplicate) {
           results.push({
             ok: true,
