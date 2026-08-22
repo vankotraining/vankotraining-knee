@@ -2,21 +2,25 @@
 
 ## Aktuální fáze
 
-PR #23 je mergovaný a produkčně nasazený, ale production duplicate-save test po něm stále vytvořil nový row.
+PR #24 `Fix Tindeq semantic dedupe timestamp comparison` je mergovaný do `main` a produkčně nasazený.
 
-Read-only audit potvrdil, že semantic hodnoty jsou mezi třemi rows shodné. Root cause je přímé stringové porovnání `measured_at`; ekvivalentní reprezentace stejného okamžiku (`.000Z` vs `+00:00`) se přes `===` nerovnají.
+- merge commit: `4a3cc8e5fe7010a647ad6bfe844bcc6c804f9812`;
+- production deployment: `dpl_EvmonjKfidzs8a1unGL7xEbz845j`;
+- deployment state: `READY`;
+- `knee.vankotraining.cz/tindeq`: HTTP 200;
+- post-deploy log check: bez `warning/error/fatal`.
 
-PR #24 `Fix Tindeq semantic dedupe timestamp comparison` je otevřený na branchi `agent/tindeq-time-normalization-hotfix`.
-
-Oprava porovnává timestampy přes `Date.parse()` a epoch milliseconds. Stable 20hex ID z PR #23 i ostatní semantic pole zůstávají beze změny. DB migrace není potřeba.
+Oprava porovnává ekvivalentní `measured_at` timestampy podle skutečného časového okamžiku místo přesného stringu. Stable 20hex ID i ostatní semantic dedupe pole zůstávají beze změny. DB migrace není potřeba.
 
 ## Další krok
 
-1. Dokončit fresh exact-head CI/Preview gate PR #24 po opravě project-control struktury.
-2. Pokud bude celý gate zelený, vyžádat explicitní souhlas k merge PR #24.
-3. Po případném merge ověřit production deployment.
-4. Na telefonu znovu sdílet stejné měření Rosová Štěpánka `14. 8. 2026 14:31` a potvrdit save.
-5. Očekávání: UI `Měření již uloženo` / `již dříve uloženo – nevytvořen nový záznam` a počet aktivních rows zůstane `3`.
+Na telefonu proveď jeden kontrolovaný production duplicate-save test:
+
+1. znovu sdílej stejné měření Rosová Štěpánka `14. 8. 2026 14:31` z Tindeq do Knee;
+2. vyber klienta Rosová Štěpánka;
+3. stiskni `Uložit měření ke klientovi`;
+4. očekávaná hláška je `Měření již uloženo` / `již dříve uloženo – nevytvořen nový záznam`;
+5. po výsledku provést read-only kontrolu produkční DB a potvrdit, že počet aktivních rows zůstává `3`.
 
 ## Produkční data
 
