@@ -128,10 +128,48 @@ export function mapTindeqSessionToInsert(session: TindeqSession, athleteId: stri
   };
 }
 
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`);
+    return `{${entries.join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function withoutSessionId(metadata: StoredZipMetadata | InsertZipMetadata) {
+  const { tindeqSessionId: _tindeqSessionId, ...rest } = metadata;
+  return rest;
+}
+
+function sameSemanticMeasurement(record: StoredTindeqSession, payload: TindeqInsertPayload): boolean {
+  return (
+    record.measured_at === payload.measured_at &&
+    record.source_dataset_name === payload.source_dataset_name &&
+    record.source_tag === payload.source_tag &&
+    record.protocol_name === payload.protocol_name &&
+    record.target_force_left_kg === payload.target_force_left_kg &&
+    record.target_force_right_kg === payload.target_force_right_kg &&
+    record.sampling_rate_hz === payload.sampling_rate_hz &&
+    record.detected_repetitions === payload.detected_repetitions &&
+    record.expected_repetitions === payload.expected_repetitions &&
+    record.analysis_version === payload.analysis_version &&
+    canonicalJson(record.left_summary) === canonicalJson(payload.left_summary) &&
+    canonicalJson(record.right_summary) === canonicalJson(payload.right_summary) &&
+    canonicalJson(record.overall_summary) === canonicalJson(payload.overall_summary) &&
+    canonicalJson(record.repetitions) === canonicalJson(payload.repetitions) &&
+    canonicalJson(record.warnings) === canonicalJson(payload.warnings) &&
+    canonicalJson(withoutSessionId(record.raw_metadata)) === canonicalJson(withoutSessionId(payload.raw_metadata))
+  );
+}
+
 async function findDuplicate(
   supabase: SupabaseClient,
   session: TindeqSession,
   athleteId: string,
+  payload: TindeqInsertPayload,
 ): Promise<StoredTindeqSession | null> {
   const { data, error } = await supabase
     .from("tindeq_sessions")
@@ -142,7 +180,26 @@ async function findDuplicate(
     .is("deleted_at", null)
     .limit(1);
   if (error) throw new Error(`Kontrola duplicity selhala: ${error.message}`);
-  return ((data ?? [])[0] as StoredTindeqSession | undefined) ?? null;
+  const exact = ((data ?? [])[0] as StoredTindeqSession | undefined) ?? null;
+  if (exact) return exact;
+
+  // Legacy Tindeq session IDs were derived from the whole ZIP container. Re-exporting the
+  // same measurement can change ZIP metadata/compression and therefore the ID even when
+  // info.csv and data_set CSV contents are identical. Compare persisted structured content
+  // as a backwards-compatible fallback so those re-exports remain idempotent.
+  const { data: candidates, error: candidatesError } = await supabase
+    .from("tindeq_sessions")
+    .select(TINDEQ_HISTORY_SELECT)
+    .eq("athlete_id", athleteId)
+    .eq("analysis_version", TINDEQ_ANALYSIS_VERSION)
+    .eq("measured_at", payload.measured_at)
+    .eq("source_dataset_name", payload.source_dataset_name)
+    .is("deleted_at", null)
+    .limit(20);
+  if (candidatesError) throw new Error(`Kontrola obsahové duplicity selhala: ${candidatesError.message}`);
+  return ((candidates ?? []) as StoredTindeqSession[]).find((record) =>
+    sameSemanticMeasurement(record, payload)
+  ) ?? null;
 }
 
 export async function saveTindeqSessions(
@@ -157,7 +214,7 @@ export async function saveTindeqSessions(
   for (const session of sessions) {
     try {
       const payload = mapTindeqSessionToInsert(session, athleteId);
-      const duplicate = await findDuplicate(supabase, session, athleteId);
+      const duplicate = await findDuplicate(supabase, session, athleteId, payload);
       if (duplicate) {
         results.push({ ok: true, duplicate: true, sourceSessionId: session.id, sourceTag: session.metadata.tag, record: duplicate });
         continue;
@@ -168,7 +225,7 @@ export async function saveTindeqSessions(
         .select(TINDEQ_HISTORY_SELECT)
         .single();
       if (error?.code === "23505") {
-        const racedDuplicate = await findDuplicate(supabase, session, athleteId);
+        const racedDuplicate = await findDuplicate(supabase, session, athleteId, payload);
         if (racedDuplicate) {
           results.push({
             ok: true,
