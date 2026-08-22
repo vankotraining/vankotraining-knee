@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-22` (Europe/Prague), po merge a technickém produkčním ověření PR #23.
+`2026-08-22` (Europe/Prague), po produkčním duplicate-save testu po PR #23 a root-cause auditu false-negative semantic dedupe.
 
 ## Produkční URL
 
@@ -14,68 +14,71 @@
 - project ID: `prj_WLfkUldcNfXn43KmsXpJAClaKOsI`;
 - team ID: `team_alNcbbTIb9p5enXHSpEJZpLt`.
 
-## Nasazený runtime commit
+## Deployment ID
 
-`59e7f362652e2eedff1e5e7764bbc05181ee1aa2` – merge PR #23 `Fix Tindeq stable ID DB constraint compatibility`.
-
-## Produkční deployment
+Runtime deployment PR #23:
 
 `dpl_GdVMkTenqui48VLoHNBaVDPHSr4f`
 
-- state: `READY`;
+## Nasazený commit
+
+Runtime-changing production commit:
+
+`59e7f362652e2eedff1e5e7764bbc05181ee1aa2` – merge PR #23.
+
+Aktuální `main@22fd311c727c2917f730b5289bea97737a75246f` je následný docs-only sync.
+
+## Čas a výsledek deploymentu
+
+- PR #23 merged: `2026-08-22T15:59:22Z`;
+- deployment `dpl_GdVMkTenqui48VLoHNBaVDPHSr4f`: `READY`;
 - target: `production`;
 - branch: `main`;
-- commit: `59e7f362652e2eedff1e5e7764bbc05181ee1aa2`;
-- production alias: `knee.vankotraining.cz`;
+- alias: `knee.vankotraining.cz`;
 - `/tindeq`: HTTP 200;
-- post-deploy runtime log check: žádný `warning`, `error` ani `fatal`.
+- post-deploy log check: bez `warning/error/fatal`.
 
-## Databázový kontrakt
+## Databázové migrace použité produkční aplikací
 
 Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-Aktivní CHECK constraint:
+PR #23 ani PR #24 nepřidávají DB migraci. Aktivní CHECK constraint zůstává:
 
 `tindeq_sessions_source_session_id_valid = CHECK (COALESCE((raw_metadata->>'tindeqSessionId') ~ '^[0-9a-f]{20}$', false))`
 
-PR #23 zachovává semantic SHA-256 identitu, ale do `raw_metadata.tindeqSessionId` zapisuje prvních 10 bytů digestu = `20` lowercase hex znaků. Tím je nová identita kompatibilní se stávajícím CHECK constraintem i UNIQUE indexem. DB migrace nebyla provedena ani není pro hotfix potřeba.
+Existing UNIQUE index nad `(athlete_id, analysis_version, raw_metadata->>'tindeqSessionId')` zůstává beze změny.
 
-## Automatizované ověření PR #23
+## Provedené smoke testy
 
-Exact-head `0239093b5db96af89dab81d669894e717aa207ec` před merge:
+- Android native share production acceptance: funkční;
+- první explicitní save test: funkční;
+- opakovaný re-export před PR #22: vytvořil druhý row;
+- post-PR #22 save: odmítnut CHECK constraintem kvůli `v2:<64 hex>`;
+- post-PR #23 save: DB CHECK již prošel, ale vznikl třetí row místo duplicate feedbacku.
 
-- unit testy: success;
-- lint comparison vůči main: success;
-- production build: success;
-- TypeScript: success;
-- project-control check: success;
-- browser Tindeq verification: success;
-- `Verify Tindeq client view` run `32582271916`: success;
-- `Project control` run `32582271918`: success;
-- Vercel Preview: success;
-- unresolved review threads: none.
+Read-only audit tří rows potvrdil shodu všech semantic dedupe hodnot. Root cause je exact-string porovnání `measured_at`, které nerozpozná ekvivalentní ISO reprezentace stejného okamžiku (`.000Z` vs `+00:00`).
 
-## Produkční smoke historie
+PR #24 head `b293a0ee982ea2c19359624ef79f23c169246807` prošel `125/125` unit testů, lint comparison bez nové regrese, production build a TypeScript; první CI běh zastavil pouze project-control check kvůli povinným názvům sekcí.
 
-- Android native Tindeq share z production APK: ověřeno na skutečném telefonu;
-- první save měření Rosová Štěpánka `14. 8. 2026 14:31`: úspěšný;
-- opakovaný re-export před PR #22: vytvořil skutečnou duplicitu;
-- post-PR #22 save: odmítnut DB CHECK constraintem kvůli `v2:<64 hex>` ID; třetí row nevznikl;
-- PR #23 technický deployment: úspěšný;
-- PR #23 funkční duplicate-save test na telefonu: **zatím otevřený**.
+## Poslední výslovné uživatelské produkční ověření
 
-## Produkční data testu
+- `2026-08-22`: Android share/import z production APK – funkční;
+- `2026-08-22`: první save Rosová Štěpánka – funkční;
+- `2026-08-22`: post-PR #23 duplicate-save test – UI hlásilo uložení a DB audit potvrdil vznik třetího aktivního row.
 
-Stále existují dva aktivní rows stejného testovacího měření:
+## Produkční stav Tindeq
 
-- `b65d0e32-6e68-407c-9d3f-385112111ea9`;
-- `eacaecc9-9185-4cb8-8e52-561872e49cd5`.
+- Android share/import: **produkčně ověřeno**;
+- DB-kompatibilní 20hex stable ID: **nasazeno a technicky funkční**;
+- semantic duplicate fallback v aktuálním production runtime: **vadný kvůli stringovému timestamp porovnání**;
+- PR #24 timestamp-normalization hotfix: **rozpracován mimo main, neprodukční**.
 
-Testovací duplicate row nebyl odstraněn ani soft-deleted. Jakékoliv čištění je samostatná produkční datová mutace a vyžaduje explicitní schválení.
+## Známé produkční problémy
 
-## Aktuální produkční stav Tindeq
-
-- Android share/import: **nasazeno a produkčně ověřeno**;
-- semantic dedupe logika: **nasazena**;
-- DB-kompatibilní stable ID hotfix PR #23: **nasazen a technicky ověřen**;
-- funkční duplicate-save acceptance po PR #23: **open**.
+- aktuální production runtime může pro stejný okamžik v jiné ISO textové reprezentaci minout semantic duplicate fallback;
+- pro testované měření existují tři aktivní rows:
+  - `b65d0e32-6e68-407c-9d3f-385112111ea9`;
+  - `eacaecc9-9185-4cb8-8e52-561872e49cd5`;
+  - `a0a6e36f-6ed7-4c58-9f3c-55247e770d34`;
+- žádný z nich nebyl bez explicitního schválení odstraněn ani soft-deleted;
+- full-repo lint baseline má předexistující `3 errors / 1 warning`.
