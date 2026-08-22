@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-08-22` (Europe/Prague), po funkčním produkčním duplicate-save acceptance testu PR #24 a read-only kontrole produkční databáze.
+`2026-08-22` (Europe/Prague), po úspěšném production acceptance PR #24 a následném schváleném cleanupu dvou testovacích duplicit.
 
 ## Aktuální `main` commit
 
@@ -10,7 +10,7 @@ Poslední runtime-changing commit:
 
 `4a3cc8e5fe7010a647ad6bfe844bcc6c804f9812` – `Merge PR #24: Fix Tindeq semantic dedupe timestamp comparison`.
 
-Následující project-control commity jsou dokumentační a nemění runtime logiku.
+`main` před tímto cleanup dokumentačním syncem byl `eb728c295eae9554698bcc6d471f7cbde2d2379c`. Následující project-control commity jsou dokumentační a nemění runtime logiku.
 
 ## Aktivní větev a PR
 
@@ -48,9 +48,9 @@ Stable semantic ID z PR #23 zůstává 20 lowercase hex znaků.
 
 ## Aktuální fáze
 
-PR #24 opravuje false-negative semantic dedupe způsobený porovnáním ekvivalentních timestampů jako přesných stringů. `sameSemanticMeasurement()` nyní porovnává `measured_at` podle skutečného časového okamžiku přes `Date.parse()` / epoch milliseconds.
+PR #24 je funkčně produkčně ověřený. Opakované uložení stejného měření na reálném telefonu zobrazilo `Měření již uloženo` a `nevytvořen nový záznam`; následná read-only kontrola DB potvrdila, že nevznikl čtvrtý row.
 
-Funkční production acceptance na reálném telefonu proběhl úspěšně: opakované uložení stejného měření zobrazilo `Měření již uloženo` a `nevytvořen nový záznam`. Následná read-only kontrola produkční DB potvrdila, že počet aktivních rows zůstal `3`.
+Po explicitním schválení uživatele byl proveden kontrolovaný cleanup dvou historických testovacích duplicit. Cleanup použil soft-delete, nikoliv hard delete.
 
 ## Implementováno v `main`
 
@@ -62,7 +62,7 @@ Funkční production acceptance na reálném telefonu proběhl úspěšně: opak
 
 ## Rozpracováno mimo `main`
 
-Pro tuto opravu není další runtime změna mimo `main`.
+Pro duplicate-save opravu ani cleanup není další runtime změna mimo `main`.
 
 ## Nasazeno
 
@@ -77,24 +77,24 @@ Pro tuto opravu není další runtime změna mimo `main`.
 - první explicitní save: ano;
 - PR #24 timestamp-normalized semantic dedupe: **ano**;
 - production duplicate-save UI: `Měření již uloženo` / `nevytvořen nový záznam`;
-- read-only DB audit po acceptance testu: `3` aktivní rows, tedy žádný nový duplicate row.
+- read-only DB audit po acceptance testu: nevznikl nový duplicate row;
+- post-cleanup DB audit: z původních tří testovacích rows je aktivní přesně `1`.
 
 ## Produkční data
 
-Pro testované měření Rosová Štěpánka `14. 8. 2026 14:31` zůstávají tři aktivní rows vzniklé během předchozího ladění:
+Pro testované měření Rosová Štěpánka `14. 8. 2026 14:31`:
 
-- `b65d0e32-6e68-407c-9d3f-385112111ea9`;
-- `eacaecc9-9185-4cb8-8e52-561872e49cd5`;
-- `a0a6e36f-6ed7-4c58-9f3c-55247e770d34`.
+- kanonický aktivní row ponechán: `b65d0e32-6e68-407c-9d3f-385112111ea9`;
+- testovací duplicita soft-deleted: `eacaecc9-9185-4cb8-8e52-561872e49cd5`;
+- testovací duplicita soft-deleted: `a0a6e36f-6ed7-4c58-9f3c-55247e770d34`.
 
-Acceptance test PR #24 nevytvořil čtvrtý row. Žádný z existujících tří rows nebyl smazán ani soft-deleted.
+Soft-delete proběhl `2026-08-22T16:24:31.605156Z` (`18:24` Europe/Prague) s `deleted_context = duplicate_cleanup_pr24_acceptance_2026_08_22`. `deleted_by` zůstal `null`, v souladu s existujícím produkčním auditním vzorem pro kontrolované korekce. Post-cleanup kontrola potvrdila `active_count = 1`.
 
 ## Známé problémy
 
-- tři historické testovací rows stejného měření zůstávají aktivní do samostatného explicitního schválení případného cleanupu;
 - první production Android share pokus PR #21 jednou transientně selhal, další pokusy uspěly;
 - full-repo lint baseline obsahuje předexistující `3 errors / 1 warning`.
 
 ## Další krok
 
-- Rozhodnout samostatně, zda bezpečně odstranit dvě nadbytečné testovací duplicity a ponechat jeden kanonický záznam; bez explicitního schválení produkční data neměnit.
+- Duplicate-save rollout a cleanup jsou uzavřené. Pro tuto oblast není otevřený další produkční gate; další práce může přejít na další prioritu projektu.
