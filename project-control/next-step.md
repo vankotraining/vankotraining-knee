@@ -2,26 +2,35 @@
 
 ## Aktuální fáze
 
-PR #22 `Fix Tindeq duplicate detection for re-exported ZIPs` je mergovaný a produkčně nasazený, ale jeho funkční production duplicate-save test odhalil další konkrétní chybu.
+PR #23 `Fix Tindeq stable ID DB constraint compatibility` je mergovaný do `main` a produkčně nasazený.
 
-Aktuální produkční runtime generuje stable semantic ID jako `v2:<64 hex>`, zatímco produkční Supabase CHECK constraint vyžaduje přesně `^[0-9a-f]{20}$`. Save proto skončil chybou `tindeq_sessions_source_session_id_valid` a databáze insert odmítla.
+- merge commit: `59e7f362652e2eedff1e5e7764bbc05181ee1aa2`;
+- production deployment: `dpl_GdVMkTenqui48VLoHNBaVDPHSr4f`;
+- deployment state: `READY`;
+- `knee.vankotraining.cz/tindeq`: HTTP 200;
+- post-deploy log check: bez `warning/error/fatal`.
 
-Hotfix PR #23 `Fix Tindeq stable ID DB constraint compatibility` je otevřený na branchi `agent/tindeq-stable-id-check-hotfix`.
-
-PR #23 zachovává stejnou SHA-256 semantic identitu, ale ukládá prvních 10 bytů digestu = 20 lowercase hex znaků. DB migrace není potřeba.
-
-Runtime/test head `c423cb15fef6763918cfe5f34c150c70049e7282` prošel unit testy, lint comparison, production buildem, TypeScript checkem, project-control checkem, browser Tindeq verification a Vercel Preview statusem `success`.
+Hotfix zachovává semantic SHA-256 identitu, ale zapisuje ji jako `20` lowercase hex znaků kompatibilních s existujícím produkčním CHECK constraintem `^[0-9a-f]{20}$`. DB migrace není potřeba.
 
 ## Další krok
 
-1. Po dokončení tohoto project-control syncu provést fresh exact-head gate PR #23.
-2. Vyžádat explicitní souhlas uživatele k merge PR #23.
-3. Po merge ověřit production Vercel deployment.
-4. Na telefonu znovu sdílet stejné měření Rosová Štěpánka `14. 8. 2026 14:31` a potvrdit save.
-5. Očekávaný výsledek: UI `Měření již uloženo` / `již dříve uloženo – nevytvořen nový záznam` a read-only DB kontrola potvrdí, že nepřibyl další aktivní row.
+Na telefonu proveď jeden kontrolovaný production duplicate-save test:
 
-Potvrzený testovací duplicate row `eacaecc9-9185-4cb8-8e52-561872e49cd5` zatím nemaž ani soft-delete bez samostatného explicitního schválení.
+1. znovu sdílej stejné měření Rosová Štěpánka `14. 8. 2026 14:31` z Tindeq do Knee;
+2. vyber klienta Rosová Štěpánka;
+3. stiskni `Uložit měření ke klientovi`;
+4. očekávaná hláška je `Měření již uloženo` / `již dříve uloženo – nevytvořen nový záznam`;
+5. po výsledku provést read-only kontrolu produkční DB a potvrdit, že počet aktivních rows zůstává `2`.
+
+## Produkční data
+
+Aktivní jsou stále dva dřívější testovací rows stejného měření:
+
+- původní `b65d0e32-6e68-407c-9d3f-385112111ea9`;
+- testovací duplicita `eacaecc9-9185-4cb8-8e52-561872e49cd5`.
+
+Žádný z nich zatím nemaž ani soft-delete bez samostatného explicitního schválení.
 
 ## Důležitý invariant
 
-Originální Tindeq ZIP se nesmí stát serverovým uploadem ani trvalým cloudovým artefaktem. Produkční data se nemění bez explicitního schválení uživatele.
+Originální Tindeq ZIP zůstává lokální a nesmí se stát serverovým uploadem ani trvalým cloudovým artefaktem. Produkční datové mutace se provádějí pouze po explicitním schválení uživatele.
