@@ -1,0 +1,89 @@
+name: Knee personal Android release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  personal-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools"
+
+      - name: Ensure Android 16 SDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Restore personal signing key
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KNEE_ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.KNEE_ANDROID_KEYSTORE_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64"
+          test -n "$STORE_PASS"
+          STORE="$RUNNER_TEMP/knee-personal-release.p12"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$STORE"
+          chmod 600 "$STORE"
+          FINGERPRINT=$(keytool -list -v \
+            -keystore "$STORE" \
+            -storepass "$STORE_PASS" \
+            -alias knee-personal | awk -F'SHA256: ' '/SHA256:/{print $2; exit}')
+          EXPECTED="B3:42:51:D0:89:42:CE:86:A3:93:14:9E:44:6B:1B:1D:57:9E:3B:90:0D:87:56:6E:66:38:99:32:E9:25:1D:08"
+          test "$FINGERPRINT" = "$EXPECTED"
+          echo "store=$STORE" >> "$GITHUB_OUTPUT"
+          echo "### Knee personal release certificate" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$FINGERPRINT\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Unit tests and signed production APK
+        working-directory: android
+        env:
+          STORE: ${{ steps.signing.outputs.store }}
+          STORE_PASS: ${{ secrets.KNEE_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          gradle --no-daemon :app:testDebugUnitTest :app:assembleRelease \
+            -PkneeOrigin="https://knee.vankotraining.cz" \
+            -PkneeSigningStore="$STORE" \
+            -PkneeSigningStorePassword="$STORE_PASS" \
+            -PkneeSigningKeyAlias="knee-personal" \
+            -PkneeSigningKeyPassword="$STORE_PASS"
+
+      - name: Verify production APK signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          apksigner verify --verbose --print-certs "$APK"
+          CERT=$(apksigner verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print toupper($2); exit}' | sed 's/../&:/g;s/:$//')
+          EXPECTED="B3:42:51:D0:89:42:CE:86:A3:93:14:9E:44:6B:1B:1D:57:9E:3B:90:0D:87:56:6E:66:38:99:32:E9:25:1D:08"
+          test "$CERT" = "$EXPECTED"
+
+      - name: Upload personal production APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: knee-personal-production-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
