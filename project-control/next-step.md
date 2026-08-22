@@ -2,50 +2,40 @@
 
 ## Aktuální fáze
 
-PR #21 `Add local Android Tindeq share receiver` je mergovaný do `main` a webová část je produkčně nasazená.
+PR #21 `Add local Android Tindeq share receiver` je mergovaný, produkčně nasazený a produkčně ověřený na skutečném Android telefonu.
 
-Produkční `/.well-known/assetlinks.json` vrací HTTP 200 a obsahuje dlouhodobý osobní production signing fingerprint:
+Produkční rollout zahrnuje:
 
-`B3:42:51:D0:89:42:CE:86:A3:93:14:9E:44:6B:1B:1D:57:9E:3B:90:0D:87:56:6E:66:38:99:32:E9:25:1D:08`.
+- webovou produkci `https://knee.vankotraining.cz`;
+- produkční Digital Asset Links s dlouhodobým osobním signing fingerprintem;
+- production APK z workflow runu `32577314441`;
+- reálný tok `Tindeq → Sdílet → Knee → analýza` na telefonu uživatele.
 
-Automatický workflow `Knee personal Android release` úspěšně sestavil a podpisově ověřil production APK:
+## Výsledek production smoke testu
 
-- workflow run: `32577314441`;
-- head SHA: `58305016e466b59fdde16ee4b539743b7e81cb56`;
-- conclusion: `success`;
-- artifact: `knee-personal-production-apk`.
+`2026-08-22`:
 
-## Ověřené invarianty
+- první share pokus zobrazil neúspěšnou hlášku; přesný text nebyl zachycen;
+- druhý bezprostřední pokus bez další změny uspěl;
+- Knee zobrazil očekávanou analýzu;
+- uživatel funkčnost výslovně potvrdil.
 
-Před merge byly na skutečném Android telefonu prokázány:
+Produkční Vercel kontrola ve stejném časovém okně neukázala žádné `warning/error/fatal`, žádný záznam obsahující `POST` a žádný záznam obsahující `zip`.
 
-- `Tindeq ACTION_SEND → app-private cache → Chrome/TWA MessagePort → SHA-256 → existující Tindeq parser → zobrazená analýza`;
-- dva po sobě jdoucí reálné share importy bez restartu Knee;
-- správný repeated-share lifecycle;
-- fail-closed odmítnutí neplatného ZIPu;
-- žádný POST/upload originálního ZIPu na Vercel;
-- share import nevolá automatické uložení do Supabase;
-- duplicate protection byla ověřena read-only bez live DB zápisu.
+PR #21 rollout gate je proto **uzavřen**. První jednorázový neúspěch je evidován jako transientní pozorování, nikoli jako potvrzená reprodukovatelná chyba.
 
-Po merge jsou navíc technicky ověřeny:
+## Další krok
 
-- produkční Vercel deployment PR #21 je `READY`;
-- produkční `/tindeq` odpovídá HTTP 200;
-- produkční Digital Asset Links odpovídá HTTP 200 se správným production fingerprintem;
-- production APK build prošel unit testy, release buildem a kontrolou podpisu přes `apksigner`.
+Pro PR #21 není potřeba další rollout akce.
 
-## Nejbližší manuální gate
+Pokud se první-pokusový neúspěch znovu objeví:
 
-Zbývá jediný rollout gate:
+1. zachytit přesný text hlášky nebo screenshot;
+2. zaznamenat přibližný čas pokusu;
+3. teprve potom korelovat problém s Android lifecycle / Custom Tabs / MessagePort tokem a produkčními logy;
+4. neprovádět preventivní změnu kódu bez reprodukce nebo konkrétní evidence.
 
-1. stáhnout přesně artifact `knee-personal-production-apk` z workflow runu `32577314441`;
-2. nainstalovat tento APK do telefonu;
-3. otevřít Knee / případně ponechat aplikaci běžet;
-4. v Tindeq sdílet jeden platný skutečný ZIP přes `Tindeq → Sdílet → Knee`;
-5. ověřit, že se automaticky zobrazí správná analýza bez diagnostické obrazovky;
-6. během tohoto smoke testu měření neukládat do Supabase, pokud cílem není explicitně testovat save.
-
-Po úspěšném potvrzení uživatelem lze PR #21 označit jako kompletně produkčně ověřený na reálném zařízení.
+Pokud se problém neopakuje, pokračovat další prioritou projektu.
 
 ## Důležitý invariant
 
