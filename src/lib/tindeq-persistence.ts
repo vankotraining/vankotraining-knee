@@ -171,9 +171,15 @@ async function stableSemanticSessionId(payload: TindeqInsertPayload): Promise<st
     .join("");
 }
 
+function sameInstant(left: string, right: string): boolean {
+  const leftTime = Date.parse(left);
+  const rightTime = Date.parse(right);
+  return Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime === rightTime;
+}
+
 function sameSemanticMeasurement(record: StoredTindeqSession, payload: TindeqInsertPayload): boolean {
   return (
-    record.measured_at === payload.measured_at &&
+    sameInstant(record.measured_at, payload.measured_at) &&
     record.source_dataset_name === payload.source_dataset_name &&
     record.source_tag === payload.source_tag &&
     record.protocol_name === payload.protocol_name &&
