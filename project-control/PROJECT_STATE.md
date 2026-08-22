@@ -2,105 +2,81 @@
 
 ## Datum poslední kontroly
 
-`2026-08-22` (Europe/Prague), po produkčním duplicate-save testu PR #22, který odhalil nekompatibilitu nového stable ID s existujícím DB CHECK constraintem, a po zeleném CI/Preview gate hotfixu PR #23.
+`2026-08-22` (Europe/Prague), po merge a technickém produkčním ověření hotfixu PR #23.
 
 ## Aktuální `main` commit
 
-Aktuální `main` před merge PR #23:
+Poslední runtime-changing commit před tímto project-control syncem:
 
-`2fe99608985312c3dfc72fa2f7b9d914b2b83955` – docs-only `Sync project control after PR #22 deployment`.
+`59e7f362652e2eedff1e5e7764bbc05181ee1aa2` – `Merge PR #23: Fix Tindeq stable ID DB constraint compatibility`.
 
-Poslední runtime-changing commit:
-
-`ec7979e233f846e4af3cdb740c1265150722b27b` – `Merge PR #22: Fix Tindeq duplicate detection for re-exported ZIPs`.
+Tento project-control sync je dokumentační a nemění runtime logiku.
 
 ## Aktivní větev a PR
 
-Aktivní hotfix je PR #23 `Fix Tindeq stable ID DB constraint compatibility`.
+PR #23 `Fix Tindeq stable ID DB constraint compatibility` je **merged a closed**.
 
-- branch: `agent/tindeq-stable-id-check-hotfix`;
-- base: `main@2fe99608985312c3dfc72fa2f7b9d914b2b83955`;
-- runtime/test head před tímto project-control syncem: `c423cb15fef6763918cfe5f34c150c70049e7282`;
-- PR #23 je zatím nemergovaný;
-- merge pouze po fresh zeleném exact-head gate a explicitním souhlasu uživatele.
+- merged at: `2026-08-22T15:59:22Z`;
+- merge commit: `59e7f362652e2eedff1e5e7764bbc05181ee1aa2`;
+- pre-merge exact head: `0239093b5db96af89dab81d669894e717aa207ec`;
+- `Verify Tindeq client view` run `32582271916`: success;
+- `Project control` run `32582271918`: success;
+- Vercel Preview: success;
+- unresolved review threads: none.
 
 ## Produkční runtime commit
 
-Produkční runtime stále obsahuje PR #22:
+PR #23 je nasazený v produkci:
 
-- runtime commit: `ec7979e233f846e4af3cdb740c1265150722b27b`;
-- deployment: `dpl_DwAn14ANzVWFZBYk6i6bXyhttyct`;
-- stav: `READY`;
+- deployment: `dpl_GdVMkTenqui48VLoHNBaVDPHSr4f`;
+- commit: `59e7f362652e2eedff1e5e7764bbc05181ee1aa2`;
+- state: `READY`;
 - target: `production`;
-- alias: `knee.vankotraining.cz`.
-
-PR #23 je zatím pouze Preview a není v produkci.
+- alias: `knee.vankotraining.cz`;
+- `GET /tindeq`: HTTP 200;
+- post-deploy log check: žádný `warning`, `error` ani `fatal`.
 
 ## Stav databázových migrací
 
 Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-Fresh read-only audit potvrdil constraint:
+Fresh read-only audit potvrdil existující CHECK:
 
 `CHECK (COALESCE((raw_metadata->>'tindeqSessionId') ~ '^[0-9a-f]{20}$', false))`
 
-PR #22 generoval stable semantic ID jako `v2:<64 hex>`, což tento constraint odmítá. PR #23 proto zachovává SHA-256 semantic identitu, ale ukládá prvních 10 bytů digestu jako přesně `20` lowercase hex znaků. Existující CHECK i UNIQUE index zůstávají beze změny.
-
-PR #23 nepřidává DB migraci, DDL, RLS/policy/grant/Auth změnu ani automatickou produkční datovou mutaci.
+PR #23 nepřidává DB migraci, DDL ani RLS/policy/grant/Auth změnu. Semantic SHA-256 identita se nově ukládá jako prvních 10 bytů digestu = přesně `20` lowercase hex znaků, takže je kompatibilní s existujícím CHECK i UNIQUE indexem. Historické rows s legacy ID nadále pokrývá semantic fallback.
 
 ## Aktuální fáze
 
-Produkční test po PR #22 proběhl na skutečném telefonu. Share/import fungoval, ale explicitní save skončil chybou:
-
-`new row for relation "tindeq_sessions" violates check constraint "tindeq_sessions_source_session_id_valid"`
-
-Příčina je potvrzená: nový `v2:<64 hex>` stable ID neodpovídá existujícímu 20hex DB storage contractu.
-
-Neúspěšný insert byl databází odmítnut. Dva dříve potvrzené testovací rows zůstávají aktivní a nebyly tímto pokusem změněny.
-
-## Implementováno v `main`
-
-V `main` je PR #22:
-
-- semantic duplicate fallback pro historické legacy rows;
-- stable semantic SHA-256 identita pro nové save;
-- UI umí při `duplicate: true` zobrazit `Měření již uloženo` / `již dříve uloženo – nevytvořen nový záznam`.
-
-Aktuální produkční problém je pouze formát stable ID před DB lookup/insertem: `v2:<64 hex>` neprojde existujícím CHECK constraintem.
-
-## Rozpracováno mimo `main`
-
-PR #23 provádí minimální hotfix:
-
-- semantic payload i SHA-256 zůstávají stejné;
-- stable ID je prvních 10 bytů SHA-256, tedy přesně `20` lowercase hex znaků;
-- ID je stále nezávislé na názvu vnějšího ZIPu a legacy parser ID;
-- historical semantic fallback zůstává beze změny;
-- regresní test explicitně hlídá formát `^[0-9a-f]{20}$`.
-
-Runtime/test head `c423cb15fef6763918cfe5f34c150c70049e7282` prošel unit testy, lint comparison, production buildem, TypeScript checkem, project-control checkem, browser Tindeq verification a Vercel Preview statusem `success`.
-
-## Nasazeno
-
-- PR #21 Android share receiver: ano;
-- PR #22 duplicate detection fix: ano, ale jeho stable-ID formát je produkčně nekompatibilní s DB CHECK;
-- PR #23 DB-compatibility hotfix: ne, zatím Preview.
+- PR #21 Android share/import: produkčně ověřen;
+- PR #22 semantic duplicate detection: implementován, ale původní `v2:<64 hex>` reprezentace selhala na DB CHECK;
+- PR #23 DB-compatibility hotfix: implementován, mergovaný a produkčně nasazený;
+- zbývá funkční production acceptance na reálném telefonu.
 
 ## Produkčně ověřeno
 
-- PR #21 Android share/import tok: **ano**;
-- PR #22 technický deployment: **ano**;
-- PR #22 funkční duplicate-save acceptance: **ne, odhalila DB CHECK chybu**;
-- PR #23: **CI/Preview ověřen, zatím neprodukční**.
+PR #23 technický deployment: **ano**.
+
+PR #23 funkční duplicate-save acceptance: **zatím ne**.
+
+Očekávaný acceptance test: znovu sdílet stejné měření Rosová Štěpánka `14. 8. 2026 14:31`, potvrdit save a očekávat `Měření již uloženo` / `již dříve uloženo – nevytvořen nový záznam`.
+
+## Produkční data
+
+Před PR #22 vznikly dva potvrzené aktivní rows stejného testovacího měření:
+
+- původní: `b65d0e32-6e68-407c-9d3f-385112111ea9`;
+- testovací duplicita: `eacaecc9-9185-4cb8-8e52-561872e49cd5`.
+
+Post-PR #22 pokus s nekompatibilním ID byl CHECK constraintem odmítnut a třetí row nevznikl. Ani PR #23 neprovádí automatické čištění produkčních dat.
 
 ## Známé problémy
 
-- produkční save s PR #22 může skončit CHECK constraint chybou kvůli `v2:<64 hex>` session ID;
-- potvrzený testovací duplicate row `eacaecc9-9185-4cb8-8e52-561872e49cd5` je stále aktivní; původní row je `b65d0e32-6e68-407c-9d3f-385112111ea9`;
-- oba rows zůstávají nedotčené, dokud nebude samostatně schváleno jejich případné vyčištění;
+- testovací duplicate row `eacaecc9-9185-4cb8-8e52-561872e49cd5` zůstává aktivní a nebyl bez explicitního souhlasu odstraněn;
+- PR #23 ještě čeká na funkční produkční duplicate-save acceptance;
 - první production Android share pokus PR #21 jednou transientně selhal, další pokusy uspěly;
-- full-repo lint baseline obsahuje předexistující chyby/warning; PR #23 nepřidává novou lint regresi.
+- full-repo lint baseline obsahuje předexistující chyby/warning; PR #23 nepřidal novou lint regresi.
 
 ## Další krok
 
-- Po fresh exact-head kontrole a explicitním souhlasu uživatele mergovat PR #23, ověřit produkční deployment a zopakovat stejný duplicate-save test. Očekávání: UI oznámí, že měření již existuje, a v DB nevznikne další aktivní row.
+Na telefonu znovu sdílet stejné měření Rosová Štěpánka `14. 8. 2026 14:31`, zvolit stejného klienta a potvrdit save. Poté read-only ověřit, že počet aktivních DB rows zůstává `2` a UI správně hlásí duplicitu.
