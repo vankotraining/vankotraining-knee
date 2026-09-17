@@ -2,99 +2,75 @@
 
 ## Datum poslední kontroly
 
-`2026-08-22` (Europe/Prague), po funkčním production acceptance PR #24 a schváleném cleanupu dvou historických testovacích duplicit.
+`2026-09-17` (Europe/Prague), při read-only auditu Knee asymetrie před draft PR #25.
 
-## Produkční URL
+## Produkční URL a deployment
 
-`https://knee.vankotraining.cz`
-
-## Vercel project ID
-
-- project: `vankotraining-knee`;
+- URL: `https://knee.vankotraining.cz`;
+- Vercel project: `vankotraining-knee`;
 - project ID: `prj_WLfkUldcNfXn43KmsXpJAClaKOsI`;
-- team ID: `team_alNcbbTIb9p5enXHSpEJZpLt`.
-
-## Deployment ID
-
-Runtime deployment PR #24:
-
-`dpl_EvmonjKfidzs8a1unGL7xEbz845j`
-
-## Nasazený commit
-
-Runtime-changing production commit:
-
-`4a3cc8e5fe7010a647ad6bfe844bcc6c804f9812` – merge PR #24 `Fix Tindeq semantic dedupe timestamp comparison`.
-
-Následné project-control commity jsou docs-only a nemění runtime opravy.
-
-## Čas a výsledek deploymentu
-
-- datum: `2026-08-22`;
-- deployment `dpl_EvmonjKfidzs8a1unGL7xEbz845j`: `READY`;
+- team ID: `team_alNcbbTIb9p5enXHSpEJZpLt`;
+- current deployment: `dpl_2QUPUFDTe4uvKtRagWHBxSrVvKiP`;
+- state: `READY`;
 - target: `production`;
-- branch: `main`;
-- commit: `4a3cc8e5fe7010a647ad6bfe844bcc6c804f9812`;
-- alias: `knee.vankotraining.cz`;
-- `/tindeq`: HTTP 200;
-- post-deploy runtime log check: bez `warning`, `error` a `fatal`.
+- deployed commit: `de077dc688a45ee7124934eca63c7d626e213770` (`Close Tindeq duplicate cleanup gate`).
 
-## Databázové migrace použité produkční aplikací
+PR #25 není součástí tohoto deploymentu.
 
-Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
+## Produkční Supabase
 
-PR #24 nepřidává DB migraci. Aktivní CHECK constraint zůstává:
+Project ref: `zxvndqicslyulrinbpyn`.
 
-`tindeq_sessions_source_session_id_valid = CHECK (COALESCE((raw_metadata->>'tindeqSessionId') ~ '^[0-9a-f]{20}$', false))`
+### Aktuální kontrakt v datech před PR #25
 
-Existující UNIQUE index nad `(athlete_id, analysis_version, raw_metadata->>'tindeqSessionId')` zůstává beze změny.
+`knee_extension_tests.asymmetry_pct` je `numeric(6,2)` s rozsahem `0–100`, ale produkční data historicky obsahují dvě konvence:
 
-## Provedené smoke testy
+- 100 řádků `google_sheet_import` používá starou desetinnou reprezentaci;
+- 32 řádků `manual` už používá procentní body.
 
-- Android native share production acceptance: funkční;
-- první explicitní save test: funkční;
-- opakovaný re-export před PR #22: vytvořil druhý row;
-- post-PR #22 save: odmítnut CHECK constraintem kvůli `v2:<64 hex>`;
-- post-PR #23 save: CHECK prošel, ale vznikl třetí row kvůli exact-string timestamp porovnání;
-- PR #24 pre-merge exact head `29cb44533a76bed3f0493218e336763a4e525a7d`: Project control run `32583799152` success, Verify Tindeq client view run `32583799252` success, Vercel Preview success;
-- PR #24 production deployment: `READY`, `/tindeq` HTTP 200, bez runtime warning/error/fatal;
-- PR #24 production duplicate-save acceptance na reálném telefonu: UI zobrazilo `Měření již uloženo` a `nevytvořen nový záznam`;
-- read-only DB kontrola po acceptance testu potvrdila, že nevznikl čtvrtý row.
+Read-only audit všech 132 řádků dne `2026-09-17`:
+
+- legacy `google_sheet_import` kandidáti: `100`;
+- manual canonical rows: `32`;
+- nejednoznačné řádky: `0`;
+- `weaker_side` mismatch: `0`;
+- 5 archivovaných Knee měření jsou `manual` a již kanonická.
+
+Konkrétní aktivní měření `72.4 / 73.1 kg` je v DB správně uložené jako `0.96`, přímý výpočet dává `0.957592... %`.
+
+## Otevřený problém
+
+Aktuálně nasazený Knee UI interpretuje každou asymetrii `<= 1` jako desetinný podíl a násobí ji 100. Proto se korektně uložená manuální hodnota `0.96 %` zobrazuje přibližně jako `96.0 %`.
+
+## PR #25 — stav vůči produkci
+
+- implementováno ve větvi: **ano**;
+- produkční DB migrace: **neaplikována**;
+- merged do `main`: **ne**;
+- produkčně nasazeno: **ne**;
+- produkčně ověřeno: **ne**.
+
+Připravený cílový kontrakt je:
+
+`knee_extension_tests.asymmetry_pct = procentní body`.
+
+Připravená migrace historické řádky nepřepisuje slepým `*100`; kanonickou hodnotu znovu počítá z `right_force_kg` a `left_force_kg` a mění pouze jednoznačně prokázané legacy kandidáty.
+
+## Produkční write gate
+
+Před změnou produkční databáze je nutné:
+
+1. fresh spustit read-only precheck;
+2. potvrdit očekávaných `100` legacy kandidátů a `0` nejednoznačných případů;
+3. vytvořit/ověřit backup/export podle `operations.md`;
+4. ověřit exact production project ref;
+5. získat explicitní souhlas uživatele;
+6. teprve potom aplikovat migraci a post-check.
 
 ## Poslední výslovné uživatelské produkční ověření
 
-- `2026-08-22`: PR #24 duplicate-save acceptance – úspěšný; aplikace správně rozpoznala již uložené měření a nevytvořila nový záznam.
-- `2026-08-22`: uživatel následně explicitně schválil cleanup dvou testovacích duplicit.
+Poslední uzavřené produkční acceptance se stále vztahuje k Tindeq PR #24 a následnému cleanupu z `2026-08-22`. Knee asymmetry PR #25 dosud uživatelem v produkci ověřen nebyl.
 
-## Produkční stav Tindeq
+## Známé technické baseline
 
-- Android share/import: **produkčně ověřeno**;
-- DB-kompatibilní 20hex stable ID: **nasazeno a ověřeno**;
-- semantic duplicate fallback s timestamp normalizací PR #24: **nasazeno a produkčně ověřeno**;
-- duplicate feedback UI: **produkčně ověřeno**;
-- duplicate cleanup testovacích dat: **proveden a read-only ověřen**.
-
-## Produkční data po cleanupu
-
-Pro měření Rosová Štěpánka `14. 8. 2026 14:31` zůstává aktivní jediný kanonický row:
-
-- aktivní: `b65d0e32-6e68-407c-9d3f-385112111ea9`.
-
-Dvě pozdější testovací duplicity byly soft-deleted:
-
-- `eacaecc9-9185-4cb8-8e52-561872e49cd5`;
-- `a0a6e36f-6ed7-4c58-9f3c-55247e770d34`.
-
-Soft-delete timestamp: `2026-08-22T16:24:31.605156Z` (`18:24` Europe/Prague).
-
-Auditní kontext:
-
-`duplicate_cleanup_pr24_acceptance_2026_08_22`
-
-Post-cleanup read-only kontrola potvrdila `active_count = 1`. Kanonický row nebyl změněn ani soft-deleted.
-
-## Známé produkční problémy
-
-- v oblasti duplicate-save po PR #24 není aktuálně známý otevřený produkční problém;
-- první production Android share pokus PR #21 jednou transientně selhal, další pokusy uspěly;
-- full-repo lint baseline má předexistující `3 errors / 1 warning`.
+Full-repo lint před PR #25 historicky obsahoval `3 errors / 1 warning`. PR #25 musí být posouzen proti tomuto baseline a nesmí přidat nový relevantní lint problém.
