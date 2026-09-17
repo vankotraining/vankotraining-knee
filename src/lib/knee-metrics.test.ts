@@ -6,6 +6,8 @@ import {
   calculateMeasurementChange,
   compareMeasurementsChronologically,
   forceKgToNmPerKg,
+  formatAsymmetryPercent,
+  getAsymmetryTone,
   getAsymmetryValue,
   getMeasurementComparison,
   getNormGap,
@@ -37,16 +39,31 @@ describe("knee metrics", () => {
   });
 
   it("calculates asymmetry and weaker side from measured force", () => {
+    assertClose(calculateAsymmetryPct(72.4, 73.1), 0.9575923392612859);
     assertClose(calculateAsymmetryPct(42, 35), 16.666666666666664);
+    assert.equal(calculateAsymmetryPct(35, 35), 0);
     assert.equal(getWeakerSide(42, 35), "left");
     assert.equal(getWeakerSide(35, 42), "right");
     assert.equal(getWeakerSide(35, 35.005), "none");
   });
 
-  it("normalizes stored asymmetry values for display", () => {
-    assert.equal(getAsymmetryValue(0.12), 12);
+  it("treats stored asymmetry as canonical percentage points", () => {
+    assert.equal(getAsymmetryValue(0.96), 0.96);
     assert.equal(getAsymmetryValue(12), 12);
     assert.equal(getAsymmetryValue(null), null);
+    assert.equal(getAsymmetryValue(Number.POSITIVE_INFINITY), null);
+  });
+
+  it("formats sub-one-percent asymmetry without multiplying it by 100", () => {
+    assert.equal(formatAsymmetryPercent(calculateAsymmetryPct(72.4, 73.1)), "1.0 %");
+    assert.equal(formatAsymmetryPercent(0.96), "1.0 %");
+  });
+
+  it("classifies canonical percentage-point thresholds", () => {
+    assert.equal(getAsymmetryTone(0.96), "ok");
+    assert.equal(getAsymmetryTone(10), "warning");
+    assert.equal(getAsymmetryTone(20), "warning");
+    assert.equal(getAsymmetryTone(20.01), "problem");
   });
 
   it("calculates norm completion below 100% from the weaker leg", () => {
