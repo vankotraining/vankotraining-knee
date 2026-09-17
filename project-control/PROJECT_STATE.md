@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-09-17` (Europe/Prague), po merge a produkčním rollout PR #25 `Fix knee asymmetry percentage-point contract`.
+`2026-09-17` (Europe/Prague), po merge, produkčním rollout a uživatelském acceptance PR #25 `Fix knee asymmetry percentage-point contract`.
 
 ## Aktuální `main` commit
 
@@ -66,9 +66,9 @@ Kanonický kontrakt:
 
 ## Aktuální fáze
 
-PR #25 má dokončený datový i aplikační rollout. Heuristika `value <= 1 ? value * 100 : value` byla odstraněna z UI i exportních SQL. Tabulka, detail, mobilní karty, klientský souhrn, graf a barevná klasifikace nyní používají jedinou jednotku – procentní body.
+PR #25 má dokončený datový i aplikační rollout. Heuristika `value <= 1 ? value * 100 : value` byla odstraněna z UI i exportních SQL. Tabulka, detail, mobilní karty, klientský souhrn, graf a barevná klasifikace používají jedinou jednotku – procentní body.
 
-Technický rollout je uzavřen. Zbývá pouze ruční produkční acceptance přihlášeného UI uživatelem.
+Hlášená produkční regrese je uzavřena i manuálním acceptance: uživatel po nasazení potvrdil v přihlášeném Knee UI zobrazení kontrolního měření `72.4 / 73.1 kg` jako `1 %`, nikoli `96 %`.
 
 ## Implementováno v `main`
 
@@ -83,7 +83,7 @@ Ano:
 
 ## Rozpracováno mimo `main`
 
-Pro PR #25 nezůstává žádná runtime nebo databázová změna mimo `main`. Otevřený je pouze tento docs-only synchronizační krok a následná ruční acceptance produkčního UI.
+Pro PR #25 nezůstává žádná runtime ani databázová změna mimo `main`. Otevřený je pouze docs-only synchronizační PR #26, který zaznamenává rollout a acceptance.
 
 ## Nasazeno
 
@@ -95,16 +95,16 @@ Pro PR #25 nezůstává žádná runtime nebo databázová změna mimo `main`. O
 
 - databázová integrita po migraci: **ano, read-only/automatizovaně ověřena**;
 - produkční deployment a dostupnost: **ano, technicky ověřeno**;
-- přihlášené UI se správným zobrazením `72.4 / 73.1 -> 1.0 %`: **nepotvrzeno uživatelem**.
+- hlášená UI regrese `72.4 / 73.1 -> 1 %` místo `96 %`: **ano, výslovně potvrzeno uživatelem v přihlášené produkci dne 2026-09-17**.
 
-PR #25 proto zatím nesmí být označen jako plně „produkčně ověřen“ ve smyslu projektové terminologie.
+PR #25 je tím ve smyslu projektové terminologie **produkčně ověřen**. Uživatel samostatně nepotvrzoval každou jednotlivou UI reprezentaci; jejich konzistence se stejnou procentní jednotkou je kryta implementací a regresními testy.
 
 ## Známé problémy
 
+- pro opravenou chybu asymetrie není po acceptance známý otevřený produkční problém;
 - full-repo lint baseline obsahuje dříve evidované problémy; PR #25 nepřidal nový relevantní lint problém;
-- Supabase security/performance advisors obsahují existující problémy mimo scope PR #25; tato datová migrace neměnila RLS, grants ani indexy;
-- ruční vizuální acceptance přihlášeného Knee UI po rollout ještě chybí.
+- Supabase security/performance advisors obsahují existující problémy mimo scope PR #25; tato datová migrace neměnila RLS, grants ani indexy.
 
 ## Další krok
 
-- Uživatel v produkci ověří měření `72.4 / 73.1 kg`: asymetrie musí být přibližně `1.0 %`, slabší strana pravá a stejná hodnota musí být konzistentní v tabulce, detailu, mobilní kartě, klientském souhrnu a grafu; teprve po výslovném potvrzení se PR #25 označí jako produkčně ověřený.
+- Dokončit docs-only synchronizaci PR #26 po zelených kontrolách. Pro Knee asymmetry fix není potřeba další runtime ani databázový zásah; další projektový úkol zvolí uživatel.
