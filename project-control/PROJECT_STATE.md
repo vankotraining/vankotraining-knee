@@ -2,100 +2,109 @@
 
 ## Datum poslední kontroly
 
-`2026-09-17` (Europe/Prague), po aplikaci produkční Knee asymmetry datové migrace a před final exact-head merge gate PR #25.
+`2026-09-17` (Europe/Prague), po merge a produkčním rollout PR #25 `Fix knee asymmetry percentage-point contract`.
 
 ## Aktuální `main` commit
 
-`de077dc688a45ee7124934eca63c7d626e213770` – `Close Tindeq duplicate cleanup gate`.
+Poslední runtime-changing commit:
+
+`59d23c4e18550675b8f5d7401e233ab60cc51d87` – `Merge PR #25: Fix knee asymmetry percentage-point contract`.
 
 ## Aktivní větev a PR
 
-- branch: `fix/knee-asymmetry-percent-contract`;
-- PR: `#25` `Fix knee asymmetry percentage-point contract`;
-- app/test commit: `50bfe95`;
-- migration/precheck commit: `f4335e0`;
-- project-control structure/evidence commits následovaly po těchto technických commitech;
-- user deployment approval: `2026-09-17` (`Dokonči nasazení`).
+PR #25 je **merged a closed**.
 
-PR #25 zatím není merged.
+- final exact head: `4b383d342516fc64c92852483e430a0b16ede2c9`;
+- merge commit: `59d23c4e18550675b8f5d7401e233ab60cc51d87`;
+- exact-head `Project control` run `35217601098`: success;
+- exact-head `Verify Tindeq client view` run `35217600919`: success;
+- exact-head Vercel Preview: `dpl_2FbJSmqW12hBtt7BRBUFFca4twEX`, `READY`.
+
+Tento docs-only sync probíhá na `docs/knee-asymmetry-rollout-20260917` a nemění runtime logiku.
 
 ## Produkční runtime commit
 
-Aktuální aplikace na `knee.vankotraining.cz` stále běží na:
+PR #25 je nasazený v produkci:
 
-- commit: `de077dc688a45ee7124934eca63c7d626e213770`;
-- deployment: `dpl_2QUPUFDTe4uvKtRagWHBxSrVvKiP`;
+- runtime commit: `59d23c4e18550675b8f5d7401e233ab60cc51d87`;
+- deployment: `dpl_GCreoikFbSWN7MZa8RiSNBDW3dCT`;
 - state: `READY`;
-- target: `production`.
-
-Kódová oprava PR #25 ještě není v produkčním runtime.
+- target: `production`;
+- alias: `knee.vankotraining.cz`;
+- produkční root: HTTP 200;
+- post-deploy kontrola `warning/error/fatal`: 0 nalezených logů v kontrolovaném okně.
 
 ## Stav databázových migrací
 
 Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-Produkční datová migrace PR #25 byla aplikována:
+Migrace PR #25 je produkčně aplikována:
 
-- migration history version: `20260917114606`;
+- version: `20260917114606`;
 - name: `knee_asymmetry_percent_points`;
 - repo file: `supabase/migrations/20260917_knee_asymmetry_percent_points.sql`.
 
-Fresh precheck před zápisem potvrdil `100` legacy `google_sheet_import` kandidátů, `32` již kanonických `manual` řádků, `0` ambiguous a `0` invalid manual. Ověřený export pokrýval všech `132` měření; audit trigger/tabulka byly aktivní.
+Fresh precheck před zápisem:
 
-Post-check potvrdil:
+- `google_sheet_import`: 100 legacy kandidátů, 0 ambiguous;
+- `manual`: 32 již kanonických řádků, 0 invalid, 0 ambiguous;
+- backup/export surface `public.knee_data_export` pokrýval všech 132 měření;
+- candidate snapshot MD5: `141511a89181810b8ba07f409bd12035`.
+
+Post-check:
 
 - `google_sheet_import`: 100/100 canonical, 0 noncanonical, rozsah `0.18–81.50`;
 - `manual`: 32/32 canonical, 0 noncanonical, rozsah `0.96–51.62`;
+- 5 archivovaných manuálních měření zachováno;
 - `weaker_side` mismatches: 0;
-- 100 auditních UPDATE záznamů pro migraci;
-- `72.4 / 73.1 kg` zůstává `0.96`, `right`, force-derived `0.9576 %`.
+- audit log: 100 UPDATE záznamů migrace;
+- případ `72.4 / 73.1 kg`: `asymmetry_pct = 0.96`, `weaker_side = right`, přímý výpočet `0.9576 %`.
 
-Kanonický datový kontrakt je nyní:
+Kanonický kontrakt:
 
 `knee_extension_tests.asymmetry_pct = procentní body`.
 
 ## Aktuální fáze
 
-Datová část rollout je produkčně aplikována a read-only ověřena. Zbývá dokončit kódový exact-head gate, merge PR #25 a Vercel production deployment.
+PR #25 má dokončený datový i aplikační rollout. Heuristika `value <= 1 ? value * 100 : value` byla odstraněna z UI i exportních SQL. Tabulka, detail, mobilní karty, klientský souhrn, graf a barevná klasifikace nyní používají jedinou jednotku – procentní body.
 
-PR #25 odstraňuje hodnotovou heuristiku `<= 1 -> * 100` z `getAsymmetryValue()` a exportních SQL. Sdílené formátování a klasifikace pracují pouze s procentními body.
-
-Předchozí CI head `cc361c...` prokázal success pro dependency install, unit testy, lint comparison, production build a TypeScript check; jeho jediný failing krok byl project-control check kvůli nekorektní struktuře stavových dokumentů. Následné commity opravují právě project-control strukturu/evidence.
+Technický rollout je uzavřen. Zbývá pouze ruční produkční acceptance přihlášeného UI uživatelem.
 
 ## Implementováno v `main`
 
-PR #25 zatím není v `main`. `main` stále obsahuje starou UI heuristiku pro hodnoty `<=1`.
+Ano:
+
+- `getAsymmetryValue(0.96) -> 0.96`;
+- sdílené formátování asymetrie na jedno desetinné místo;
+- prahy `<10 / 10–20 / >20 %` pracují přímo s procentními body;
+- regrese `72.4 / 73.1 -> 0.957592... % -> 1.0 %`;
+- odstranění magnitude heuristiky z repository exportů;
+- verzovaná fail-closed/idempotentní historická migrace a checks.
 
 ## Rozpracováno mimo `main`
 
-Na PR #25 je implementováno:
-
-- `getAsymmetryValue(0.96) -> 0.96`, nikoli `96`;
-- `72.4 / 73.1 -> 0.957592... % -> 1.0 %` při jednom desetinném místě;
-- regrese `42 / 35 -> 16.666... %` a `35 / 35 -> 0 %`;
-- klasifikace `0.96 -> ok`, `10/20 -> warning`, `>20 -> problem`;
-- jednotná interpretace v tabulce, detailu, mobilních kartách, klientském souhrnu a grafu;
-- odstranění legacy hodnotové heuristiky z exportních SQL;
-- fail-closed/idempotentní historická migrace a read-only checks.
+Pro PR #25 nezůstává žádná runtime nebo databázová změna mimo `main`. Otevřený je pouze tento docs-only synchronizační krok a následná ruční acceptance produkčního UI.
 
 ## Nasazeno
 
-Databázová migrace: **ano**.
-
-Kód PR #25 do Vercel production: **ne**; čeká na final exact-head zelený CI/preview a merge.
+- aplikace PR #25: **ano**, `dpl_GCreoikFbSWN7MZa8RiSNBDW3dCT`, `READY`;
+- DB migrace: **ano**, `20260917114606 knee_asymmetry_percent_points`;
+- produkční alias `knee.vankotraining.cz`: ukazuje na deployment merge commitu PR #25.
 
 ## Produkčně ověřeno
 
-Datová post-migration integrita: automatizovaně/read-only ověřena.
+- databázová integrita po migraci: **ano, read-only/automatizovaně ověřena**;
+- produkční deployment a dostupnost: **ano, technicky ověřeno**;
+- přihlášené UI se správným zobrazením `72.4 / 73.1 -> 1.0 %`: **nepotvrzeno uživatelem**.
 
-Opravené UI PR #25: **ne**. `Produkčně ověřeno` pro UI lze označit až po rollout a výslovném potvrzení uživatele.
+PR #25 proto zatím nesmí být označen jako plně „produkčně ověřen“ ve smyslu projektové terminologie.
 
 ## Známé problémy
 
-- aktuální production runtime před merge PR #25 stále může zobrazit kanonickou sub-1% asymetrii násobenou 100;
-- full-repo lint baseline obsahuje existující problémy a PR gate proto používá comparison vůči `main`;
-- Supabase security/performance advisors obsahují existující baseline mimo scope PR #25; datová migrace nevytvořila nový schema objekt ani nezměnila RLS/grants/indexy.
+- full-repo lint baseline obsahuje dříve evidované problémy; PR #25 nepřidal nový relevantní lint problém;
+- Supabase security/performance advisors obsahují existující problémy mimo scope PR #25; tato datová migrace neměnila RLS, grants ani indexy;
+- ruční vizuální acceptance přihlášeného Knee UI po rollout ještě chybí.
 
 ## Další krok
 
-- Dokončit final exact-head PR #25 CI/preview, merge s expected SHA, ověřit Vercel production deployment a technicky zkontrolovat `72.4 / 73.1 -> 1.0 %`; manuální produkční acceptance pak vyžaduje explicitní potvrzení uživatele.
+- Uživatel v produkci ověří měření `72.4 / 73.1 kg`: asymetrie musí být přibližně `1.0 %`, slabší strana pravá a stejná hodnota musí být konzistentní v tabulce, detailu, mobilní kartě, klientském souhrnu a grafu; teprve po výslovném potvrzení se PR #25 označí jako produkčně ověřený.
