@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-09-17` (Europe/Prague), po produkčním rollout PR #25 `Fix knee asymmetry percentage-point contract`.
+`2026-09-17` (Europe/Prague), po produkčním rollout a uživatelském acceptance PR #25 `Fix knee asymmetry percentage-point contract`.
 
 ## Produkční URL
 
@@ -99,7 +99,8 @@ Security/performance advisors po migraci hlásí existující obecné baseline p
 ## Poslední výslovné uživatelské produkční ověření
 
 - `2026-09-17`: uživatel výslovně požádal `Dokonči nasazení`, což schválilo produkční DB/merge rollout.
-- Manuální vizuální acceptance přihlášeného Knee UI po nasazení zatím nebyla uživatelem potvrzena. PR #25 proto není označen jako plně produkčně ověřený.
+- `2026-09-17`: po nasazení uživatel v přihlášeném Knee UI potvrdil, že kontrolní měření `72.4 / 73.1 kg` se zobrazuje jako `1 %`, nikoli `96 %`.
+- Tím je hlášená regrese zobrazení asymetrie PR #25 **produkčně ověřena**. Uživatel samostatně nepotvrzoval každou jednotlivou UI reprezentaci; jejich jednotková konzistence je kryta implementací a automatizovanými testy.
 
 ## Produkční stav Tindeq
 
@@ -107,6 +108,6 @@ Tindeq PR #21–#24 a schválený duplicate cleanup zůstávají beze změny. PR
 
 ## Známé produkční problémy
 
-- ruční vizuální acceptance asymetrie v přihlášeném Knee UI po PR #25 ještě chybí;
+- pro opravenou chybu asymetrie není po uživatelském acceptance známý otevřený produkční problém;
 - full-repo lint má existující baseline problémy, PR #25 proti `main` nepřidal nový relevantní problém;
 - Supabase advisors obsahují existující security/performance baseline mimo scope této opravy.
