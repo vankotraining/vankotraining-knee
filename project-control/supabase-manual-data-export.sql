@@ -150,8 +150,6 @@ select
     case
       when greatest(k.left_force_kg, k.right_force_kg) > 0
         then abs(k.right_force_kg - k.left_force_kg) / greatest(k.left_force_kg, k.right_force_kg) * 100
-      when k.asymmetry_pct is not null and abs(k.asymmetry_pct) <= 1
-        then abs(k.asymmetry_pct) * 100
       when k.asymmetry_pct is not null
         then abs(k.asymmetry_pct)
       else null
