@@ -2,98 +2,85 @@
 
 ## Datum poslední kontroly
 
-`2026-09-17` (Europe/Prague), při přípravě draft PR #25 pro sjednocení jednotky Knee asymetrie.
+`2026-09-17` (Europe/Prague), během rollout gate PR #25 pro sjednocení jednotky Knee asymetrie.
 
-## Aktuální `main`
+## Aktuální `main` commit
 
 `de077dc688a45ee7124934eca63c7d626e213770` – `Close Tindeq duplicate cleanup gate`.
-
-Aktuální produkční Vercel deployment odpovídá tomuto commitu:
-
-- `dpl_2QUPUFDTe4uvKtRagWHBxSrVvKiP`;
-- state `READY`;
-- target `production`;
-- alias `knee.vankotraining.cz`.
 
 ## Aktivní větev a PR
 
 - branch: `fix/knee-asymmetry-percent-contract`;
 - draft PR: `#25` `Fix knee asymmetry percentage-point contract`;
+- aktuální head před tímto project-control fixem: `cc361c5502d521185301fbcd67a200029dfb6004`;
 - app/test commit: `50bfe95`;
 - migration/precheck commit: `f4335e0`;
 - project-control evidence: `project-control/knee-asymmetry-percent-points-2026-09-17.md`.
 
-PR #25 není mergovaný.
+Uživatel dne `2026-09-17` výslovně požádal dokončit nasazení, což otevírá dříve blokovaný produkční DB/merge gate za podmínky fresh prechecku a ostatních bezpečnostních kontrol.
 
-## Potvrzený problém Knee asymetrie
+## Produkční runtime commit
 
-Současná manuální měření ukládají `asymmetry_pct` přímo v procentních bodech. Produkční případ `72.4 / 73.1 kg` je uložen jako `0.96`, což odpovídá přímému výpočtu `0.957592... %`.
+Produkce stále běží na `main@de077dc688a45ee7124934eca63c7d626e213770`:
 
-UI ale na `main` používá v `getAsymmetryValue()` heuristiku `abs(value) <= 1 ? abs(value) * 100 : abs(value)`, a proto `0.96` zobrazí jako přibližně `96.0 %`.
+- deployment: `dpl_2QUPUFDTe4uvKtRagWHBxSrVvKiP`;
+- state: `READY`;
+- target: `production`;
+- alias: `knee.vankotraining.cz`.
 
-## Produkční DB audit — read-only
+## Stav databázových migrací
 
 Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-Všech 132 řádků `knee_extension_tests` bylo porovnáno s přímým výpočtem ze sil:
+Migrace `20260917_knee_asymmetry_percent_points.sql` je připravená ve větvi, ale v okamžiku tohoto záznamu ještě nebyla aplikována. Fresh read-only audit před rolloutem musí znovu potvrdit očekávaných 100 jednoznačných legacy kandidátů a 0 nejednoznačných řádků.
 
-- `google_sheet_import`: 100 řádků, všech 100 jednoznačně odpovídá staré desetinné konvenci, 0 nejednoznačných;
-- `manual`: 32 řádků, všech 32 už používá procentní body, z toho 5 archivovaných;
-- `weaker_side` mismatch: 0;
-- historický uložený rozsah: `0.00–0.81`;
-- očekávaný kanonický rozsah po přepočtu v `numeric(6,2)`: `0.18–81.50`.
-
-Nový datový kontrakt:
+Nový datový kontrakt PR #25 je:
 
 `knee_extension_tests.asymmetry_pct = procentní body`.
 
-## Stav PR #25
+## Aktuální fáze
 
-### Implementováno ve větvi
+PR #25 odstraňuje hodnotovou heuristiku `<= 1 -> * 100` z Knee UI a exportních SQL a canonicalizuje historické `google_sheet_import` řádky podle sil. Produkční případ `72.4 / 73.1 kg` je správně uložen jako `0.96`; očekávané zobrazení po rollout je `1.0 %`.
 
-Ano:
+Předchozí produkční audit všech 132 řádků potvrdil:
 
-- UI již nehádá jednotku podle velikosti hodnoty;
-- formátování a barevná klasifikace asymetrie používají stejnou kanonickou jednotku;
-- přidány regresní testy pro sub-1% asymetrii a prahy 10/20 %;
-- připravena fail-closed idempotentní migrace historických `google_sheet_import` řádků;
-- připraven read-only precheck a post-check;
-- repository export SQL již nemá `<=1 -> *100` fallback.
+- `google_sheet_import`: 100 řádků, všech 100 legacy fraction convention;
+- `manual`: 32 řádků, všech 32 již procentní body, z toho 5 archivovaných;
+- ambiguous: 0;
+- `weaker_side` mismatch: 0.
 
-### Otestováno
+CI na headu `cc361c...` potvrdilo unit testy, lint comparison, production build a TypeScript check jako success; selhal pouze project-control check kvůli nekorektním názvům/struktuře sekcí tohoto souboru. Tento commit opravuje právě tuto dokumentační regresi.
 
-Finální exact-head automatizované výsledky jsou evidovány v PR #25. Lokální `npm ci` na připojeném Windows stroji nebyl použit jako autoritativní gate kvůli environmentálnímu `ENOTEMPTY` problému při instalaci; CI/Vercel jsou autoritativní automatizované kontroly.
+## Implementováno v `main`
 
-### Databáze aplikována
+PR #25 zatím není v `main`. Poslední Knee runtime před PR #25 stále používá hodnotovou heuristiku a proto může sub-1% manuální asymetrii zobrazit chybně.
 
-**Ne.** Produkční DB nebyla změněna.
+## Rozpracováno mimo `main`
 
-### Preview nasazeno
+Na `fix/knee-asymmetry-percent-contract` je implementováno:
 
-Stav finálního exact-head preview je evidován v PR #25.
+- kanonické čtení `asymmetry_pct` jako procentních bodů bez násobení podle velikosti;
+- sdílené formátování a klasifikace asymetrie;
+- regrese `72.4 / 73.1 -> 0.957592... % -> 1.0 %`;
+- testy `42 / 35`, `35 / 35`, `getAsymmetryValue(0.96)`, prahy 10/20 %;
+- fail-closed idempotentní datová migrace;
+- read-only precheck a post-check;
+- odstranění legacy fallbacku z exportních SQL.
 
-### Implementováno v `main`
+## Nasazeno
 
-**Ne.** PR #25 je draft.
+PR #25 zatím není produkčně nasazen. Preview a finální exact-head CI se ověřují v rollout gate před merge.
 
-### Produkčně nasazeno
+## Produkčně ověřeno
 
-**Ne.** Produkce stále běží na `main@de077dc688a45ee7124934eca63c7d626e213770`.
+PR #25 zatím není produkčně ověřen. Tento stav lze označit až po produkčním rollout a výslovném uživatelském potvrzení výsledku v UI.
 
-### Produkčně ověřeno
+## Známé problémy
 
-**Ne.** Tento stav smí být označen až po explicitním potvrzení uživatele po rollout.
-
-## Tindeq
-
-Poslední dokončený Tindeq rollout PR #24 a následný schválený cleanup zůstávají uzavřené a nejsou PR #25 měněny.
+- full-repo lint baseline obsahuje dříve evidované problémy; PR gate používá comparison vůči aktuálnímu `main`;
+- lokální Windows `npm ci` v jednom pomocném prostředí selhal na environmentálním `ENOTEMPTY`; GitHub CI na exact headu instalaci, unit testy, lint comparison, build a TypeScript check úspěšně provedlo;
+- dokud není PR #25 nasazen, produkční UI může u manuální asymetrie pod 1 % stále zobrazit hodnotu násobenou 100.
 
 ## Další krok
 
-Před produkčním zápisem:
-
-1. znovu spustit read-only asymmetry precheck;
-2. potvrdit požadovaný backup/export podle `operations.md`;
-3. ověřit `ambiguous_rows = 0` a očekávaný počet kandidátů;
-4. získat explicitní souhlas uživatele s produkční datovou migrací;
-5. až poté aplikovat migraci, post-check a řešit merge/deployment gate.
+- Dokončit schválený PR #25 rollout: fresh DB precheck a backup/export evidence, aplikace migrace + post-check, zelený exact-head CI/preview, merge, produkční deployment a technická kontrola; produkční UI acceptance následně vyžaduje explicitní potvrzení uživatele.
