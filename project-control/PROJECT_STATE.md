@@ -2,99 +2,100 @@
 
 ## Datum poslední kontroly
 
-`2026-08-22` (Europe/Prague), po úspěšném production acceptance PR #24 a následném schváleném cleanupu dvou testovacích duplicit.
+`2026-09-17` (Europe/Prague), po aplikaci produkční Knee asymmetry datové migrace a před final exact-head merge gate PR #25.
 
 ## Aktuální `main` commit
 
-Poslední runtime-changing commit:
-
-`4a3cc8e5fe7010a647ad6bfe844bcc6c804f9812` – `Merge PR #24: Fix Tindeq semantic dedupe timestamp comparison`.
-
-`main` před tímto cleanup dokumentačním syncem byl `eb728c295eae9554698bcc6d471f7cbde2d2379c`. Následující project-control commity jsou dokumentační a nemění runtime logiku.
+`de077dc688a45ee7124934eca63c7d626e213770` – `Close Tindeq duplicate cleanup gate`.
 
 ## Aktivní větev a PR
 
-PR #24 `Fix Tindeq semantic dedupe timestamp comparison` je **merged a closed**.
+- branch: `fix/knee-asymmetry-percent-contract`;
+- PR: `#25` `Fix knee asymmetry percentage-point contract`;
+- app/test commit: `50bfe95`;
+- migration/precheck commit: `f4335e0`;
+- project-control structure/evidence commits následovaly po těchto technických commitech;
+- user deployment approval: `2026-09-17` (`Dokonči nasazení`).
 
-- pre-merge exact head: `29cb44533a76bed3f0493218e336763a4e525a7d`;
-- merge commit: `4a3cc8e5fe7010a647ad6bfe844bcc6c804f9812`;
-- `Project control` run `32583799152`: success;
-- `Verify Tindeq client view` run `32583799252`: success;
-- Vercel Preview status na exact headu: success.
+PR #25 zatím není merged.
 
 ## Produkční runtime commit
 
-PR #24 je nasazený v produkci:
+Aktuální aplikace na `knee.vankotraining.cz` stále běží na:
 
-- deployment: `dpl_EvmonjKfidzs8a1unGL7xEbz845j`;
-- commit: `4a3cc8e5fe7010a647ad6bfe844bcc6c804f9812`;
+- commit: `de077dc688a45ee7124934eca63c7d626e213770`;
+- deployment: `dpl_2QUPUFDTe4uvKtRagWHBxSrVvKiP`;
 - state: `READY`;
-- target: `production`;
-- alias: `knee.vankotraining.cz`;
-- `GET /tindeq`: HTTP 200;
-- post-deploy log check: žádný `warning`, `error` ani `fatal`.
+- target: `production`.
+
+Kódová oprava PR #25 ještě není v produkčním runtime.
 
 ## Stav databázových migrací
 
 Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-PR #24 nepřidává DB migraci, DDL, RLS/policy/grant/Auth změnu ani automatickou datovou mutaci.
+Produkční datová migrace PR #25 byla aplikována:
 
-Existující CHECK zůstává:
+- migration history version: `20260917114606`;
+- name: `knee_asymmetry_percent_points`;
+- repo file: `supabase/migrations/20260917_knee_asymmetry_percent_points.sql`.
 
-`CHECK (COALESCE((raw_metadata->>'tindeqSessionId') ~ '^[0-9a-f]{20}$', false))`
+Fresh precheck před zápisem potvrdil `100` legacy `google_sheet_import` kandidátů, `32` již kanonických `manual` řádků, `0` ambiguous a `0` invalid manual. Ověřený export pokrýval všech `132` měření; audit trigger/tabulka byly aktivní.
 
-Stable semantic ID z PR #23 zůstává 20 lowercase hex znaků.
+Post-check potvrdil:
+
+- `google_sheet_import`: 100/100 canonical, 0 noncanonical, rozsah `0.18–81.50`;
+- `manual`: 32/32 canonical, 0 noncanonical, rozsah `0.96–51.62`;
+- `weaker_side` mismatches: 0;
+- 100 auditních UPDATE záznamů pro migraci;
+- `72.4 / 73.1 kg` zůstává `0.96`, `right`, force-derived `0.9576 %`.
+
+Kanonický datový kontrakt je nyní:
+
+`knee_extension_tests.asymmetry_pct = procentní body`.
 
 ## Aktuální fáze
 
-PR #24 je funkčně produkčně ověřený. Opakované uložení stejného měření na reálném telefonu zobrazilo `Měření již uloženo` a `nevytvořen nový záznam`; následná read-only kontrola DB potvrdila, že nevznikl čtvrtý row.
+Datová část rollout je produkčně aplikována a read-only ověřena. Zbývá dokončit kódový exact-head gate, merge PR #25 a Vercel production deployment.
 
-Po explicitním schválení uživatele byl proveden kontrolovaný cleanup dvou historických testovacích duplicit. Cleanup použil soft-delete, nikoliv hard delete.
+PR #25 odstraňuje hodnotovou heuristiku `<= 1 -> * 100` z `getAsymmetryValue()` a exportních SQL. Sdílené formátování a klasifikace pracují pouze s procentními body.
+
+Předchozí CI head `cc361c...` prokázal success pro dependency install, unit testy, lint comparison, production build a TypeScript check; jeho jediný failing krok byl project-control check kvůli nekorektní struktuře stavových dokumentů. Následné commity opravují právě project-control strukturu/evidence.
 
 ## Implementováno v `main`
 
-- PR #21 Android native share/import tok;
-- PR #22 semantic duplicate fallback a stable semantic identity;
-- PR #23 DB-kompatibilní 20hex stable ID;
-- PR #24 normalizované porovnání ekvivalentních `measured_at` timestampů;
-- UI duplicate feedback při `duplicate: true`.
+PR #25 zatím není v `main`. `main` stále obsahuje starou UI heuristiku pro hodnoty `<=1`.
 
 ## Rozpracováno mimo `main`
 
-Pro duplicate-save opravu ani cleanup není další runtime změna mimo `main`.
+Na PR #25 je implementováno:
+
+- `getAsymmetryValue(0.96) -> 0.96`, nikoli `96`;
+- `72.4 / 73.1 -> 0.957592... % -> 1.0 %` při jednom desetinném místě;
+- regrese `42 / 35 -> 16.666... %` a `35 / 35 -> 0 %`;
+- klasifikace `0.96 -> ok`, `10/20 -> warning`, `>20 -> problem`;
+- jednotná interpretace v tabulce, detailu, mobilních kartách, klientském souhrnu a grafu;
+- odstranění legacy hodnotové heuristiky z exportních SQL;
+- fail-closed/idempotentní historická migrace a read-only checks.
 
 ## Nasazeno
 
-- PR #21: ano;
-- PR #22: ano;
-- PR #23: ano;
-- PR #24: ano, deployment `dpl_EvmonjKfidzs8a1unGL7xEbz845j` je `READY`.
+Databázová migrace: **ano**.
+
+Kód PR #25 do Vercel production: **ne**; čeká na final exact-head zelený CI/preview a merge.
 
 ## Produkčně ověřeno
 
-- Android share/import: ano;
-- první explicitní save: ano;
-- PR #24 timestamp-normalized semantic dedupe: **ano**;
-- production duplicate-save UI: `Měření již uloženo` / `nevytvořen nový záznam`;
-- read-only DB audit po acceptance testu: nevznikl nový duplicate row;
-- post-cleanup DB audit: z původních tří testovacích rows je aktivní přesně `1`.
+Datová post-migration integrita: automatizovaně/read-only ověřena.
 
-## Produkční data
-
-Pro testované měření Rosová Štěpánka `14. 8. 2026 14:31`:
-
-- kanonický aktivní row ponechán: `b65d0e32-6e68-407c-9d3f-385112111ea9`;
-- testovací duplicita soft-deleted: `eacaecc9-9185-4cb8-8e52-561872e49cd5`;
-- testovací duplicita soft-deleted: `a0a6e36f-6ed7-4c58-9f3c-55247e770d34`.
-
-Soft-delete proběhl `2026-08-22T16:24:31.605156Z` (`18:24` Europe/Prague) s `deleted_context = duplicate_cleanup_pr24_acceptance_2026_08_22`. `deleted_by` zůstal `null`, v souladu s existujícím produkčním auditním vzorem pro kontrolované korekce. Post-cleanup kontrola potvrdila `active_count = 1`.
+Opravené UI PR #25: **ne**. `Produkčně ověřeno` pro UI lze označit až po rollout a výslovném potvrzení uživatele.
 
 ## Známé problémy
 
-- první production Android share pokus PR #21 jednou transientně selhal, další pokusy uspěly;
-- full-repo lint baseline obsahuje předexistující `3 errors / 1 warning`.
+- aktuální production runtime před merge PR #25 stále může zobrazit kanonickou sub-1% asymetrii násobenou 100;
+- full-repo lint baseline obsahuje existující problémy a PR gate proto používá comparison vůči `main`;
+- Supabase security/performance advisors obsahují existující baseline mimo scope PR #25; datová migrace nevytvořila nový schema objekt ani nezměnila RLS/grants/indexy.
 
 ## Další krok
 
-- Duplicate-save rollout a cleanup jsou uzavřené. Pro tuto oblast není otevřený další produkční gate; další práce může přejít na další prioritu projektu.
+- Dokončit final exact-head PR #25 CI/preview, merge s expected SHA, ověřit Vercel production deployment a technicky zkontrolovat `72.4 / 73.1 -> 1.0 %`; manuální produkční acceptance pak vyžaduje explicitní potvrzení uživatele.

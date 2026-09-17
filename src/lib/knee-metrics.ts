@@ -59,9 +59,22 @@ export function getWeakerSide(rightForceKg: number, leftForceKg: number): Weaker
 }
 
 export function getAsymmetryValue(value: number | null | undefined) {
-  if (value === null || value === undefined || Number.isNaN(value)) return null;
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
 
-  return Math.abs(value) <= 1 ? Math.abs(value) * 100 : Math.abs(value);
+  return Math.abs(value);
+}
+
+export function formatAsymmetryPercent(value: number | null | undefined) {
+  const asymmetry = getAsymmetryValue(value);
+  return asymmetry === null ? "-" : `${asymmetry.toFixed(1)} %`;
+}
+
+export function getAsymmetryTone(value: number | null | undefined) {
+  const asymmetry = getAsymmetryValue(value);
+  if (asymmetry === null) return "unknown";
+  if (asymmetry < 10) return "ok";
+  if (asymmetry <= 20) return "warning";
+  return "problem";
 }
 
 export function getNormGap(test: NormGapInput | null | undefined) {

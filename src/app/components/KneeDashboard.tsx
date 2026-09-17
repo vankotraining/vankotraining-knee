@@ -8,6 +8,8 @@ import {
   calculateAsymmetryPct,
   compareMeasurementsChronologically,
   forceKgToNmPerKg,
+  formatAsymmetryPercent as formatPercent,
+  getAsymmetryTone,
   getAsymmetryValue,
   getMeasurementComparison,
   getNormGap as calculateNormGap,
@@ -149,21 +151,6 @@ function formatNumber(value: number | null | undefined, decimals = 1, suffix = "
   if (value === null || value === undefined || Number.isNaN(value)) return "-";
 
   return `${value.toFixed(decimals)}${suffix}`;
-}
-
-function formatPercent(value: number | null | undefined) {
-  const normalized = getAsymmetryValue(value);
-  if (normalized === null) return "-";
-
-  return `${normalized.toFixed(1)} %`;
-}
-
-function getAsymmetryTone(value: number | null | undefined) {
-  const normalized = getAsymmetryValue(value);
-  if (normalized === null) return "unknown";
-  if (normalized < 10) return "ok";
-  if (normalized <= 20) return "warning";
-  return "problem";
 }
 
 function getAsymmetryClass(value: number | null | undefined) {
