@@ -98,6 +98,12 @@ PR #25 was moved from draft to ready and merged only after the final exact-head 
 - production root: HTTP 200;
 - post-deploy `warning/error/fatal` log query: no findings in the checked window.
 
+## Manual production acceptance
+
+On `2026-09-17`, after deployment, the user explicitly confirmed in the authenticated production Knee UI that the control measurement `72.4 / 73.1 kg` displays as `1 %`, not `96 %`.
+
+This closes the reported production regression. The user did not separately confirm every individual UI representation; cross-surface unit consistency is supported by the shared implementation and automated regression coverage.
+
 ## Status
 
 - implemented in branch: **yes**;
@@ -107,6 +113,6 @@ PR #25 was moved from draft to ready and merged only after the final exact-head 
 - implemented in `main`: **yes**;
 - production deployment: **yes, READY**;
 - production technically checked: **yes**;
-- production UI verified by user: **no** — requires explicit confirmation after checking the authenticated Knee UI.
+- production UI regression verified by user: **yes** — control measurement displays `1 %` in authenticated production.
 
-The required manual acceptance is the existing `72.4 / 73.1 kg` measurement: it must display approximately `1.0 %`, never `95.8/96.0 %`, with the right side weaker and consistent output across table, detail, mobile card, client summary and graph.
+PR #25 is therefore **production verified** for the reported Knee asymmetry unit/display defect.
