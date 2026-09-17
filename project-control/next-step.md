@@ -2,35 +2,29 @@
 
 ## Aktuální fáze
 
-PR #24 `Fix Tindeq semantic dedupe timestamp comparison` je mergovaný, produkčně nasazený a funkčně produkčně ověřený.
+Knee asymmetry PR #25 je mergovaný, databázově canonicalizovaný a technicky produkčně nasazený.
 
-- runtime merge commit: `4a3cc8e5fe7010a647ad6bfe844bcc6c804f9812`;
-- production deployment: `dpl_EvmonjKfidzs8a1unGL7xEbz845j`;
+- runtime merge commit: `59d23c4e18550675b8f5d7401e233ab60cc51d87`;
+- production deployment: `dpl_GCreoikFbSWN7MZa8RiSNBDW3dCT`;
 - deployment state: `READY`;
-- `knee.vankotraining.cz/tindeq`: HTTP 200;
-- post-deploy log check: bez `warning/error/fatal`;
-- production duplicate-save acceptance: UI zobrazilo `Měření již uloženo` a `nevytvořen nový záznam`;
-- následná DB kontrola potvrdila, že acceptance test nevytvořil nový row.
-
-Po explicitním souhlasu uživatele byl dokončen kontrolovaný cleanup dvou historických testovacích duplicit pomocí soft-delete.
+- production alias: `knee.vankotraining.cz`;
+- produkční root: HTTP 200;
+- DB migration: `20260917114606 knee_asymmetry_percent_points`;
+- všech 132 Knee measurement rows nyní používá `asymmetry_pct` jako procentní body;
+- final exact-head CI i Preview: success / READY.
 
 ## Produkční data
 
-Aktivní zůstává jediný kanonický row měření Rosová Štěpánka `14. 8. 2026 14:31`:
-
-- `b65d0e32-6e68-407c-9d3f-385112111ea9`.
-
-Soft-deleted testovací duplicity:
-
-- `eacaecc9-9185-4cb8-8e52-561872e49cd5`;
-- `a0a6e36f-6ed7-4c58-9f3c-55247e770d34`.
-
-Soft-delete proběhl `2026-08-22T16:24:31.605156Z` s `deleted_context = duplicate_cleanup_pr24_acceptance_2026_08_22`. Post-cleanup read-only kontrola potvrdila `active_count = 1`.
+- 100 historických `google_sheet_import` řádků bylo canonicalizováno z legacy fraction konvence na force-derived procentní body;
+- 32 `manual` řádků nebylo jednotkově změněno, včetně 5 archivovaných;
+- ambiguous rows: 0;
+- `weaker_side` mismatches: 0;
+- kontrolní případ `72.4 / 73.1 kg` zůstává uložen jako `0.96 %`, slabší pravá strana.
 
 ## Další krok
 
-Duplicate-save rollout, production acceptance i cleanup jsou uzavřené. Pro tuto oblast není otevřený další gate; pokračovat další prioritou projektu.
+Ručně v přihlášené produkci ověřit kontrolní měření `72.4 / 73.1 kg`: zobrazení musí být přibližně `1.0 %` a konzistentní v tabulce, detailu, mobilní kartě, klientském souhrnu a grafu; po explicitním potvrzení lze PR #25 označit jako produkčně ověřený.
 
 ## Důležitý invariant
 
-Originální Tindeq ZIP zůstává lokální a nesmí se stát serverovým uploadem ani trvalým cloudovým artefaktem. Produkční datové mutace se provádějí pouze po explicitním schválení uživatele.
+`knee_extension_tests.asymmetry_pct` znamená výhradně procentní body. Aplikační ani exportní kód nesmí jednotku odvozovat z velikosti hodnoty.
