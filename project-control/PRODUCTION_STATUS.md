@@ -2,75 +2,99 @@
 
 ## Datum poslední kontroly
 
-`2026-09-17` (Europe/Prague), při read-only auditu Knee asymetrie před draft PR #25.
+`2026-09-17` (Europe/Prague), po schválené canonicalizaci produkčních Knee asymmetry dat a před merge PR #25.
 
-## Produkční URL a deployment
+## Produkční URL
 
-- URL: `https://knee.vankotraining.cz`;
-- Vercel project: `vankotraining-knee`;
+`https://knee.vankotraining.cz`
+
+## Vercel project ID
+
+- project: `vankotraining-knee`;
 - project ID: `prj_WLfkUldcNfXn43KmsXpJAClaKOsI`;
-- team ID: `team_alNcbbTIb9p5enXHSpEJZpLt`;
-- current deployment: `dpl_2QUPUFDTe4uvKtRagWHBxSrVvKiP`;
+- team ID: `team_alNcbbTIb9p5enXHSpEJZpLt`.
+
+## Deployment ID
+
+Aktuální production deployment před merge PR #25:
+
+`dpl_2QUPUFDTe4uvKtRagWHBxSrVvKiP`
+
+## Nasazený commit
+
+`de077dc688a45ee7124934eca63c7d626e213770` – `Close Tindeq duplicate cleanup gate`.
+
+PR #25 ještě není v tomto runtime deploymentu.
+
+## Čas a výsledek deploymentu
+
+- deployment: `dpl_2QUPUFDTe4uvKtRagWHBxSrVvKiP`;
 - state: `READY`;
 - target: `production`;
-- deployed commit: `de077dc688a45ee7124934eca63c7d626e213770` (`Close Tindeq duplicate cleanup gate`).
+- branch: `main`;
+- alias: `knee.vankotraining.cz`;
+- commit: `de077dc688a45ee7124934eca63c7d626e213770`.
 
-PR #25 není součástí tohoto deploymentu.
+## Databázové migrace použité produkční aplikací
 
-## Produkční Supabase
+Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-Project ref: `zxvndqicslyulrinbpyn`.
+Dne `2026-09-17` byla po explicitním uživatelském pokynu dokončit nasazení aplikována verzovaná migrace:
 
-### Aktuální kontrakt v datech před PR #25
+- migration history version: `20260917114606`;
+- name: `knee_asymmetry_percent_points`;
+- repo source: `supabase/migrations/20260917_knee_asymmetry_percent_points.sql`.
 
-`knee_extension_tests.asymmetry_pct` je `numeric(6,2)` s rozsahem `0–100`, ale produkční data historicky obsahují dvě konvence:
+Fresh precheck před zápisem:
 
-- 100 řádků `google_sheet_import` používá starou desetinnou reprezentaci;
-- 32 řádků `manual` už používá procentní body.
+- `google_sheet_import`: 100 řádků, 100 migration candidates, 0 ambiguous;
+- `manual`: 32 řádků, 32 canonical, 0 migration candidates, 0 ambiguous;
+- invalid manual rows: 0;
+- candidate snapshot MD5: `141511a89181810b8ba07f409bd12035`;
+- `public.knee_data_export`: existuje a pokrývá všech 132 měření;
+- `knee_extension_tests_audit_log` trigger a `public.knee_audit_log`: aktivní.
 
-Read-only audit všech 132 řádků dne `2026-09-17`:
+Post-check po migraci:
 
-- legacy `google_sheet_import` kandidáti: `100`;
-- manual canonical rows: `32`;
-- nejednoznačné řádky: `0`;
-- `weaker_side` mismatch: `0`;
-- 5 archivovaných Knee měření jsou `manual` a již kanonická.
+- `google_sheet_import`: 100/100 canonical, 0 noncanonical, rozsah `0.18–81.50`;
+- `manual`: 32/32 canonical, 0 noncanonical, rozsah `0.96–51.62`;
+- `weaker_side` mismatches: 0;
+- audit log obsahuje 100 update záznamů změny asymetrie;
+- konkrétní `72.4 / 73.1 kg` zůstává `asymmetry_pct = 0.96`, `weaker_side = right`, force-derived `0.9576 %`.
 
-Konkrétní aktivní měření `72.4 / 73.1 kg` je v DB správně uložené jako `0.96`, přímý výpočet dává `0.957592... %`.
-
-## Otevřený problém
-
-Aktuálně nasazený Knee UI interpretuje každou asymetrii `<= 1` jako desetinný podíl a násobí ji 100. Proto se korektně uložená manuální hodnota `0.96 %` zobrazuje přibližně jako `96.0 %`.
-
-## PR #25 — stav vůči produkci
-
-- implementováno ve větvi: **ano**;
-- produkční DB migrace: **neaplikována**;
-- merged do `main`: **ne**;
-- produkčně nasazeno: **ne**;
-- produkčně ověřeno: **ne**.
-
-Připravený cílový kontrakt je:
+Datový kontrakt je nyní produkčně:
 
 `knee_extension_tests.asymmetry_pct = procentní body`.
 
-Připravená migrace historické řádky nepřepisuje slepým `*100`; kanonickou hodnotu znovu počítá z `right_force_kg` a `left_force_kg` a mění pouze jednoznačně prokázané legacy kandidáty.
+Migrace neměnila DDL/RLS/grants/indexy aplikace; změnila pouze 100 jednoznačně prokázaných historických hodnot a byla zapsána do migration history.
 
-## Produkční write gate
+## Provedené smoke testy
 
-Před změnou produkční databáze je nutné:
+Předchozí exact-head CI PR #25 na `cc361c...` potvrdilo:
 
-1. fresh spustit read-only precheck;
-2. potvrdit očekávaných `100` legacy kandidátů a `0` nejednoznačných případů;
-3. vytvořit/ověřit backup/export podle `operations.md`;
-4. ověřit exact production project ref;
-5. získat explicitní souhlas uživatele;
-6. teprve potom aplikovat migraci a post-check.
+- deterministic dependency install: success;
+- unit tests: success;
+- lint comparison against current `main`: success;
+- production build: success;
+- TypeScript check: success.
+
+Selhání tohoto runu bylo pouze v project-control checkeru kvůli nekanonické struktuře stavových dokumentů; runtime/test kroky před ním prošly. Následné commity opravují pouze project-control strukturu a evidence a musí mít nový exact-head zelený gate před merge.
+
+Produkční DB post-check po migraci: PASS podle výše uvedených počtů.
+
+Security/performance advisors byly po migraci spuštěny. Hlásí existující obecné problémy projektu (např. SECURITY DEFINER view/function grants, RLS/performance linty, duplicate/unused indexes), ale migrace asymetrie nevytvořila nový schema objekt ani nezměnila RLS/grants/indexy; tyto baseline problémy nejsou rozsahem PR #25.
 
 ## Poslední výslovné uživatelské produkční ověření
 
-Poslední uzavřené produkční acceptance se stále vztahuje k Tindeq PR #24 a následnému cleanupu z `2026-08-22`. Knee asymmetry PR #25 dosud uživatelem v produkci ověřen nebyl.
+- `2026-09-17`: uživatel výslovně požádal `Dokonči nasazení`, čímž schválil pokračování přes dříve blokovaný production DB/merge gate.
+- Manuální vizuální produkční acceptance opraveného Knee asymmetry UI ještě neproběhla; označení `produkčně ověřeno` zůstává do uživatelského potvrzení zakázané.
 
-## Známé technické baseline
+## Produkční stav Tindeq
 
-Full-repo lint před PR #25 historicky obsahoval `3 errors / 1 warning`. PR #25 musí být posouzen proti tomuto baseline a nesmí přidat nový relevantní lint problém.
+Tindeq PR #21–#24 a dříve schválený duplicate cleanup zůstávají beze změny. PR #25 se týká pouze Knee asymetrie a nemění Tindeq parser, persistence ani Android share workflow.
+
+## Známé produkční problémy
+
+- dokud není PR #25 merge/deploy hotový, aktuální produkční UI stále obsahuje `<= 1 -> *100` heuristiku a manuální `0.96 %` může zobrazit jako `96.0 %`;
+- full-repo lint má existující baseline problémy, proto PR používá comparison proti `main`;
+- Supabase advisories obsahují existující security/performance baseline mimo scope PR #25.
