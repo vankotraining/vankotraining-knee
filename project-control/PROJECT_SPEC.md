@@ -21,10 +21,17 @@ Knee aplikace je interní nástroj pro bezpečné ukládání, vyhodnocování a
 - mobilní i desktopové interní workflow;
 - provozní evidence, zálohy, migrace a auditovatelný deployment.
 
+### Schválené rozšíření — zatím neimplementováno
+
+- read-only `Clinical Map` na `/clinical/exercises` pro vizualizaci canonical exercise families/variants, jejich použití ve Visits, kapacitních fází, Training mapování a evidence/guardrail provenance;
+- Clinical Map je clinician-facing navigační a analytická vrstva, nikoli automatický rehabilitační plánovač;
+- první verze nesmí zapisovat do CLIENTS, Training plánů ani měnit klinickou diagnózu.
+
 ## Hranice a explicitní non-goals
 
 - nejde o veřejný marketingový web;
 - nejde o plnohodnotné CRM ani obecný tréninkový builder;
+- Clinical Map V1 není plan generator, dosing engine ani automatický clinical decision engine;
 - nejde o diagnostický zdravotnický prostředek ani automatické určení způsobilosti ke sportu;
 - pracovní heuristiky nesmí být vydávány za validované klinické cut-off hodnoty;
 - původní Tindeq ZIP ani raw časová řada se neukládají do databáze nebo Storage;
