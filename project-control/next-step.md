@@ -8,7 +8,8 @@ Clinical Exercise Map V1 je **implementována ve feature větvi**, nikoli v `mai
 - PR: #29 `feat: add read-only Clinical Exercise Map V1`;
 - route: `/clinical/exercises`;
 - režim: read-only;
-- databázová migrace: žádná;
+- production databázová migrace: žádná;
+- dev-only migration: `20261002181856_align_clinical_map_dev_training_library.sql`;
 - produkční data write: žádný;
 - merge: neproveden;
 - produkční deployment/acceptance: neproveden.
@@ -84,30 +85,28 @@ Exact-head Vercel Preview:
 
 Preview může bez veřejné Supabase Preview konfigurace nadále fail-closed zobrazit „Chybí Supabase konfigurace“. Tato konfigurace nebyla v cleanupu měněna.
 
-## Dev Supabase audit pro Preview — 2026-10-02
+## Dev Training alignment — dokončeno 2026-10-02
 
-- dev projekt `twndqnmrvefhwuwuglju` / `vankotraining-knee-dev`, region `eu-central-1`, byl po fresh ověření stavu `INACTIVE` pouze reaktivován;
-- stav po reaktivaci: `ACTIVE_HEALTHY`;
-- produkční projekt `zxvndqicslyulrinbpyn` byl použit pouze read-only pro srovnání a nebyl změněn;
-- environment guard v kódu nadále vyžaduje production ref pro produkční host a development ref pro localhost/Vercel Preview;
-- dev Auth je přítomen: jeden neodstraněný e-mailový uživatel odpovídá současnému `is_knee_admin()` allowlistu;
-- dev obsahuje RLS chráněné tabulky `athletes`, `athlete_profiles`, `knee_extension_tests`, `tindeq_sessions` a `knee_audit_log`;
-- dev neobsahuje `exercises`, `exercise_families`, `plans`, `workouts`, `workout_items`, `feedback` ani `clients`;
-- production Training snapshot zůstává 161 exercises / 158 active; všech 9 ID z aktuálního Clinical Map projection manifestu je v production přítomných, aktivních a názvem kompatibilních;
-- v dev je kvůli chybějící tabulce `public.exercises` všech 9 potřebných ID nedostupných a live Clinical Map query není schema-kompatibilní;
-- `anon` nemá k existujícím relevantním dev tabulkám SELECT ani write oprávnění;
-- allowlisted `authenticated` uživatel má přes současné admin-guardované RLS/RPC také dev write surface pro Knee/Tindeq data; branch-specific Preview env by proto připojil celý Preview deployment k dev workspace, ne pouze Clinical Map route;
-- Vercel Preview env nebyl změněn, nový Preview nebyl vytvořen a vizuální review neproběhl.
-
-Verdikt: dev Supabase je reaktivovaný a auditovaný, ale **NOT READY** pro Clinical Map Preview, dokud nebude samostatně schválen a proveden úzký schema/data-alignment gate pro Training `exercise_families` + `exercises`.
+- dev Supabase `twndqnmrvefhwuwuglju`: `ACTIVE_HEALTHY`;
+- `exercise_families`: 32, production parity;
+- `exercises`: 161 total / 158 active / 3 inactive, production parity;
+- full-row UUID + metadata digest parity: ano;
+- Clinical Map manifest: 9/9 UUID present and compatible;
+- RLS: enabled;
+- `anon`: bez přístupu;
+- `authenticated`: read-only, vidí families a pouze active exercises;
+- production coach/owner write policy nebyla přenesena;
+- production Supabase byla pouze read-only source;
+- dev backend: **READY FOR CLINICAL MAP PREVIEW ENV**;
+- Vercel env configured: ne;
+- nový Preview / visual review: ne.
 
 ## Nejbližší gate
 
-1. samostatně schválit dev-only schema alignment pro `exercise_families` a `exercises`;
-2. přenést jednorázový read-only Training snapshot do dev se zachováním UUID a ověřit 161 total / 158 active a 9/9 manifest ID;
-3. teprve po tomto gate nastavit branch-specific Vercel Preview env pro `feature/clinical-exercise-map-v1` a vytvořit nový exact-head Preview;
-4. provést authenticated vizuální/klinické review;
-5. PR #29 ponechat open a unmerged do výslovného schválení.
+1. nastavit branch-specific Vercel Preview env pouze pro `feature/clinical-exercise-map-v1`;
+2. vytvořit nový exact-head Preview;
+3. ověřit authenticated `/clinical/exercises` a provést vizuální/klinické review;
+4. PR #29 ponechat open a unmerged do výslovného schválení.
 
 Clinical Map je implementována a automatizovaně ověřena ve feature větvi, ale není v `main`, není produkčně nasazena a není produkčně ověřena.
 

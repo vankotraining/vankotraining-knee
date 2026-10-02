@@ -18,7 +18,8 @@ Clinical Map implementace:
 - PR #29: **open, unmerged**;
 - base: `main`;
 - route: `/clinical/exercises`;
-- databázová migrace: žádná;
+- production databázová migrace: žádná;
+- dev-only migration: `20261002181856_align_clinical_map_dev_training_library.sql`;
 - production data write: žádný.
 
 PR #28 `docs: record Clinical Exercise Map V1 direction` zůstává otevřený. Feature větev PR #29 byla vytvořena z jeho exact headu `1b014387d750482f10d9272212359586bf3535b2`, takže obsahuje i tento dosud nesloučený projektový zápis. PR #28 se nepovažuje za implementaci.
@@ -39,7 +40,7 @@ Jde o současný produkční deployment po docs-only merge PR #27. Clinical Map 
 
 Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-Clinical Map V1 nevyžaduje a neaplikuje žádnou novou migraci. Existující migration state z PR #25 zůstává beze změny; `knee_extension_tests.asymmetry_pct` nadále používá procentní body.
+Clinical Map V1 nevyžaduje žádnou production migraci. Do development projektu `twndqnmrvefhwuwuglju` byla aplikována pouze dev-only migration `20261002181856_align_clinical_map_dev_training_library.sql`; produkční migration state zůstává beze změny. `knee_extension_tests.asymmetry_pct` nadále používá procentní body.
 
 Fresh read-only snapshot relevantních tabulek 2026-10-02:
 
@@ -151,33 +152,39 @@ Clinical Map V1: **ne**.
 
 Vercel `READY` ani CI nejsou uživatelské produkční ověření.
 
-## Development Supabase pro Preview — audit 2026-10-02
+## Development Supabase pro Preview — alignment 2026-10-02
 
-Development projekt `twndqnmrvefhwuwuglju` / `vankotraining-knee-dev` v regionu `eu-central-1` byl fresh ověřen jako `INACTIVE`, následně pouze reaktivován a dosáhl `ACTIVE_HEALTHY`. Neproběhla migrace, schema/RLS/Auth změna, user management ani data sync.
+Development projekt `twndqnmrvefhwuwuglju` / `vankotraining-knee-dev` je `ACTIVE_HEALTHY`.
 
-Read-only audit ukázal:
+Dokončený úzký dev-only alignment:
 
-- existují RLS chráněné Knee/Tindeq tabulky `athletes`, `athlete_profiles`, `knee_extension_tests`, `tindeq_sessions` a `knee_audit_log`;
-- chybí Training tabulky `exercise_families` a `exercises` i `plans`, `workouts`, `workout_items`, `feedback` a `clients`;
-- dev Auth má jednoho aktivního e-mailového uživatele odpovídajícího `is_knee_admin()` allowlistu;
-- `anon` nemá přístup k existujícím relevantním tabulkám;
-- allowlisted `authenticated` role má admin-guardovaný dev read/write přístup k části Knee/Tindeq workspace a čtyřem soft-delete/restore RPC;
-- production Training má fresh 161 exercises / 158 active a všech 9 ID z aktuálního Clinical Map manifestu je přítomných, aktivních a názvem kompatibilních;
-- dev nemá `public.exercises`, proto je 9/9 manifest ID nedostupných a live Clinical Map query není kompatibilní.
+- vytvořeny pouze `public.exercise_families` a `public.exercises`;
+- production-compatible columns, defaults, constraints a indexy;
+- 32 exercise families;
+- 161 exercises / 158 active / 3 inactive;
+- full-row digest parity production ↔ dev pro obě tabulky;
+- žádné orphan family links;
+- všech 9 Training UUID z aktuálního Clinical Map manifestu je v dev přítomných a kompatibilních názvem, active stavem i family linkage;
+- RLS enabled;
+- `anon` bez SELECT i write přístupu;
+- `authenticated` pouze SELECT: 32 families a 158 active exercises;
+- production coach/owner write policy nebyla kopírována;
+- production `zxvndqicslyulrinbpyn` byla pouze read-only source.
 
-Verdikt: **NOT READY** pro Clinical Map Preview. Dev byl reaktivován a auditován; Preview env nebyl nakonfigurován, Preview nebyl znovu nasazen ani vizuálně reviewován. Production nebyla změněna.
+Verdikt backendu: **READY FOR CLINICAL MAP PREVIEW ENV**.
+
+Tento stav neznamená, že Preview env je nakonfigurovaný, že vznikl nový exact-head Preview nebo že proběhlo vizuální review. Vercel env, `main`, production deployment i production databáze zůstaly beze změny.
 
 ## Známé problémy
 
 - Preview environment nemá použitelnou veřejnou Supabase konfiguraci pro ruční authenticated review; production credentials se do Preview nesmí kopírovat.
-- Reaktivovaný dev Supabase nemá `public.exercises` ani `public.exercise_families`; před Preview env konfigurací je nutný samostatný schema/data-alignment gate.
 - Full-repo lint baseline na současném `main` obsahuje 3 existující errors + 1 warning; PR gate porovnává branch vůči baseline.
 - Unresolved exact mappings zůstávají: step-down, SL squat/stepper, TRX sit-to-heel, medicine-ball drop to split squat, assisted full-ROM split squat, wall-supported split squat a band-resisted hamstring curl.
 - CLIENTS Visit neukládá explicitní `exercise_id`; probable mapping proto zůstává oddělený od direct clinical-use provenance.
 
 ## Další krok
 
-- Nejprve samostatně schválit úzký dev-only schema/data alignment pro `exercise_families` + `exercises` a ověřit 161/158 + 9/9 manifest ID; až poté řešit branch-specific Preview env a vizuální review. PR #29 ponechat open a unmerged, neměnit `main` a nenasazovat do produkce.
+- Nastavit branch-specific Vercel Preview env pouze pro `feature/clinical-exercise-map-v1`, vytvořit nový exact-head Preview a provést authenticated vizuální review. PR #29 ponechat open a unmerged, neměnit `main` a nenasazovat do produkce.
 
 ## Audit Client / Knee / Training a pilot — 2026-09-29
 
