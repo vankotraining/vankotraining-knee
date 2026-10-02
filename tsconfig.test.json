@@ -6,7 +6,9 @@
     "rootDir": ".",
     "strict": true,
     "target": "ES2022",
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "src/lib/athlete-identity.ts",
@@ -33,6 +35,8 @@
     "src/lib/tindeq-report.test.ts",
     "src/lib/tindeq-report-demo.ts",
     "src/lib/tindeq-report-demo.test.ts",
-    "src/types/uint8array-blobpart.d.ts"
+    "src/types/uint8array-blobpart.d.ts",
+    "src/lib/clinical-exercise-map-v1.ts",
+    "src/lib/clinical-exercise-map-v1.test.ts"
   ]
 }
