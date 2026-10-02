@@ -57,44 +57,53 @@ function renderArray(value: string[] | null) {
 
 export default function ClinicalExerciseMap() {
   const { supabase, session, state, error: authError, isConfigured } = useSupabaseSession();
-  const [trainingExercises, setTrainingExercises] = useState<TrainingExercise[]>([]);
-  const [libraryState, setLibraryState] = useState<"idle" | "loading" | "ready" | "error">("idle");
-  const [libraryError, setLibraryError] = useState<string | null>(null);
+  const [libraryResult, setLibraryResult] = useState<{
+    sessionUserId: string;
+    exercises: TrainingExercise[];
+    error: string | null;
+  } | null>(null);
   const [selectedId, setSelectedId] = useState(CLINICAL_EXERCISE_CARDS[0]?.id ?? "");
 
   useEffect(() => {
-    if (!supabase || !session) {
-      setTrainingExercises([]);
-      setLibraryState("idle");
-      return;
-    }
+    if (!supabase || !session) return;
 
     let active = true;
-    setLibraryState("loading");
-    setLibraryError(null);
+    const sessionUserId = session.user.id;
 
-    supabase
-      .from("exercises")
-      .select(
-        "id,name,family_slug,category,training_type,laterality,equipment,segments,source,source_row,is_active",
-      )
-      .eq("is_active", true)
-      .order("name")
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) {
-          setLibraryError(error.message);
-          setLibraryState("error");
-          return;
-        }
-        setTrainingExercises((data ?? []) as TrainingExercise[]);
-        setLibraryState("ready");
+    void (async () => {
+      const { data, error } = await supabase
+        .from("exercises")
+        .select(
+          "id,name,family_slug,category,training_type,laterality,equipment,segments,source,source_row,is_active",
+        )
+        .eq("is_active", true)
+        .order("name");
+
+      if (!active) return;
+      setLibraryResult({
+        sessionUserId,
+        exercises: error ? [] : ((data ?? []) as TrainingExercise[]),
+        error: error?.message ?? null,
       });
+    })();
 
     return () => {
       active = false;
     };
   }, [session, supabase]);
+
+  const currentLibraryResult =
+    session && libraryResult?.sessionUserId === session.user.id ? libraryResult : null;
+  const trainingExercises = currentLibraryResult?.exercises ?? [];
+  const libraryError = currentLibraryResult?.error ?? null;
+  const libraryState: "idle" | "loading" | "ready" | "error" =
+    !session
+      ? "idle"
+      : !currentLibraryResult
+        ? "loading"
+        : currentLibraryResult.error
+          ? "error"
+          : "ready";
 
   const trainingById = useMemo(
     () => new Map(trainingExercises.map((exercise) => [exercise.id, exercise])),
