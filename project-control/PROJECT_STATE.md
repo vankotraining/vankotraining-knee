@@ -110,7 +110,11 @@ Pre-doc code head `c30a566f64bd4207ddc14f2b748bbd86d42987d4`:
 - whitespace gate: fail pouze na dvou trailing spaces převzatých z docs PR #28; v PR #29 jsou opraveny;
 - Playwright: na tomto pre-doc headu se kvůli fail-fast po whitespace kroku nespustil.
 
-Finální exact-head CI po project-control commitech je nutný před review gate.
+Checkpoint 2026-10-02 16:38 CEST: poslední ověřený head před checkpoint zápisem je `bcfa99b2219428a6ad8a91f9946c44b2b7946809`. Unit tests, lint comparison, production build a TypeScript na tomto headu prošly; workflow zastavil project-control check kvůli chybějící povinné sekci `## Nasazeno`. Tato checkpoint změna sekci doplňuje; nový exact-head CI je proto znovu pending.
+
+## Nasazeno
+
+Clinical Map V1 je nasazena pouze jako **Vercel Preview mimo produkci**. Není implementována v `main`, není produkčně nasazena a nebyla produkčně ověřena.
 
 ## Preview nasazeno
 
