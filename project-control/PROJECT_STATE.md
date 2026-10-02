@@ -162,9 +162,7 @@ Vercel `READY` ani CI nejsou uživatelské produkční ověření.
 
 ## Další krok
 
-- samostatně vyřešit bezpečnou Preview Supabase environment konfiguraci a provést vizuální review;
-- PR #29 zůstává open a unmerged;
-- bez výslovného schválení nemergovat, neměnit `main` a nenasazovat do produkce.
+- Samostatně vyřešit bezpečnou Preview Supabase environment konfiguraci a provést vizuální review; PR #29 do výslovného schválení ponechat open a unmerged, neměnit `main` a nenasazovat do produkce.
 
 ## Audit Client / Knee / Training a pilot — 2026-09-29
 
