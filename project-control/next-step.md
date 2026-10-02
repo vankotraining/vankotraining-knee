@@ -99,7 +99,9 @@ Preview může bez veřejné Supabase Preview konfigurace nadále fail-closed zo
 - production Supabase byla pouze read-only source;
 - dev backend: **READY FOR CLINICAL MAP PREVIEW ENV**;
 - Vercel env configured: ne;
-- nový Preview / visual review: ne.
+- alignment exact-head Preview: automaticky nasazen a `READY`;
+- Preview env configured: ne;
+- authenticated visual review: ne.
 
 ## Nejbližší gate
 

@@ -89,13 +89,26 @@ Dev Training library je uživatelsky read-only:
 
 Post-migration security advisor nepřidal nový finding pro tyto tabulky. Dřívější čtyři admin-guardované Knee/Tindeq SECURITY DEFINER RPC a Auth leaked-password warning zůstávají beze změny a nejsou součástí tohoto gate.
 
+## Exact-head automation a Preview
+
+Alignment head `dd0f4df5a37aa202ced81313ce6d31924424e718`:
+
+- Project control workflow `37047300904`: success;
+- verification workflow `37047300921`: success;
+- unit tests, lint comparison, production build, TypeScript, project-control check, whitespace, Chromium a browser E2E: success;
+- automatický Vercel Preview: `dpl_D8UKxYDckmS3WxZrNKjxM65fqPLm`;
+- URL: `https://vankotraining-knee-n8s6xcmbf-vankotrainings-projects.vercel.app`;
+- state: `READY`.
+
+Git integration vytvořila Preview automaticky po commitu. Vercel environment variables nebyly změněny, Preview nebyl připojen k dev Supabase v rámci tohoto gate a neproběhl authenticated visual review.
+
 ## Stav vůči Preview a production
 
 - dev schema aligned: ano;
 - dev Training data synced: ano;
 - dev backend: **READY FOR CLINICAL MAP PREVIEW ENV**;
 - Preview env configured: ne;
-- nový Preview deployed: ne;
+- exact-head Preview deployed automaticky: ano, `READY`;
 - Preview visually reviewed: ne;
 - merged do `main`: ne;
 - production deployed: ne;

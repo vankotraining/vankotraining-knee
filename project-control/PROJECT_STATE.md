@@ -173,7 +173,7 @@ Dokončený úzký dev-only alignment:
 
 Verdikt backendu: **READY FOR CLINICAL MAP PREVIEW ENV**.
 
-Tento stav neznamená, že Preview env je nakonfigurovaný, že vznikl nový exact-head Preview nebo že proběhlo vizuální review. Vercel env, `main`, production deployment i production databáze zůstaly beze změny.
+Git integrace pro alignment head `dd0f4df5a37aa202ced81313ce6d31924424e718` automaticky vytvořila Preview `dpl_D8UKxYDckmS3WxZrNKjxM65fqPLm` (`READY`, `https://vankotraining-knee-n8s6xcmbf-vankotrainings-projects.vercel.app`). Vercel env nebyl změněn ani připojen k dev Supabase a Preview nebyl vizuálně reviewován. `main`, production deployment i production databáze zůstaly beze změny.
 
 ## Známé problémy
 
