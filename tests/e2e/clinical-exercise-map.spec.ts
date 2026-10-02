@@ -147,7 +147,12 @@ test("signed-in Clinical Map renders live Training overlay, provenance and A/B/C
   await expect(page.getByText("Single leg wall sit", { exact: true }).last()).toBeVisible();
   await expect(page.getByText("Segments", { exact: true })).toBeVisible();
   await expect(page.getByText("Equipment", { exact: true })).toBeVisible();
-  await expect(page.getByText("Laterality", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole("heading", { name: "Live Training metadata" })
+      .locator("xpath=following-sibling::dl[1]")
+      .getByText("Laterality", { exact: true }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: /Isometric knee extension/ }).click();
   await expect(page.getByText("B · probable canonical mapping", { exact: true }).last()).toBeVisible();
