@@ -71,7 +71,9 @@ Existující ruční export Knee dat používá `public.knee_data_export` a doku
 
 ### Kanonické pravidlo
 
-Veškeré nové změny databázového schématu musí mít explicitní verzovaný soubor v `supabase/migrations/` a odpovídající kontrolní SQL, pokud je potřeba. Ad-hoc produkční DDL v Supabase SQL Editoru není podporovaný postup.
+Veškeré nové production-capable změny databázového schématu musí mít explicitní verzovaný soubor v `supabase/migrations/` a odpovídající kontrolní SQL, pokud je potřeba. Ad-hoc produkční DDL v Supabase SQL Editoru není podporovaný postup.
+
+`supabase/dev-migrations/` obsahuje pouze auditovatelné dev-only provisioning/alignment artefakty. Není součástí standardní production migration sekvence ani vstupem pro `supabase db push`. Každý artefakt musí uvádět cílový project ref, migration version a stav aplikace. Přesun již aplikovaného artefaktu do této cesty nemění migration history žádného projektu.
 
 Produkční databázi neměň bez explicitního schválení uživatele.
 

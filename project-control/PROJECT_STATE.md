@@ -19,7 +19,8 @@ Clinical Map implementace:
 - base: `main`;
 - route: `/clinical/exercises`;
 - production databázová migrace: žádná;
-- dev-only migration: `20261002181856_align_clinical_map_dev_training_library.sql`;
+- dev-only migration applied on dev: `20261002181856_align_clinical_map_dev_training_library`;
+- isolated audit artifact: `supabase/dev-migrations/20261002181856_align_clinical_map_dev_training_library.sql`;
 - production data write: žádný.
 
 PR #28 `docs: record Clinical Exercise Map V1 direction` zůstává otevřený. Feature větev PR #29 byla vytvořena z jeho exact headu `1b014387d750482f10d9272212359586bf3535b2`, takže obsahuje i tento dosud nesloučený projektový zápis. PR #28 se nepovažuje za implementaci.
@@ -40,7 +41,18 @@ Jde o současný produkční deployment po docs-only merge PR #27. Clinical Map 
 
 Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-Clinical Map V1 nevyžaduje žádnou production migraci. Do development projektu `twndqnmrvefhwuwuglju` byla aplikována pouze dev-only migration `20261002181856_align_clinical_map_dev_training_library.sql`; produkční migration state zůstává beze změny. `knee_extension_tests.asymmetry_pct` nadále používá procentní body.
+Clinical Map V1 nevyžaduje žádnou production migraci. Do development projektu `twndqnmrvefhwuwuglju` byla aplikována pouze dev-only migration version `20261002181856` (`align_clinical_map_dev_training_library`); produkční migration history ji neobsahuje. SQL artefakt je po repo-hygiene gate izolovaný v `supabase/dev-migrations/20261002181856_align_clinical_map_dev_training_library.sql`, mimo production-capable `supabase/migrations/`. Přesun neprovedl žádný DB write, migration repair ani změnu dev/production migration history. `knee_extension_tests.asymmetry_pct` nadále používá procentní body.
+
+Stav gate:
+
+- dev schema aligned: ano;
+- dev Training data synced: ano;
+- migration artifact isolated: ano;
+- Preview env configured: ne;
+- Preview visually reviewed: ne;
+- merged do `main`: ne;
+- production deployed: ne;
+- production verified: ne.
 
 Fresh read-only snapshot relevantních tabulek 2026-10-02:
 

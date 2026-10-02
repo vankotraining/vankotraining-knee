@@ -9,7 +9,8 @@ Clinical Exercise Map V1 je **implementována ve feature větvi**, nikoli v `mai
 - route: `/clinical/exercises`;
 - režim: read-only;
 - production databázová migrace: žádná;
-- dev-only migration: `20261002181856_align_clinical_map_dev_training_library.sql`;
+- dev-only migration applied on dev: version `20261002181856`;
+- isolated audit artifact: `supabase/dev-migrations/20261002181856_align_clinical_map_dev_training_library.sql`;
 - produkční data write: žádný;
 - merge: neproveden;
 - produkční deployment/acceptance: neproveden.
@@ -97,6 +98,9 @@ Preview může bez veřejné Supabase Preview konfigurace nadále fail-closed zo
 - `authenticated`: read-only, vidí families a pouze active exercises;
 - production coach/owner write policy nebyla přenesena;
 - production Supabase byla pouze read-only source;
+- migration artifact isolated: ano, mimo `supabase/migrations/`;
+- dev i production DB stav při izolaci artefaktu: beze změny;
+- production migration history: beze změny, version `20261002181856` není aplikovaná;
 - dev backend: **READY FOR CLINICAL MAP PREVIEW ENV**;
 - Vercel env configured: ne;
 - alignment exact-head Preview: automaticky nasazen a `READY`;

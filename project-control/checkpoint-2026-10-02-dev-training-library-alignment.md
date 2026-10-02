@@ -34,7 +34,7 @@ Aplikovaná dev migration:
 
 - version: `20261002181856`;
 - name: `align_clinical_map_dev_training_library`;
-- repo: `supabase/migrations/20261002181856_align_clinical_map_dev_training_library.sql`.
+- applied only to dev; audit artifact after repo-hygiene gate: `supabase/dev-migrations/20261002181856_align_clinical_map_dev_training_library.sql`.
 
 Vytvořeno:
 
@@ -102,10 +102,16 @@ Alignment head `dd0f4df5a37aa202ced81313ce6d31924424e718`:
 
 Git integration vytvořila Preview automaticky po commitu. Vercel environment variables nebyly změněny, Preview nebyl připojen k dev Supabase v rámci tohoto gate a neproběhl authenticated visual review.
 
+## Repo-hygiene follow-up
+
+Migration version `20261002181856` zůstává evidovaná jako aplikovaná pouze v development projektu. Production migration history ji neobsahuje. SQL artefakt byl beze změny obsahu přesunut z `supabase/migrations/` do `supabase/dev-migrations/`, aby nebyl součástí standardní production migration sekvence. Nebyl proveden žádný DB write, rollback, migration repair, schema/data/RLS/Auth zásah ani změna Vercel env.
+
 ## Stav vůči Preview a production
 
 - dev schema aligned: ano;
 - dev Training data synced: ano;
+- migration artifact isolated: ano;
+- dev a production DB po izolaci: beze změny;
 - dev backend: **READY FOR CLINICAL MAP PREVIEW ENV**;
 - Preview env configured: ne;
 - exact-head Preview deployed automaticky: ano, `READY`;
