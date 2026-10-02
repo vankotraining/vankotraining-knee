@@ -2,7 +2,7 @@
 
 ## Datum poslední kontroly
 
-`2026-10-02` (Europe/Prague): fresh implementační audit a read-only Clinical Exercise Map V1. Produkční runtime ani produkční databáze nebyly měněny a Clinical Map není produkčně ověřena.
+`2026-10-02` (Europe/Prague): Clinical Exercise Map V1.1 UX/readability pass je implementován a automatizovaně ověřen ve feature větvi. Produkční runtime ani produkční databáze nebyly měněny a Clinical Map není produkčně ověřena.
 
 ## Aktuální `main` commit
 
@@ -15,27 +15,28 @@ Poslední runtime-changing commit zůstává `59d23c4e18550675b8f5d7401e233ab60c
 Clinical Map implementace:
 
 - větev: `feature/clinical-exercise-map-v1`;
-- PR #29: **open, unmerged**;
+- PR #29: **open, unmerged, mergeable**;
 - base: `main`;
+- latest runtime/test-changing head: `738a4145c0f47d636f1c8433d7de1811182167df`;
 - route: `/clinical/exercises`;
 - production databázová migrace: žádná;
 - dev-only migration applied on dev: `20261002181856_align_clinical_map_dev_training_library`;
 - isolated audit artifact: `supabase/dev-migrations/20261002181856_align_clinical_map_dev_training_library.sql`;
 - production data write: žádný.
 
-PR #28 `docs: record Clinical Exercise Map V1 direction` zůstává otevřený. Feature větev PR #29 byla vytvořena z jeho exact headu `1b014387d750482f10d9272212359586bf3535b2`, takže obsahuje i tento dosud nesloučený projektový zápis. PR #28 se nepovažuje za implementaci.
+PR #28 `docs: record Clinical Exercise Map V1 direction` zůstává otevřený. Feature větev PR #29 byla vytvořena z jeho směru a obsahuje i dosud nesloučené project-control změny. PR #28 se nepovažuje za implementaci.
 
 ## Produkční runtime commit
 
 Fresh Vercel kontrola 2026-10-02:
 
-- deployment: `dpl_9PzyKBZ65f4MEmt7FEzcp1AKhx2q`;
+- deployment: `dpl_AxYSQ8avnvgytBm6x6oQLQPERYhw`;
 - state: `READY`;
 - target: `production`;
 - branch: `main`;
 - commit: `16fac80d02768476a835d448471243fa0e341dcc`.
 
-Jde o současný produkční deployment po docs-only merge PR #27. Clinical Map v něm není. Poslední runtime-changing commit zůstává PR #25.
+Tento redeploy používá stejný `main` commit. Clinical Map v produkci není. Poslední runtime-changing commit v `main` zůstává PR #25.
 
 ## Stav databázových migrací
 
@@ -48,8 +49,8 @@ Stav gate:
 - dev schema aligned: ano;
 - dev Training data synced: ano;
 - migration artifact isolated: ano;
-- Preview env configured: ne;
-- Preview visually reviewed: ne;
+- Preview env configured: ano, branch-specific pouze pro `feature/clinical-exercise-map-v1` a dev Supabase;
+- Preview visually reviewed: V1 baseline ano; V1.1 authenticated visual acceptance pending;
 - merged do `main`: ne;
 - production deployed: ne;
 - production verified: ne.
@@ -102,43 +103,54 @@ PR #29 obsahuje:
 - capacity matrix 6 × 13 canonical axes/families;
 - live GET overlay aktivních Training `exercises`;
 - verzovaný source-derived projection manifest z CLIENTS/CSB auditu;
-- A/B/C mapping confidence;
-- exercise inspector;
+- A/B/C clinical mapping confidence;
+- samostatný Training library link status;
+- V1.1 kompaktnější matrix density;
+- sticky capacity header + sticky family column;
+- clinician-first inspector hierarchy;
+- explicitní `Clinical family` vs `Training library family`;
+- `Context guardrails` oddělené od exercise-specific efficacy;
+- technická metadata pod rozbalitelným `Data / provenance`;
+- mobile readability pass a lokální horizontal scroll;
 - explicitní unknown/unresolved stavy;
-- responsive local horizontal scroll;
-- unit + Playwright testy;
+- unit + Playwright coverage včetně 320/390 px;
 - project-control aktualizaci.
+
+V1.1 nemění clinical capacity placement, A/B/C hodnoty, canonical families, Training exercise IDs, CSB claims, Visit provenance ani unresolved mapping queue.
 
 Žádný runtime zápis do CLIENTS, Training nebo canonical Exercise DB nebyl přidán.
 
 ## Automatizovaně otestováno
 
-Ověřený cleanup head: `62933a6b5c2fc85b61285a0bc53b42c0a0e877e0`.
+Ověřený V1.1 runtime/test head: `738a4145c0f47d636f1c8433d7de1811182167df`.
 
-- Project control workflow `37022924517`: success;
-- verification workflow `37022925652`: success;
+- Project control workflow `37063052302`: success;
+- verification workflow `37063052373`: success;
 - unit tests: success;
-- lint comparison proti aktuálnímu `main`: success, bez nového lint problému nad baseline;
+- lint comparison proti aktuálnímu `main`: success;
 - production build: success;
 - TypeScript: success;
 - project-control check: success;
-- `git diff --check origin/main...HEAD`: success;
+- patch whitespace gate: success;
 - Chromium/Playwright install: success;
-- browser E2E: **16/16 passed**;
+- browser E2E: **17/17 passed**;
 - auth-gated Clinical Map: success;
-- A/B/C inspector: success;
+- A/B/C inspector + Training link separation: success;
+- clinician-first inspector / Data-provenance disclosure: success;
+- desktop sticky axes/density assertions: success;
 - mobile 320 px a 390 px: success;
 - page-level horizontal overflow: žádný;
 - matrix horizontal scroll: zůstává lokální.
 
+Předchozí V1.1 head `13c3c93b9ec87b197d9c3b1c5dcf92096f93c727` měl jediný test-selector failure kvůli dvěma legitimním labelům `Laterality`. Test-only commit `738a414...` selector scoped na `Live Training metadata`; runtime se tím nezměnil.
+
 Exact-head Vercel Preview:
 
-- deployment: `dpl_3LKXfdxBSzm4rwv4TwB1jNtQnZhd`;
-- commit: `62933a6b5c2fc85b61285a0bc53b42c0a0e877e0`;
-- URL: `https://vankotraining-knee-8ai0l66ew-vankotrainings-projects.vercel.app`;
-- state: `READY`.
-
-Preview může bez veřejné Supabase Preview konfigurace nadále fail-closed zobrazit „Chybí Supabase konfigurace“. Tato konfigurace nebyla v cleanupu měněna.
+- deployment: `dpl_AKpbZ6Ao5pyKUdaTUv8dwYnAGrPo`;
+- commit: `738a4145c0f47d636f1c8433d7de1811182167df`;
+- URL: `https://vankotraining-knee-23pn447xw-vankotrainings-projects.vercel.app`;
+- state: `READY`;
+- `/clinical/exercises`: Clinical Map route načtena, bez fail-closed hlášky „Chybí Supabase konfigurace“.
 
 ## Nasazeno
 
@@ -146,13 +158,16 @@ Clinical Map V1 je nasazena pouze jako **Vercel Preview mimo produkci**. Není i
 
 ## Preview nasazeno
 
-Exact-head Preview pro ověřený cleanup head `62933a6b5c2fc85b61285a0bc53b42c0a0e877e0`:
+Exact-head Preview pro V1.1 runtime/test head `738a4145c0f47d636f1c8433d7de1811182167df`:
 
-- deployment: `dpl_3LKXfdxBSzm4rwv4TwB1jNtQnZhd`;
-- URL: `https://vankotraining-knee-8ai0l66ew-vankotrainings-projects.vercel.app`;
-- state: `READY`.
+- deployment: `dpl_AKpbZ6Ao5pyKUdaTUv8dwYnAGrPo`;
+- URL: `https://vankotraining-knee-23pn447xw-vankotrainings-projects.vercel.app`;
+- state: `READY`;
+- branch-specific Preview env: nakonfigurován na dev Supabase `twndqnmrvefhwuwuglju`;
+- Production env nebyl pro Clinical Map použit ani změněn;
+- route už nepadá do stavu „Chybí Supabase konfigurace“.
 
-Preview environment stále nemusí mít veřejnou Supabase konfiguraci a může fail-closed zobrazit „Chybí Supabase konfigurace“. Produkční credentials ani Preview env nebyly v tomto cleanupu měněny.
+Authenticated uživatelská akceptace konkrétního V1.1 layoutu je ještě pending.
 
 ## Produkčně nasazeno
 
@@ -189,14 +204,16 @@ Git integrace pro alignment head `dd0f4df5a37aa202ced81313ce6d31924424e718` auto
 
 ## Známé problémy
 
-- Preview environment nemá použitelnou veřejnou Supabase konfiguraci pro ruční authenticated review; production credentials se do Preview nesmí kopírovat.
-- Full-repo lint baseline na současném `main` obsahuje 3 existující errors + 1 warning; PR gate porovnává branch vůči baseline.
+- V1.1 potřebuje ještě uživatelskou authenticated vizuální akceptaci na desktopu/mobilu; automatické responsive testy jsou zelené.
+- Full-repo lint baseline na současném `main` obsahuje existující problémy; PR gate porovnává branch vůči baseline a aktuální V1.1 gate prošel.
 - Unresolved exact mappings zůstávají: step-down, SL squat/stepper, TRX sit-to-heel, medicine-ball drop to split squat, assisted full-ROM split squat, wall-supported split squat a band-resisted hamstring curl.
 - CLIENTS Visit neukládá explicitní `exercise_id`; probable mapping proto zůstává oddělený od direct clinical-use provenance.
 
 ## Další krok
 
-- Nastavit branch-specific Vercel Preview env pouze pro `feature/clinical-exercise-map-v1`, vytvořit nový exact-head Preview a provést authenticated vizuální review. PR #29 ponechat open a unmerged, neměnit `main` a nenasazovat do produkce.
+- Otevřít exact-head V1.1 Preview a provést krátkou authenticated vizuální akceptaci desktop + mobil.
+- Pokud je UX přijato, pokračovat klinickým review mappingů v pořadí `Knee extension → Wall isometric → Split squat`.
+- PR #29 ponechat open a unmerged do výslovného schválení; neměnit `main` a nenasazovat Clinical Map do produkce.
 
 ## Audit Client / Knee / Training a pilot — 2026-09-29
 
