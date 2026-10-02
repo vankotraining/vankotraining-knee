@@ -1,7 +1,7 @@
 # Clinical Exercise Map V1 — feature brief
 
-Datum rozhodnutí: 2026-10-02  
-Stav: **schválený směr / neimplementováno**
+Datum rozhodnutí: 2026-10-02
+Stav: **schválený směr / implementováno ve větvi PR #29 / není v `main`**
 
 ## Hlavní cíl
 
@@ -58,7 +58,7 @@ Mapu stavět jako projekci existujících zdrojů, ne jako novou paralelní klin
 
 Full scan canonical CLIENTS Visits:
 
-- 202 řádků Visits;
+- 201 unikátních canonical `Visit_ID`;
 - 15 epizod s explicitním knee/meniscus/ACL/quadriceps kontextem;
 - v přímém knee-contextu orientačně:
   - 21 Visits s Tindeq / knee-extension family;
@@ -256,7 +256,7 @@ Tyto položky se nesmí předem násilně sloučit s existujícím Training exer
 
 ## Safety / klinický guardrail
 
-Clinical Map je clinician-facing informační a rozhodovací pomůcka. Nesmí převést working hypothesis na potvrzenou diagnózu ani zaměnit „cvik použit ve Visit“ za „cvik prokázaně léčí danou diagnózu“.
+Clinical Map je clinician-facing informační a rozhodovací pomůcka. Nesmí převést working hypothesis na potvrzenou diagnózu ani zaměnit „cvik použit ve Visit“ za „cvik prokázaně léčí danou diagnózu“. Implementační evidence PR #29 je v `clinical-exercise-map-v1-implementation-2026-10-02.md`.
 
 ## Odkazy
 
