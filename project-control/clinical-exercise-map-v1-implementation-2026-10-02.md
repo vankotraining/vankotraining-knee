@@ -124,37 +124,46 @@ V1 odkazuje zejména na:
 
 Jde o guardrails pro kontext a progresi, ne důkaz exercise-specific účinnosti.
 
-## Test/deployment evidence před finálním docs commitem
+## Final exact-head automated verification
 
-Code head `c30a566f64bd4207ddc14f2b748bbd86d42987d4`:
+Ověřený cleanup head: `7f1394f60655095fba1f82fce88448bf4f8d983d`.
 
+- Project control workflow `37022278902`: success;
+- verification workflow `37022278835`: success;
 - unit tests: success;
-- lint comparison proti current `main`: success; branch nepřidal nový lint error/warning nad baseline;
+- lint comparison proti aktuálnímu `main`: success, bez nového lint problému nad baseline;
 - production build: success;
-- `npx tsc --noEmit`: success;
-- `project:check`: success;
-- `git diff --check`: zastavil workflow pouze na dvou trailing-space řádcích přinesených docs PR #28; oba jsou v tomto implementačním PR opraveny;
-- browser E2E se na tomto pre-doc headu kvůli fail-fast po whitespace kroku ještě nespustilo.
+- TypeScript: success;
+- project-control check: success;
+- `git diff --check origin/main...HEAD`: success;
+- Chromium/Playwright install: success;
+- browser E2E: **16/16 passed**;
+- auth-gated Clinical Map: success;
+- A/B/C inspector: success;
+- mobile 320 px a 390 px: success;
+- page-level horizontal overflow: žádný;
+- matrix horizontal scroll: zůstává lokální.
 
-Pre-doc exact-head Preview:
+Exact-head Vercel Preview:
 
-- deployment: `dpl_9p6gk3YdsvRiQVoeYsx3dMay66Mw`;
-- commit: `c30a566f64bd4207ddc14f2b748bbd86d42987d4`;
-- state: `READY`;
-- URL: `https://vankotraining-knee-nz14kp73m-vankotrainings-projects.vercel.app`;
-- `/clinical/exercises`: HTTP 200.
+- deployment: `dpl_6cQBCHwkcw7vv6b2espiYRCd4jzf`;
+- commit: `7f1394f60655095fba1f82fce88448bf4f8d983d`;
+- URL: `https://vankotraining-knee-9ry4ejl9v-vankotrainings-projects.vercel.app`;
+- state: `READY`.
 
-Preview target aktuálně nemá veřejnou Supabase konfiguraci dostupnou buildu/browseru a proto bez doplnění správného Preview environmentu zobrazí fail-closed stav „Chybí Supabase konfigurace“. Produkční Supabase údaje se kvůli tomu do Preview nekopírovaly. Authenticated/live-data chování je kryté browser testem s testovým Supabase environmentem; finální exact-head CI musí ještě projít po tomto docs update.
+Preview může bez veřejné Supabase Preview konfigurace nadále fail-closed zobrazit „Chybí Supabase konfigurace“. Tato konfigurace nebyla v cleanupu měněna.
 
 ## Stav vůči main/production
 
-- navrženo: ano;
 - implementováno ve větvi: ano, PR #29;
-- automatizovaně otestováno: částečně na pre-doc headu; finální exact-head gate pending v okamžiku tohoto zápisu;
-- preview nasazeno: ano, pre-doc head READY;
+- automatizovaně otestováno: ano, na exact headu `7f1394f60655095fba1f82fce88448bf4f8d983d`;
+- preview nasazeno: ano, exact-head deployment `READY`;
+- PR #29: open a unmerged;
 - implementováno v `main`: ne;
 - produkčně nasazeno: ne;
 - produkčně ověřeno: ne.
+
+Další samostatný gate je Preview Supabase environment a vizuální review; cleanup nemění Preview env, `main` ani produkci.
 
 ## Merge gate
 

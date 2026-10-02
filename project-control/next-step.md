@@ -57,26 +57,41 @@ Tyto varianty nesmí být před review automaticky nahrazeny podobným Training 
 
 ## Aktuální ověřovací evidence
 
-Na pre-doc code headu `c30a566f64bd4207ddc14f2b748bbd86d42987d4`:
+Ověřený cleanup head: `7f1394f60655095fba1f82fce88448bf4f8d983d`.
 
+- Project control workflow `37022278902`: success;
+- verification workflow `37022278835`: success;
 - unit tests: success;
-- lint comparison vs current main: success;
+- lint comparison proti aktuálnímu `main`: success, bez nového lint problému nad baseline;
 - production build: success;
 - TypeScript: success;
 - project-control check: success;
-- Vercel Preview `dpl_9p6gk3YdsvRiQVoeYsx3dMay66Mw`: READY;
-- whitespace gate našel pouze dvě trailing spaces v docs převzatých z PR #28; v PR #29 jsou opraveny;
-- browser E2E na tomto headu kvůli fail-fast ještě nebylo spuštěno.
+- `git diff --check origin/main...HEAD`: success;
+- Chromium/Playwright install: success;
+- browser E2E: **16/16 passed**;
+- auth-gated Clinical Map: success;
+- A/B/C inspector: success;
+- mobile 320 px a 390 px: success;
+- page-level horizontal overflow: žádný;
+- matrix horizontal scroll: zůstává lokální.
 
-Preview bez veřejné Supabase Preview konfigurace fail-closed zobrazí „Chybí Supabase konfigurace“; produkční credentials nebyly kvůli tomu do Preview kopírovány. Final exact-head CI s testovým Supabase environmentem musí ověřit authenticated UI a mobile behavior.
+Exact-head Vercel Preview:
+
+- deployment: `dpl_6cQBCHwkcw7vv6b2espiYRCd4jzf`;
+- commit: `7f1394f60655095fba1f82fce88448bf4f8d983d`;
+- URL: `https://vankotraining-knee-9ry4ejl9v-vankotrainings-projects.vercel.app`;
+- state: `READY`.
+
+Preview může bez veřejné Supabase Preview konfigurace nadále fail-closed zobrazit „Chybí Supabase konfigurace“. Tato konfigurace nebyla v cleanupu měněna.
 
 ## Nejbližší gate
 
-1. nechat final exact head PR #29 projít celým CI včetně Playwright;
-2. ověřit READY Preview stejného headu;
-3. předložit PR #29 uživateli k vizuálnímu/klinickému review;
-4. bez výslovného schválení uživatele PR nemergovat;
-5. po případném schválení provést fresh pre-merge kontrolu a teprve pak řešit merge/produkční ověření.
+1. samostatně nastavit bezpečný Preview Supabase environment;
+2. provést vizuální/klinické review exact-head Preview;
+3. PR #29 ponechat open a unmerged do výslovného schválení;
+4. až po schválení provést fresh pre-merge kontrolu.
+
+Clinical Map je implementována a automatizovaně ověřena ve feature větvi, ale není v `main`, není produkčně nasazena a není produkčně ověřena.
 
 Detail feature scope: `clinical-exercise-map-v1-2026-10-02.md`.
 Implementační evidence: `clinical-exercise-map-v1-implementation-2026-10-02.md`.

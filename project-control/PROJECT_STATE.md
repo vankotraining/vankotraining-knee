@@ -100,17 +100,34 @@ PR #29 obsahuje:
 
 ## Automatizovaně otestováno
 
-Pre-doc code head `c30a566f64bd4207ddc14f2b748bbd86d42987d4`:
+Ověřený cleanup head: `7f1394f60655095fba1f82fce88448bf4f8d983d`.
 
+- Project control workflow `37022278902`: success;
+- verification workflow `37022278835`: success;
 - unit tests: success;
-- lint comparison vs current main: success;
+- lint comparison proti aktuálnímu `main`: success, bez nového lint problému nad baseline;
 - production build: success;
 - TypeScript: success;
 - project-control check: success;
-- whitespace gate: fail pouze na dvou trailing spaces převzatých z docs PR #28; v PR #29 jsou opraveny;
-- Playwright: na tomto pre-doc headu se kvůli fail-fast po whitespace kroku nespustil.
+- `git diff --check origin/main...HEAD`: success;
+- Chromium/Playwright install: success;
+- browser E2E: **16/16 passed**;
+- auth-gated Clinical Map: success;
+- A/B/C inspector: success;
+- mobile 320 px a 390 px: success;
+- page-level horizontal overflow: žádný;
+- matrix horizontal scroll: zůstává lokální.
 
-Checkpoint 2026-10-02 16:38 CEST: poslední ověřený head před checkpoint zápisem je `bcfa99b2219428a6ad8a91f9946c44b2b7946809`. Unit tests, lint comparison, production build a TypeScript na tomto headu prošly; workflow zastavil project-control check kvůli chybějící povinné sekci `## Nasazeno`. Tato checkpoint změna sekci doplňuje; nový exact-head CI je proto znovu pending.
+Exact-head Vercel Preview:
+
+- deployment: `dpl_6cQBCHwkcw7vv6b2espiYRCd4jzf`;
+- commit: `7f1394f60655095fba1f82fce88448bf4f8d983d`;
+- URL: `https://vankotraining-knee-9ry4ejl9v-vankotrainings-projects.vercel.app`;
+- state: `READY`.
+
+Preview může bez veřejné Supabase Preview konfigurace nadále fail-closed zobrazit „Chybí Supabase konfigurace“. Tato konfigurace nebyla v cleanupu měněna.
+
+## Nasazeno`. Tato checkpoint změna sekci doplňuje; nový exact-head CI je proto znovu pending.
 
 ## Nasazeno
 
@@ -118,14 +135,13 @@ Clinical Map V1 je nasazena pouze jako **Vercel Preview mimo produkci**. Není i
 
 ## Preview nasazeno
 
-Pre-doc exact-head Preview:
+Exact-head Preview pro ověřený cleanup head `7f1394f60655095fba1f82fce88448bf4f8d983d`:
 
-- deployment `dpl_9p6gk3YdsvRiQVoeYsx3dMay66Mw`;
-- commit `c30a566f64bd4207ddc14f2b748bbd86d42987d4`;
-- state `READY`;
-- `/clinical/exercises`: HTTP 200.
+- deployment: `dpl_6cQBCHwkcw7vv6b2espiYRCd4jzf`;
+- URL: `https://vankotraining-knee-9ry4ejl9v-vankotrainings-projects.vercel.app`;
+- state: `READY`.
 
-Preview environment aktuálně neposkytuje browseru veřejnou Supabase konfiguraci, takže route fail-closed ukazuje „Chybí Supabase konfigurace“. Produkční credentials nebyly kvůli tomu do Preview kopírovány. Authenticated/live-data chování musí projít Playwrightem s testovým Supabase environmentem.
+Preview environment stále nemusí mít veřejnou Supabase konfiguraci a může fail-closed zobrazit „Chybí Supabase konfigurace“. Produkční credentials ani Preview env nebyly v tomto cleanupu měněny.
 
 ## Produkčně nasazeno
 
@@ -146,7 +162,9 @@ Vercel `READY` ani CI nejsou uživatelské produkční ověření.
 
 ## Další krok
 
-- Po úspěchu final exact-head CI a READY Preview předložit PR #29 uživateli k review; bez výslovného schválení nemergovat ani neprovádět produkční rollout.
+- samostatně vyřešit bezpečnou Preview Supabase environment konfiguraci a provést vizuální review;
+- PR #29 zůstává open a unmerged;
+- bez výslovného schválení nemergovat, neměnit `main` a nenasazovat do produkce.
 
 ## Audit Client / Knee / Training a pilot — 2026-09-29
 

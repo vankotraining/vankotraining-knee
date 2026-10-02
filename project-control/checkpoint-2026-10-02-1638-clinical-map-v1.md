@@ -76,3 +76,19 @@ Preview není produkční deployment ani uživatelské produkční ověření.
 3. ověřit READY Preview stejného exact headu;
 4. následně pouze review PR #29;
 5. bez výslovného schválení uživatele PR #29 nemergovat a nic neposílat do produkce.
+
+## Cleanup closeout — 2026-10-02
+
+Tato sekce nahrazuje dřívější pending CI stav výše.
+
+- ověřený cleanup head: `7f1394f60655095fba1f82fce88448bf4f8d983d`;
+- Project control workflow `37022278902`: success;
+- verification workflow `37022278835`: success;
+- unit/lint/build/TypeScript/project-control/whitespace/Chromium: success;
+- browser E2E: 16/16 passed;
+- auth gate, A/B/C inspector, mobile 320/390 px a overflow kontrakt: success;
+- Preview: `dpl_6cQBCHwkcw7vv6b2espiYRCd4jzf`, `READY`;
+- URL: `https://vankotraining-knee-9ry4ejl9v-vankotrainings-projects.vercel.app`;
+- PR #29 zůstává open a unmerged;
+- Clinical Map není v `main`, není produkčně nasazena a není produkčně ověřena;
+- další gate: samostatná Preview Supabase environment konfigurace a vizuální review.
