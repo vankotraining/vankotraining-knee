@@ -2,118 +2,147 @@
 
 ## Datum poslední kontroly
 
-`2026-10-02` (Europe/Prague): deep read-only audit knee exercise usage napříč CLIENTS / Training / historickými programy / Clinical Second Brain a schválení front-end směru Clinical Exercise Map. Produkční runtime nebyl v tomto kroku měněn ani nově produkčně ověřován.
+`2026-10-02` (Europe/Prague): fresh implementační audit a read-only Clinical Exercise Map V1. Produkční runtime ani produkční databáze nebyly měněny a Clinical Map není produkčně ověřena.
 
 ## Aktuální `main` commit
 
-Fresh main před dokumentačním zápisem 2026-10-02: `16fac80d02768476a835d448471243fa0e341dcc` – merge PR #27 `docs: record Client/Knee/Training audit and timeline pilot`. Nový zápis Clinical Exercise Map probíhá v docs-only větvi a nemění runtime kód.
+`16fac80d02768476a835d448471243fa0e341dcc` – merge PR #27 `docs: record Client/Knee/Training audit and timeline pilot`.
 
-Poslední runtime-changing commit:
-
-`59d23c4e18550675b8f5d7401e233ab60cc51d87` – `Merge PR #25: Fix knee asymmetry percentage-point contract`.
+Poslední runtime-changing commit zůstává `59d23c4e18550675b8f5d7401e233ab60cc51d87` – merge PR #25.
 
 ## Aktivní větev a PR
 
-PR #25 je **merged a closed**.
+Clinical Map implementace:
 
-- final exact head: `4b383d342516fc64c92852483e430a0b16ede2c9`;
-- merge commit: `59d23c4e18550675b8f5d7401e233ab60cc51d87`;
-- exact-head `Project control` run `35217601098`: success;
-- exact-head `Verify Tindeq client view` run `35217600919`: success;
-- exact-head Vercel Preview: `dpl_2FbJSmqW12hBtt7BRBUFFca4twEX`, `READY`.
+- větev: `feature/clinical-exercise-map-v1`;
+- PR #29: **open, unmerged**;
+- base: `main`;
+- route: `/clinical/exercises`;
+- databázová migrace: žádná;
+- production data write: žádný.
 
-PR #26 je merged a closed, merge commit `33b065456c8d348018438298187d340605919c2c`. PR #27 je merged a closed, merge commit `16fac80d02768476a835d448471243fa0e341dcc`.
-
-Aktuální docs-only WIP: větev `docs/clinical-exercise-map-20261002`. Obsahuje pouze projektový zápis schváleného směru Clinical Exercise Map; žádný runtime ani databázový zásah.
+PR #28 `docs: record Clinical Exercise Map V1 direction` zůstává otevřený. Feature větev PR #29 byla vytvořena z jeho exact headu `1b014387d750482f10d9272212359586bf3535b2`, takže obsahuje i tento dosud nesloučený projektový zápis. PR #28 se nepovažuje za implementaci.
 
 ## Produkční runtime commit
 
-Snapshot produkce při auditu 2026-09-29: deployment `dpl_Bq9gQ5ZSxeYtzUTi2cNmNDQUxNmM`, READY, alias `knee.vankotraining.cz`, commit `33b065456c8d348018438298187d340605919c2c`. Jde o technické ověření deploymentu, nikoli nový UI acceptance. Pozdější docs-only zápis není nový runtime release.
+Fresh Vercel kontrola 2026-10-02:
 
-Historický rollout runtime změny PR #25 dne 2026-09-17:
-
-- runtime commit: `59d23c4e18550675b8f5d7401e233ab60cc51d87`;
-- deployment: `dpl_GCreoikFbSWN7MZa8RiSNBDW3dCT`;
+- deployment: `dpl_9PzyKBZ65f4MEmt7FEzcp1AKhx2q`;
 - state: `READY`;
 - target: `production`;
-- alias: `knee.vankotraining.cz`;
-- produkční root: HTTP 200;
-- post-deploy kontrola `warning/error/fatal`: 0 nalezených logů v kontrolovaném okně.
+- branch: `main`;
+- commit: `16fac80d02768476a835d448471243fa0e341dcc`.
+
+Jde o současný produkční deployment po docs-only merge PR #27. Clinical Map v něm není. Poslední runtime-changing commit zůstává PR #25.
 
 ## Stav databázových migrací
 
 Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-Migrace PR #25 je produkčně aplikována:
+Clinical Map V1 nevyžaduje a neaplikuje žádnou novou migraci. Existující migration state z PR #25 zůstává beze změny; `knee_extension_tests.asymmetry_pct` nadále používá procentní body.
 
-- version: `20260917114606`;
-- name: `knee_asymmetry_percent_points`;
-- repo file: `supabase/migrations/20260917_knee_asymmetry_percent_points.sql`.
+Fresh read-only snapshot relevantních tabulek 2026-10-02:
 
-Fresh precheck před zápisem:
-
-- `google_sheet_import`: 100 legacy kandidátů, 0 ambiguous;
-- `manual`: 32 již kanonických řádků, 0 invalid, 0 ambiguous;
-- backup/export surface `public.knee_data_export` pokrýval všech 132 měření;
-- candidate snapshot MD5: `141511a89181810b8ba07f409bd12035`.
-
-Post-check:
-
-- `google_sheet_import`: 100/100 canonical, 0 noncanonical, rozsah `0.18–81.50`;
-- `manual`: 32/32 canonical, 0 noncanonical, rozsah `0.96–51.62`;
-- 5 archivovaných manuálních měření zachováno;
-- `weaker_side` mismatches: 0;
-- audit log: 100 UPDATE záznamů migrace;
-- případ `72.4 / 73.1 kg`: `asymmetry_pct = 0.96`, `weaker_side = right`, přímý výpočet `0.9576 %`.
-
-Kanonický kontrakt:
-
-`knee_extension_tests.asymmetry_pct = procentní body`.
+- athletes: 75 / 74 active;
+- athlete_profiles: 74;
+- knee_extension_tests: 135 / 130 non-deleted;
+- tindeq_sessions: 67 / 52 non-deleted;
+- exercises: 161 / 158 active;
+- plans: 4;
+- workouts: 30;
+- workout_items: 36;
+- feedback: 0.
 
 ## Aktuální fáze
 
-PR #25 má dokončený datový i aplikační rollout. Heuristika `value <= 1 ? value * 100 : value` byla odstraněna z UI i exportních SQL. Tabulka, detail, mobilní karty, klientský souhrn, graf a barevná klasifikace používají jedinou jednotku – procentní body.
+Clinical Exercise Map V1 je **implementována ve větvi**, ne v `main`.
 
-Hlášená produkční regrese je uzavřena i manuálním acceptance: uživatel po nasazení potvrdil v přihlášeném Knee UI zobrazení kontrolního měření `72.4 / 73.1 kg` jako `1 %`, nikoli `96 %`.
+Model:
+
+`diagnóza/operace → guardrails → limiter/capacity → load requirement → exercise family → varianta → budoucí dávka → response`.
+
+V1 implementuje pouze read-only mapu po úroveň exercise varianty/provenance/guardrails. Dávkování, plan generation, automatická diagnóza a RTS verdict nejsou součástí V1.
+
+Fresh canonical CLIENTS snapshot:
+
+- 47 Clients;
+- 70 Episodes;
+- **201 unikátních Visits**;
+- 15 primary knee-context Episodes;
+- 55 Visits napojených na tyto primary knee-context Episodes;
+- 15 Clients s explicitním `Tindeq_Athlete_ID`.
+
+Dřívější předběžný údaj 202 Visits je nahrazen fresh kontrolou 201 unikátních `Visit_ID`.
 
 ## Implementováno v `main`
 
-Ano:
+Clinical Map: **ne**.
 
-- `getAsymmetryValue(0.96) -> 0.96`;
-- sdílené formátování asymetrie na jedno desetinné místo;
-- prahy `<10 / 10–20 / >20 %` pracují přímo s procentními body;
-- regrese `72.4 / 73.1 -> 0.957592... % -> 1.0 %`;
-- odstranění magnitude heuristiky z repository exportů;
-- verzovaná fail-closed/idempotentní historická migrace a checks.
+Dříve nasazené Knee/Tindeq/Fmax funkce a oprava asymmetry percentage-point contract zůstávají v `main` beze změny.
 
 ## Rozpracováno mimo `main`
 
-Pro PR #25 nezůstává žádná runtime ani databázová změna mimo `main`. Docs-only synchronizační PR #26 byl následně merged; není již otevřený.
+PR #29 obsahuje:
 
-## Nasazeno
+- sdílenou top-level navigaci Klienti / Clinical Map / Tindeq / Reporty;
+- auth-gated read-only `/clinical/exercises`;
+- capacity matrix 6 × 13 canonical axes/families;
+- live GET overlay aktivních Training `exercises`;
+- verzovaný source-derived projection manifest z CLIENTS/CSB auditu;
+- A/B/C mapping confidence;
+- exercise inspector;
+- explicitní unknown/unresolved stavy;
+- responsive local horizontal scroll;
+- unit + Playwright testy;
+- project-control aktualizaci.
 
-- aplikace PR #25: **ano**, `dpl_GCreoikFbSWN7MZa8RiSNBDW3dCT`, `READY`;
-- DB migrace: **ano**, `20260917114606 knee_asymmetry_percent_points`;
-- při auditu 2026-09-29 alias ukazoval na výše uvedený deployment docs-only merge PR #26, obsahující runtime opravu PR #25.
+Žádný runtime zápis do CLIENTS, Training nebo canonical Exercise DB nebyl přidán.
+
+## Automatizovaně otestováno
+
+Pre-doc code head `c30a566f64bd4207ddc14f2b748bbd86d42987d4`:
+
+- unit tests: success;
+- lint comparison vs current main: success;
+- production build: success;
+- TypeScript: success;
+- project-control check: success;
+- whitespace gate: fail pouze na dvou trailing spaces převzatých z docs PR #28; v PR #29 jsou opraveny;
+- Playwright: na tomto pre-doc headu se kvůli fail-fast po whitespace kroku nespustil.
+
+Finální exact-head CI po project-control commitech je nutný před review gate.
+
+## Preview nasazeno
+
+Pre-doc exact-head Preview:
+
+- deployment `dpl_9p6gk3YdsvRiQVoeYsx3dMay66Mw`;
+- commit `c30a566f64bd4207ddc14f2b748bbd86d42987d4`;
+- state `READY`;
+- `/clinical/exercises`: HTTP 200.
+
+Preview environment aktuálně neposkytuje browseru veřejnou Supabase konfiguraci, takže route fail-closed ukazuje „Chybí Supabase konfigurace“. Produkční credentials nebyly kvůli tomu do Preview kopírovány. Authenticated/live-data chování musí projít Playwrightem s testovým Supabase environmentem.
+
+## Produkčně nasazeno
+
+Clinical Map V1: **ne**.
 
 ## Produkčně ověřeno
 
-- databázová integrita po migraci: **ano, read-only/automatizovaně ověřena**;
-- produkční deployment a dostupnost: **ano, technicky ověřeno**;
-- hlášená UI regrese `72.4 / 73.1 -> 1 %` místo `96 %`: **ano, výslovně potvrzeno uživatelem v přihlášené produkci dne 2026-09-17**.
+Clinical Map V1: **ne**.
 
-PR #25 je tím ve smyslu projektové terminologie **produkčně ověřen**. Uživatel samostatně nepotvrzoval každou jednotlivou UI reprezentaci; jejich konzistence se stejnou procentní jednotkou je kryta implementací a regresními testy.
+Vercel `READY` ani CI nejsou uživatelské produkční ověření.
 
 ## Známé problémy
 
-- pro opravenou chybu asymetrie není po acceptance známý otevřený produkční problém;
-- full-repo lint baseline obsahuje dříve evidované problémy; PR #25 nepřidal nový relevantní lint problém;
-- Supabase security/performance advisors obsahují existující problémy mimo scope PR #25; tato datová migrace neměnila RLS, grants ani indexy.
+- Preview environment nemá použitelnou veřejnou Supabase konfiguraci pro ruční authenticated review; to není důvod kopírovat production credentials do Preview.
+- Full-repo lint baseline na současném `main` obsahuje 3 existující errors + 1 warning; PR gate porovnává branch vůči baseline.
+- Unresolved exact mappings zůstávají: step-down, SL squat/stepper, TRX sit-to-heel, medicine-ball drop to split squat, assisted full-ROM split squat, wall-supported split squat a band-resisted hamstring curl.
+- CLIENTS Visit neukládá explicitní `exercise_id`; probable mapping proto zůstává oddělený od direct clinical-use provenance.
 
 ## Další krok
 
-- **Schválený další produktový směr:** vytvořit read-only `Clinical Map` na route `/clinical/exercises` jako třetí top-level workspace vedle klient/Fmax a Tindeq. Nejdříve implementovat canonical exercise projection, capacity matrix, provenance/confidence a detail cviku; bez automatického plan generation, bez klinických zápisů a bez změny Training plánů. Detailní scope je v `clinical-exercise-map-v1-2026-10-02.md` a ADR `decisions/0002-clinical-exercise-map.md`.
+- Po úspěchu final exact-head CI a READY Preview předložit PR #29 uživateli k review; bez výslovného schválení nemergovat ani neprovádět produkční rollout.
 
 ## Audit Client / Knee / Training a pilot — 2026-09-29
 
@@ -159,7 +188,7 @@ Deep read-only inventura nevycházela pouze z klientů C004/C009. Canonical `Vis
 
 Snapshot použité inventury:
 
-- 202 řádků canonical Visits;
+- 201 unikátních canonical `Visit_ID`;
 - 15 epizod s explicitním knee/meniscus/ACL/quadriceps kontextem;
 - opakovaně doložené exercise families zahrnují knee extension/Tindeq, wall isometrics, split squat, squat/deep flexion, step-down/SL squat, hip hinge/deadlift, bridge, hamstring curl, calf a jump/hop/drop;
 - Training knihovna má řadu exact/near canonical variant, ale část klinických variant zůstává unresolved a nesmí se mapovat násilně.
@@ -190,8 +219,8 @@ Jde o mapu kapacit, nikoli rigidní lineární protokol.
 
 Clinical Map tyto vrstvy projektuje, ale nesmí vytvořit novou konkurenční klinickou nebo evidence autoritu.
 
-### Explicitně neimplementováno
+### Implementační stav
 
-K 2026-10-02 není implementována route, persistence, automatický plan generator, dosing engine, automatická diagnóza ani RTS decision support. Front-end ukázaný v pracovní relaci byl pouze vizuální návrh/prototyp, nikoli produkční UI.
+Route `/clinical/exercises`, top-level navigace, capacity matrix, provenance/confidence projection a read-only exercise inspector jsou implementovány ve větvi `feature/clinical-exercise-map-v1` / PR #29. Nejsou v `main` ani produkčně nasazeny. Persistence, automatický plan generator, dosing engine, automatická diagnóza a RTS decision support implementovány nejsou.
 
-Podrobnosti: `project-control/clinical-exercise-map-v1-2026-10-02.md` a `project-control/decisions/0002-clinical-exercise-map.md`.
+Podrobnosti: `project-control/clinical-exercise-map-v1-2026-10-02.md`, `project-control/clinical-exercise-map-v1-implementation-2026-10-02.md` a `project-control/decisions/0002-clinical-exercise-map.md`.
