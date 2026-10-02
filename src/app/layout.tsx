@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import WorkspaceNav from "./components/WorkspaceNav";
 import "./globals.css";
 import "./mobile-safe-area.css";
 
@@ -51,6 +52,7 @@ export default function RootLayout({
           id="knee-native-share-bootstrap"
           strategy="beforeInteractive"
         />
+        <WorkspaceNav />
         {children}
       </body>
     </html>
