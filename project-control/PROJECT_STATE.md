@@ -100,10 +100,10 @@ PR #29 obsahuje:
 
 ## Automatizovaně otestováno
 
-Ověřený cleanup head: `7f1394f60655095fba1f82fce88448bf4f8d983d`.
+Ověřený cleanup head: `62933a6b5c2fc85b61285a0bc53b42c0a0e877e0`.
 
-- Project control workflow `37022278902`: success;
-- verification workflow `37022278835`: success;
+- Project control workflow `37022924517`: success;
+- verification workflow `37022925652`: success;
 - unit tests: success;
 - lint comparison proti aktuálnímu `main`: success, bez nového lint problému nad baseline;
 - production build: success;
@@ -120,14 +120,12 @@ Ověřený cleanup head: `7f1394f60655095fba1f82fce88448bf4f8d983d`.
 
 Exact-head Vercel Preview:
 
-- deployment: `dpl_6cQBCHwkcw7vv6b2espiYRCd4jzf`;
-- commit: `7f1394f60655095fba1f82fce88448bf4f8d983d`;
-- URL: `https://vankotraining-knee-9ry4ejl9v-vankotrainings-projects.vercel.app`;
+- deployment: `dpl_3LKXfdxBSzm4rwv4TwB1jNtQnZhd`;
+- commit: `62933a6b5c2fc85b61285a0bc53b42c0a0e877e0`;
+- URL: `https://vankotraining-knee-8ai0l66ew-vankotrainings-projects.vercel.app`;
 - state: `READY`.
 
 Preview může bez veřejné Supabase Preview konfigurace nadále fail-closed zobrazit „Chybí Supabase konfigurace“. Tato konfigurace nebyla v cleanupu měněna.
-
-## Nasazeno`. Tato checkpoint změna sekci doplňuje; nový exact-head CI je proto znovu pending.
 
 ## Nasazeno
 
@@ -135,10 +133,10 @@ Clinical Map V1 je nasazena pouze jako **Vercel Preview mimo produkci**. Není i
 
 ## Preview nasazeno
 
-Exact-head Preview pro ověřený cleanup head `7f1394f60655095fba1f82fce88448bf4f8d983d`:
+Exact-head Preview pro ověřený cleanup head `62933a6b5c2fc85b61285a0bc53b42c0a0e877e0`:
 
-- deployment: `dpl_6cQBCHwkcw7vv6b2espiYRCd4jzf`;
-- URL: `https://vankotraining-knee-9ry4ejl9v-vankotrainings-projects.vercel.app`;
+- deployment: `dpl_3LKXfdxBSzm4rwv4TwB1jNtQnZhd`;
+- URL: `https://vankotraining-knee-8ai0l66ew-vankotrainings-projects.vercel.app`;
 - state: `READY`.
 
 Preview environment stále nemusí mít veřejnou Supabase konfiguraci a může fail-closed zobrazit „Chybí Supabase konfigurace“. Produkční credentials ani Preview env nebyly v tomto cleanupu měněny.

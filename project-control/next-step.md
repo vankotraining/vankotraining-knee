@@ -57,10 +57,10 @@ Tyto varianty nesmí být před review automaticky nahrazeny podobným Training 
 
 ## Aktuální ověřovací evidence
 
-Ověřený cleanup head: `7f1394f60655095fba1f82fce88448bf4f8d983d`.
+Ověřený cleanup head: `62933a6b5c2fc85b61285a0bc53b42c0a0e877e0`.
 
-- Project control workflow `37022278902`: success;
-- verification workflow `37022278835`: success;
+- Project control workflow `37022924517`: success;
+- verification workflow `37022925652`: success;
 - unit tests: success;
 - lint comparison proti aktuálnímu `main`: success, bez nového lint problému nad baseline;
 - production build: success;
@@ -77,9 +77,9 @@ Ověřený cleanup head: `7f1394f60655095fba1f82fce88448bf4f8d983d`.
 
 Exact-head Vercel Preview:
 
-- deployment: `dpl_6cQBCHwkcw7vv6b2espiYRCd4jzf`;
-- commit: `7f1394f60655095fba1f82fce88448bf4f8d983d`;
-- URL: `https://vankotraining-knee-9ry4ejl9v-vankotrainings-projects.vercel.app`;
+- deployment: `dpl_3LKXfdxBSzm4rwv4TwB1jNtQnZhd`;
+- commit: `62933a6b5c2fc85b61285a0bc53b42c0a0e877e0`;
+- URL: `https://vankotraining-knee-8ai0l66ew-vankotrainings-projects.vercel.app`;
 - state: `READY`.
 
 Preview může bez veřejné Supabase Preview konfigurace nadále fail-closed zobrazit „Chybí Supabase konfigurace“. Tato konfigurace nebyla v cleanupu měněna.
