@@ -1,7 +1,7 @@
 # Clinical Exercise Map V1 — implementation evidence
 
-Datum: 2026-10-02  
-Větev: `feature/clinical-exercise-map-v1`  
+Datum: 2026-10-02
+Větev: `feature/clinical-exercise-map-v1`
 PR: #29 `feat: add read-only Clinical Exercise Map V1`
 
 ## Authority a scope
