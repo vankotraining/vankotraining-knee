@@ -2,11 +2,11 @@
 
 ## Datum poslední kontroly
 
-`2026-09-29` (Europe/Prague): read-only audit Client / Knee / Training a pilot časové osy. Historický rollout a uživatelský acceptance PR #25 ze dne 2026-09-17 zůstávají platné v uvedeném rozsahu.
+`2026-10-02` (Europe/Prague): deep read-only audit knee exercise usage napříč CLIENTS / Training / historickými programy / Clinical Second Brain a schválení front-end směru Clinical Exercise Map. Produkční runtime nebyl v tomto kroku měněn ani nově produkčně ověřován.
 
 ## Aktuální `main` commit
 
-Při auditu 2026-09-29 načtený main: `33b065456c8d348018438298187d340605919c2c` (merged docs-only PR #26). Následný dokumentační zápis auditu nemění runtime kód.
+Fresh main před dokumentačním zápisem 2026-10-02: `16fac80d02768476a835d448471243fa0e341dcc` – merge PR #27 `docs: record Client/Knee/Training audit and timeline pilot`. Nový zápis Clinical Exercise Map probíhá v docs-only větvi a nemění runtime kód.
 
 Poslední runtime-changing commit:
 
@@ -22,7 +22,9 @@ PR #25 je **merged a closed**.
 - exact-head `Verify Tindeq client view` run `35217600919`: success;
 - exact-head Vercel Preview: `dpl_2FbJSmqW12hBtt7BRBUFFca4twEX`, `READY`.
 
-PR #26 je rovněž merged a closed (ověřeno 2026-09-29), merge commit `33b065456c8d348018438298187d340605919c2c`. Audit a jeho dokumentační zápis neotevírají implementační WIP.
+PR #26 je merged a closed, merge commit `33b065456c8d348018438298187d340605919c2c`. PR #27 je merged a closed, merge commit `16fac80d02768476a835d448471243fa0e341dcc`.
+
+Aktuální docs-only WIP: větev `docs/clinical-exercise-map-20261002`. Obsahuje pouze projektový zápis schváleného směru Clinical Exercise Map; žádný runtime ani databázový zásah.
 
 ## Produkční runtime commit
 
@@ -111,7 +113,7 @@ PR #25 je tím ve smyslu projektové terminologie **produkčně ověřen**. Uži
 
 ## Další krok
 
-- Navrženo: u jednoho pilotního klienta ručně ověřit přesné existující Training cviky proti intervencím ve Visits; bez změny schématu nebo nového plánu. Implementaci případných vazeb otevřít až samostatným zadáním.
+- **Schválený další produktový směr:** vytvořit read-only `Clinical Map` na route `/clinical/exercises` jako třetí top-level workspace vedle klient/Fmax a Tindeq. Nejdříve implementovat canonical exercise projection, capacity matrix, provenance/confidence a detail cviku; bez automatického plan generation, bez klinických zápisů a bez změny Training plánů. Detailní scope je v `clinical-exercise-map-v1-2026-10-02.md` a ADR `decisions/0002-clinical-exercise-map.md`.
 
 ## Audit Client / Knee / Training a pilot — 2026-09-29
 
@@ -147,3 +149,49 @@ App má 161 cviků (158 aktivních), existující dávkování a vazbu `athlete 
 
 ### Mezery a navržené pokračování
 Chybí přímá vazba měření na návštěvu/epizodu, konzistentní reakce po zátěži a ověřené propojení textových intervencí s exercise UUID. Existující model umožňuje nejprve malý ruční pilot bez nové databáze. Další implementace, nové fáze rehabilitace, plošné tagování cviků ani clinical decision support nejsou tímto auditem schváleny.
+
+
+## Clinical Exercise Map decision — 2026-10-02
+
+### Co bylo čerstvě ověřeno
+
+Deep read-only inventura nevycházela pouze z klientů C004/C009. Canonical `Visits` byly načteny v plném rozsahu a spojeny přes `Episode_ID` s klinickým kontextem. Audit pracoval také s Training `exercises`, historickými KneeRehab / BV_knee_aid / !!!Exercise_Database zdroji a s appraised Clinical Second Brain vrstvou.
+
+Snapshot použité inventury:
+
+- 202 řádků canonical Visits;
+- 15 epizod s explicitním knee/meniscus/ACL/quadriceps kontextem;
+- opakovaně doložené exercise families zahrnují knee extension/Tindeq, wall isometrics, split squat, squat/deep flexion, step-down/SL squat, hip hinge/deadlift, bridge, hamstring curl, calf a jump/hop/drop;
+- Training knihovna má řadu exact/near canonical variant, ale část klinických variant zůstává unresolved a nesmí se mapovat násilně.
+
+Počty použití jsou clinical-use provenance, nikoli účinnost nebo evidence rank.
+
+### Schválený front-end koncept
+
+Nový workspace:
+
+`/clinical/exercises` — **Clinical Map**
+
+V1 je read-only. Výchozí vizuální forma je matice exercise family × capacity stage s přepínatelnými pohledy podle kapacity, problému/diagnózy, cviku a klienta.
+
+Hlavní capacity osa:
+
+`Tolerance → Force/activation → Strength/capacity → Deep ROM/knee-forward → Dynamic → Sport`.
+
+Jde o mapu kapacit, nikoli rigidní lineární protokol.
+
+### Authority boundaries
+
+- CLIENTS = skutečný průběh péče a doložené intervence;
+- Knee/Tindeq/Fmax = objektivní měření a response/capacity kontext;
+- Training = canonical exercise library a digitální exercise identity;
+- historické plány = sekundární zdroj variant a programovací zkušenosti;
+- Clinical Second Brain = evidence authority a klinické guardrails.
+
+Clinical Map tyto vrstvy projektuje, ale nesmí vytvořit novou konkurenční klinickou nebo evidence autoritu.
+
+### Explicitně neimplementováno
+
+K 2026-10-02 není implementována route, persistence, automatický plan generator, dosing engine, automatická diagnóza ani RTS decision support. Front-end ukázaný v pracovní relaci byl pouze vizuální návrh/prototyp, nikoli produkční UI.
+
+Podrobnosti: `project-control/clinical-exercise-map-v1-2026-10-02.md` a `project-control/decisions/0002-clinical-exercise-map.md`.
