@@ -131,7 +131,9 @@ test("signed-in Clinical Map renders live Training overlay, provenance and A/B/C
   await page.getByRole("button", { name: /Single-leg wall sit/ }).click();
   await expect(page.getByText("A · direct clinical use", { exact: true }).last()).toBeVisible();
   await expect(page.getByText("Clinical family", { exact: true })).toBeVisible();
-  await expect(page.getByText("Wall isometric", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("complementary").getByText("Wall isometric", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("Clinical mapping confidence", { exact: true }).last()).toBeVisible();
   await expect(page.getByText("Training library link", { exact: true }).last()).toBeVisible();
   await expect(page.getByText("verified", { exact: true }).last()).toBeVisible();
