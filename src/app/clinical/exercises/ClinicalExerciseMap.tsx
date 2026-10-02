@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   CAPACITY_STAGES,
@@ -105,10 +105,7 @@ export default function ClinicalExerciseMap() {
           ? "error"
           : "ready";
 
-  const trainingById = useMemo(
-    () => new Map(trainingExercises.map((exercise) => [exercise.id, exercise])),
-    [trainingExercises],
-  );
+  const trainingById = new Map(trainingExercises.map((exercise) => [exercise.id, exercise]));
 
   const selectedCard =
     CLINICAL_EXERCISE_CARDS.find((card) => card.id === selectedId) ??
