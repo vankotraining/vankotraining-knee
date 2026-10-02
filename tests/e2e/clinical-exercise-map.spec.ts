@@ -105,6 +105,13 @@ async function setupSignedInClinicalMap(page: Page) {
   return methods;
 }
 
+async function openDataProvenance(page: Page) {
+  const disclosure = page.locator("details").filter({ hasText: "Data / provenance" });
+  if ((await disclosure.getAttribute("open")) === null) {
+    await disclosure.locator("summary").click();
+  }
+}
+
 test("Clinical Map remains protected when signed out", async ({ page }) => {
   await page.goto("/clinical/exercises");
   await expect(page.getByRole("heading", { name: "Nejdřív se přihlas" })).toBeVisible();
@@ -123,20 +130,94 @@ test("signed-in Clinical Map renders live Training overlay, provenance and A/B/C
 
   await page.getByRole("button", { name: /Single-leg wall sit/ }).click();
   await expect(page.getByText("A · direct clinical use", { exact: true }).last()).toBeVisible();
-  await expect(page.getByText("57256826-2c12-49c3-a0e6-7a29d11d37ea", { exact: true })).toBeVisible();
+  await expect(page.getByText("Clinical family", { exact: true })).toBeVisible();
+  await expect(page.getByText("Wall isometric", { exact: true })).toBeVisible();
+  await expect(page.getByText("Clinical mapping confidence", { exact: true }).last()).toBeVisible();
+  await expect(page.getByText("Training library link", { exact: true }).last()).toBeVisible();
+  await expect(page.getByText("verified", { exact: true }).last()).toBeVisible();
   await expect(page.getByText("Visit 2026-09-29", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Context guardrails" })).toBeVisible();
+
+  await openDataProvenance(page);
+  await expect(page.getByText("57256826-2c12-49c3-a0e6-7a29d11d37ea", { exact: true })).toBeVisible();
+  await expect(page.getByText("Training library family", { exact: true })).toBeVisible();
+  await expect(page.getByText("squat", { exact: true }).last()).toBeVisible();
   await expect(page.getByText("Single leg wall sit", { exact: true }).last()).toBeVisible();
+  await expect(page.getByText("Segments", { exact: true })).toBeVisible();
+  await expect(page.getByText("Equipment", { exact: true })).toBeVisible();
+  await expect(page.getByText("Laterality", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: /Isometric knee extension/ }).click();
   await expect(page.getByText("B · probable canonical mapping", { exact: true }).last()).toBeVisible();
+  await expect(page.getByText("verified", { exact: true }).last()).toBeVisible();
 
   await page.getByRole("button", { name: /Step-down/ }).click();
   await expect(page.getByText("C · unresolved / clinician decision", { exact: true })).toBeVisible();
-  await expect(page.getByText("exercise_id unresolved", { exact: true }).last()).toBeVisible();
+  await expect(page.getByText("none", { exact: true }).last()).toBeVisible();
   await expect(page.getByText("No safe exact Training exercise mapping was found.", { exact: false })).toBeVisible();
+
+  await openDataProvenance(page);
+  await expect(page.getByText("unresolved", { exact: true }).last()).toBeVisible();
 
   expect(methods.length).toBeGreaterThan(0);
   expect(methods.every((method) => method === "GET")).toBe(true);
+});
+
+test("desktop matrix is denser and keeps both axes labelled while scrolling", async ({ page }) => {
+  await setupSignedInClinicalMap(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/clinical/exercises");
+
+  const viewport = page.getByTestId("clinical-map-matrix-viewport");
+  const stageHeader = page.getByTestId("clinical-map-stage-header").first();
+  const familyCell = page.getByTestId("clinical-map-family-cell").first();
+  const corner = page.getByTestId("clinical-map-corner");
+
+  const layout = await viewport.evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(layout.scrollHeight).toBeGreaterThan(layout.clientHeight);
+  expect(layout.scrollWidth).toBeGreaterThan(layout.clientWidth);
+
+  expect(await stageHeader.evaluate((element) => getComputedStyle(element).position)).toBe("sticky");
+  expect(await familyCell.evaluate((element) => getComputedStyle(element).position)).toBe("sticky");
+
+  await viewport.evaluate((element) => {
+    element.scrollTop = 90;
+    element.scrollLeft = 260;
+  });
+
+  const stickyGeometry = await page.evaluate(() => {
+    const viewportElement = document.querySelector<HTMLElement>("[data-testid='clinical-map-matrix-viewport']");
+    const stage = document.querySelector<HTMLElement>("[data-testid='clinical-map-stage-header']");
+    const family = document.querySelector<HTMLElement>("[data-testid='clinical-map-family-cell']");
+    const cornerElement = document.querySelector<HTMLElement>("[data-testid='clinical-map-corner']");
+    if (!viewportElement || !stage || !family || !cornerElement) return null;
+    const viewportRect = viewportElement.getBoundingClientRect();
+    return {
+      stageTop: stage.getBoundingClientRect().top - viewportRect.top,
+      familyLeft: family.getBoundingClientRect().left - viewportRect.left,
+      cornerTop: cornerElement.getBoundingClientRect().top - viewportRect.top,
+      cornerLeft: cornerElement.getBoundingClientRect().left - viewportRect.left,
+      stageZ: Number(getComputedStyle(stage).zIndex),
+      familyZ: Number(getComputedStyle(family).zIndex),
+      cornerZ: Number(getComputedStyle(cornerElement).zIndex),
+    };
+  });
+
+  expect(stickyGeometry).not.toBeNull();
+  expect(Math.abs(stickyGeometry?.stageTop ?? 99)).toBeLessThanOrEqual(1);
+  expect(Math.abs(stickyGeometry?.familyLeft ?? 99)).toBeLessThanOrEqual(1);
+  expect(Math.abs(stickyGeometry?.cornerTop ?? 99)).toBeLessThanOrEqual(1);
+  expect(Math.abs(stickyGeometry?.cornerLeft ?? 99)).toBeLessThanOrEqual(1);
+  expect(stickyGeometry?.cornerZ ?? 0).toBeGreaterThan(stickyGeometry?.stageZ ?? 0);
+  expect(stickyGeometry?.stageZ ?? 0).toBeGreaterThan(stickyGeometry?.familyZ ?? 0);
+
+  await expect(corner).toBeVisible();
+  await page.screenshot({ path: "test-results/clinical-map-desktop-sticky.png", fullPage: false });
 });
 
 for (const viewport of [
@@ -161,6 +242,26 @@ for (const viewport of [
     }));
     expect(matrixOverflow.scrollWidth).toBeGreaterThan(matrixOverflow.clientWidth);
 
+    const viewportElement = page.getByTestId("clinical-map-matrix-viewport");
+    await viewportElement.evaluate((element) => {
+      element.scrollTop = 70;
+      element.scrollLeft = 220;
+    });
+    const mobileSticky = await page.evaluate(() => {
+      const viewportNode = document.querySelector<HTMLElement>("[data-testid='clinical-map-matrix-viewport']");
+      const stage = document.querySelector<HTMLElement>("[data-testid='clinical-map-stage-header']");
+      const family = document.querySelector<HTMLElement>("[data-testid='clinical-map-family-cell']");
+      if (!viewportNode || !stage || !family) return null;
+      const viewportRect = viewportNode.getBoundingClientRect();
+      return {
+        stageTop: stage.getBoundingClientRect().top - viewportRect.top,
+        familyLeft: family.getBoundingClientRect().left - viewportRect.left,
+      };
+    });
+    expect(mobileSticky).not.toBeNull();
+    expect(Math.abs(mobileSticky?.stageTop ?? 99)).toBeLessThanOrEqual(1);
+    expect(Math.abs(mobileSticky?.familyLeft ?? 99)).toBeLessThanOrEqual(1);
+
     const navLinks = [
       page.getByRole("link", { name: "Klienti", exact: true }),
       page.getByRole("link", { name: "Clinical Map", exact: true }),
@@ -174,5 +275,10 @@ for (const viewport of [
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
     }
+
+    await page.screenshot({
+      path: `test-results/clinical-map-mobile-${viewport.width}.png`,
+      fullPage: false,
+    });
   });
 }

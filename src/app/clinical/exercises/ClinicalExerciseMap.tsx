@@ -45,10 +45,33 @@ function confidenceClass(confidence: ClinicalExerciseCard["mappingConfidence"]) 
   return styles.confidenceC;
 }
 
-function mappingLabel(state: ClinicalExerciseCard["mappingState"]) {
-  if (state === "exact") return "exact";
-  if (state === "probable") return "probable";
-  return "unresolved";
+function mappingReason(state: ClinicalExerciseCard["mappingState"]) {
+  if (state === "exact") {
+    return "Direct clinical use is documented in the existing projection provenance.";
+  }
+  if (state === "probable") {
+    return "Documented clinical use has a probable canonical Training match, but the Visit does not store an exact exercise_id.";
+  }
+  return "Clinical use may be documented, but an exact Training mapping is intentionally unresolved and needs clinician/library review.";
+}
+
+function trainingLinkStatus(
+  card: ClinicalExerciseCard,
+  libraryState: "idle" | "loading" | "ready" | "error",
+  liveTraining: TrainingExercise | null,
+) {
+  if (!card.trainingExerciseId) {
+    return { label: "none", className: styles.trainingNone };
+  }
+  if (libraryState === "ready") {
+    return liveTraining
+      ? { label: "verified", className: styles.trainingVerified }
+      : { label: "unresolved", className: styles.trainingUnresolved };
+  }
+  return {
+    label: libraryState === "error" ? "unavailable" : "pending",
+    className: styles.trainingPending,
+  };
 }
 
 function renderArray(value: string[] | null) {
@@ -114,6 +137,15 @@ export default function ClinicalExerciseMap() {
 
   const selectedTraining = selectedCard?.trainingExerciseId
     ? trainingById.get(selectedCard.trainingExerciseId) ?? null
+    : null;
+  const selectedFamily = selectedCard
+    ? CLINICAL_FAMILIES.find((family) => family.id === selectedCard.family) ?? null
+    : null;
+  const selectedCapacity = selectedCard
+    ? CAPACITY_STAGES.find((stage) => stage.id === selectedCard.capacity) ?? null
+    : null;
+  const selectedTrainingLink = selectedCard
+    ? trainingLinkStatus(selectedCard, libraryState, selectedTraining)
     : null;
 
   if (!isConfigured || state === "unconfigured") {
@@ -201,14 +233,25 @@ export default function ClinicalExerciseMap() {
         </div>
       ) : null}
 
-      <section className={styles.legend} aria-label="Legenda mapping confidence">
-        <span className={`${styles.badge} ${styles.confidenceA}`}>A · direct clinical use</span>
-        <span className={`${styles.badge} ${styles.confidenceB}`}>B · probable mapping</span>
-        <span className={`${styles.badge} ${styles.confidenceC}`}>C · unresolved</span>
-        <p>
-          A/B/C popisuje provenance a jistotu mapování, ne účinnost cviku. Historical library
-          availability není direct clinical use.
-        </p>
+      <section className={styles.legend} aria-label="Clinical mapping a Training link legenda">
+        <div className={styles.legendGroup}>
+          <strong>Clinical mapping confidence</strong>
+          <div className={styles.legendItems}>
+            <span className={`${styles.badge} ${styles.confidenceA}`}>A · direct clinical use</span>
+            <span className={`${styles.badge} ${styles.confidenceB}`}>B · probable mapping</span>
+            <span className={`${styles.badge} ${styles.confidenceC}`}>C · unresolved</span>
+          </div>
+          <p>A/B/C popisuje klinickou provenance a jistotu mapování, ne účinnost cviku.</p>
+        </div>
+        <div className={styles.legendGroup}>
+          <strong>Training library link</strong>
+          <div className={styles.legendItems}>
+            <span className={`${styles.linkStatus} ${styles.trainingVerified}`}>verified</span>
+            <span className={`${styles.linkStatus} ${styles.trainingUnresolved}`}>unresolved</span>
+            <span className={`${styles.linkStatus} ${styles.trainingNone}`}>none</span>
+          </div>
+          <p>Samostatný runtime stav exercise_id; nemění clinical confidence.</p>
+        </div>
       </section>
 
       <div className={styles.workspace}>
@@ -218,16 +261,29 @@ export default function ClinicalExerciseMap() {
               <p className={styles.eyebrow}>Výchozí view</p>
               <h2 id="capacity-title">Capacity view</h2>
             </div>
-            <p>Kliknutí drží výběr a otevře inspector.</p>
+            <div className={styles.matrixGuidance}>
+              <p>Kliknutí drží výběr a otevře inspector.</p>
+              <span className={styles.scrollHint} aria-hidden="true">Posuň doprava →</span>
+            </div>
           </div>
 
           <div className={styles.matrixViewport} data-testid="clinical-map-matrix-viewport">
             <div className={styles.matrix} role="grid" aria-label="Clinical Exercise Capacity Map">
-              <div className={`${styles.cell} ${styles.corner}`} role="columnheader">
+              <div
+                className={`${styles.cell} ${styles.corner}`}
+                data-testid="clinical-map-corner"
+                role="columnheader"
+              >
                 Exercise family
               </div>
               {CAPACITY_STAGES.map((stage) => (
-                <div className={`${styles.cell} ${styles.stageHeader}`} role="columnheader" key={stage.id}>
+                <div
+                  aria-label={`${stage.label}: ${stage.description}`}
+                  className={`${styles.cell} ${styles.stageHeader}`}
+                  data-testid="clinical-map-stage-header"
+                  role="columnheader"
+                  key={stage.id}
+                >
                   <strong>{stage.label}</strong>
                   <span>{stage.description}</span>
                 </div>
@@ -237,6 +293,7 @@ export default function ClinicalExerciseMap() {
                 const row = [
                   <div
                     className={`${styles.cell} ${styles.familyCell}`}
+                    data-testid="clinical-map-family-cell"
                     role="rowheader"
                     key={`${family.id}-label`}
                   >
@@ -251,6 +308,7 @@ export default function ClinicalExerciseMap() {
                   row.push(
                     <div
                       className={`${styles.cell} ${styles.mapCell}`}
+                      data-card-count={cards.length}
                       role="gridcell"
                       key={`${family.id}-${stage.id}`}
                     >
@@ -259,10 +317,11 @@ export default function ClinicalExerciseMap() {
                           ? trainingById.get(card.trainingExerciseId)
                           : null;
                         const isSelected = card.id === selectedId;
-                        const runtimeMismatch =
-                          libraryState === "ready" &&
-                          card.trainingExerciseId !== null &&
-                          liveTraining === undefined;
+                        const linkStatus = trainingLinkStatus(
+                          card,
+                          libraryState,
+                          liveTraining ?? null,
+                        );
 
                         return (
                           <button
@@ -276,19 +335,12 @@ export default function ClinicalExerciseMap() {
                               <span className={`${styles.badge} ${confidenceClass(card.mappingConfidence)}`}>
                                 {card.mappingConfidence}
                               </span>
-                              <span>{mappingLabel(card.mappingState)}</span>
+                              <span className={`${styles.linkStatus} ${linkStatus.className}`}>
+                                Training {linkStatus.label}
+                              </span>
                             </span>
                             <strong>{card.canonicalName}</strong>
                             <span className={styles.variant}>{card.variant}</span>
-                            <span className={styles.trainingStatus}>
-                              {card.trainingExerciseId
-                                ? runtimeMismatch
-                                  ? "Training ID není live"
-                                  : libraryState === "ready"
-                                    ? "Training ID ověřeno"
-                                    : "Training ID"
-                                : "exercise_id unresolved"}
-                            </span>
                           </button>
                         );
                       })}
@@ -306,57 +358,48 @@ export default function ClinicalExerciseMap() {
             <>
               <div className={styles.inspectorHeader}>
                 <div>
-                  <p className={styles.eyebrow}>Exercise inspector</p>
+                  <p className={styles.eyebrow}>Exercise identity</p>
                   <h2>{selectedCard.canonicalName}</h2>
                   <p>{selectedCard.variant}</p>
                 </div>
-                <span className={`${styles.badge} ${confidenceClass(selectedCard.mappingConfidence)}`}>
-                  {getMappingConfidenceLabel(selectedCard.mappingConfidence)}
-                </span>
               </div>
 
-              <dl className={styles.factGrid}>
-                <div><dt>Family</dt><dd>{selectedCard.family}</dd></div>
-                <div><dt>Capacity placement</dt><dd>{selectedCard.capacity}</dd></div>
-                <div><dt>Training mapping</dt><dd>{selectedCard.mappingState}</dd></div>
-                <div><dt>exercise_id</dt><dd className={styles.codeValue}>{selectedCard.trainingExerciseId ?? "unresolved"}</dd></div>
+              <dl className={styles.identityGrid}>
+                <div><dt>Clinical family</dt><dd>{selectedFamily?.label ?? selectedCard.family}</dd></div>
+                <div><dt>Capacity placement</dt><dd>{selectedCapacity?.label ?? selectedCard.capacity}</dd></div>
+                <div>
+                  <dt>Clinical mapping confidence</dt>
+                  <dd>
+                    <span className={`${styles.badge} ${confidenceClass(selectedCard.mappingConfidence)}`}>
+                      {getMappingConfidenceLabel(selectedCard.mappingConfidence)}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Training library link</dt>
+                  <dd>
+                    <span className={`${styles.linkStatus} ${selectedTrainingLink?.className ?? ""}`}>
+                      {selectedTrainingLink?.label ?? "unknown"}
+                    </span>
+                  </dd>
+                </div>
               </dl>
 
               <section className={styles.inspectorSection}>
-                <h3>Live Training record</h3>
-                {selectedCard.trainingExerciseId ? (
-                  selectedTraining ? (
-                    <dl className={styles.detailList}>
-                      <div><dt>Name</dt><dd>{selectedTraining.name}</dd></div>
-                      <div><dt>Family slug</dt><dd>{selectedTraining.family_slug ?? "unknown"}</dd></div>
-                      <div><dt>Training type</dt><dd>{selectedTraining.training_type ?? "unknown"}</dd></div>
-                      <div><dt>Laterality</dt><dd>{selectedTraining.laterality ?? "unknown"}</dd></div>
-                      <div><dt>Segments</dt><dd>{renderArray(selectedTraining.segments)}</dd></div>
-                      <div><dt>Equipment</dt><dd>{renderArray(selectedTraining.equipment)}</dd></div>
-                      <div><dt>Source</dt><dd>{selectedTraining.source ?? "unknown"}{selectedTraining.source_row ? ` · row ${selectedTraining.source_row}` : ""}</dd></div>
-                    </dl>
-                  ) : (
-                    <p className={styles.unknown}>
-                      {libraryState === "ready"
-                        ? "Projection odkazuje na exercise_id, který není mezi aktuálně aktivními Training exercises. Vyžaduje kontrolu; mapping se automaticky nenahrazuje."
-                        : "Čekám na live ověření Training library."}
-                    </p>
-                  )
-                ) : (
-                  <p className={styles.unknown}>Exact Training exercise_id nebylo bezpečně určeno.</p>
-                )}
+                <h3>Proč je cvik v mapě</h3>
+                <p className={styles.mappingReason}>{mappingReason(selectedCard.mappingState)}</p>
               </section>
 
               <section className={styles.inspectorSection}>
-                <h3>Load signature</h3>
-                <dl className={styles.detailList}>
-                  {loadFields.map(([field, label]) => (
-                    <div key={field}>
-                      <dt>{label}</dt>
-                      <dd>{selectedCard.loadSignature[field] ?? "unknown"}</dd>
-                    </div>
+                <h3>Relevant clinical contexts</h3>
+                <div className={styles.chips}>
+                  {selectedCard.clinicalContexts.map((context) => (
+                    <span key={context}>{context}</span>
                   ))}
-                </dl>
+                </div>
+                <p className={styles.caution}>
+                  Context není automaticky potvrzená diagnóza a mapa nevytváří diagnózu ani RTS verdict.
+                </p>
               </section>
 
               <section className={styles.inspectorSection}>
@@ -377,19 +420,7 @@ export default function ClinicalExerciseMap() {
               </section>
 
               <section className={styles.inspectorSection}>
-                <h3>Relevantní clinical contexts</h3>
-                <div className={styles.chips}>
-                  {selectedCard.clinicalContexts.map((context) => (
-                    <span key={context}>{context}</span>
-                  ))}
-                </div>
-                <p className={styles.caution}>
-                  Context není automaticky potvrzená diagnóza a mapa nevytváří diagnózu ani RTS verdict.
-                </p>
-              </section>
-
-              <section className={styles.inspectorSection}>
-                <h3>Evidence / guardrails</h3>
+                <h3>Context guardrails</h3>
                 <div className={styles.stack}>
                   {selectedCard.evidence.map((item) => (
                     <article className={styles.guardrail} key={item.claimId}>
@@ -404,7 +435,7 @@ export default function ClinicalExerciseMap() {
               </section>
 
               <section className={styles.inspectorSection}>
-                <h3>Unresolved otázky</h3>
+                <h3>Unresolved questions</h3>
                 {selectedCard.unresolvedQuestions.length > 0 ? (
                   <ul>
                     {selectedCard.unresolvedQuestions.map((question) => <li key={question}>{question}</li>)}
@@ -413,6 +444,54 @@ export default function ClinicalExerciseMap() {
                   <p>V rámci V1 nejsou pro tuto kartu evidované další mapping otázky.</p>
                 )}
               </section>
+
+              <details className={styles.dataDisclosure}>
+                <summary>Data / provenance</summary>
+                <div className={styles.dataDisclosureBody}>
+                  <dl className={styles.detailList}>
+                    <div><dt>exercise_id</dt><dd className={styles.codeValue}>{selectedCard.trainingExerciseId ?? "unresolved"}</dd></div>
+                    <div><dt>Clinical family key</dt><dd>{selectedCard.family}</dd></div>
+                    <div><dt>Capacity key</dt><dd>{selectedCard.capacity}</dd></div>
+                    <div><dt>Mapping state</dt><dd>{selectedCard.mappingState}</dd></div>
+                    <div><dt>Expected Training name</dt><dd>{selectedCard.expectedTrainingName ?? "unresolved"}</dd></div>
+                    <div><dt>Training library family</dt><dd>{selectedTraining?.family_slug ?? "unknown"}</dd></div>
+                  </dl>
+
+                  <h4>Live Training metadata</h4>
+                  {selectedCard.trainingExerciseId ? (
+                    selectedTraining ? (
+                      <dl className={styles.detailList}>
+                        <div><dt>Name</dt><dd>{selectedTraining.name}</dd></div>
+                        <div><dt>Category</dt><dd>{selectedTraining.category ?? "unknown"}</dd></div>
+                        <div><dt>Training type</dt><dd>{selectedTraining.training_type ?? "unknown"}</dd></div>
+                        <div><dt>Laterality</dt><dd>{selectedTraining.laterality ?? "unknown"}</dd></div>
+                        <div><dt>Segments</dt><dd>{renderArray(selectedTraining.segments)}</dd></div>
+                        <div><dt>Equipment</dt><dd>{renderArray(selectedTraining.equipment)}</dd></div>
+                        <div><dt>Source row</dt><dd>{selectedTraining.source ?? "unknown"}{selectedTraining.source_row ? ` · row ${selectedTraining.source_row}` : ""}</dd></div>
+                        <div><dt>Active</dt><dd>{selectedTraining.is_active ? "true" : "false"}</dd></div>
+                      </dl>
+                    ) : (
+                      <p className={styles.unknown}>
+                        {libraryState === "ready"
+                          ? "Projection odkazuje na exercise_id, který není mezi aktuálně aktivními Training exercises. Vyžaduje kontrolu; mapping se automaticky nenahrazuje."
+                          : "Čekám na live ověření Training library."}
+                      </p>
+                    )
+                  ) : (
+                    <p className={styles.unknown}>Exact Training exercise_id nebylo bezpečně určeno.</p>
+                  )}
+
+                  <h4>Load signature</h4>
+                  <dl className={styles.detailList}>
+                    {loadFields.map(([field, label]) => (
+                      <div key={field}>
+                        <dt>{label}</dt>
+                        <dd>{selectedCard.loadSignature[field] ?? "unknown"}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              </details>
             </>
           ) : null}
         </aside>
