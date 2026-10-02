@@ -211,9 +211,7 @@ Git integrace pro alignment head `dd0f4df5a37aa202ced81313ce6d31924424e718` auto
 
 ## Další krok
 
-- Otevřít exact-head V1.1 Preview a provést krátkou authenticated vizuální akceptaci desktop + mobil.
-- Pokud je UX přijato, pokračovat klinickým review mappingů v pořadí `Knee extension → Wall isometric → Split squat`.
-- PR #29 ponechat open a unmerged do výslovného schválení; neměnit `main` a nenasazovat Clinical Map do produkce.
+- Provést authenticated vizuální akceptaci V1.1 na desktopu a mobilu; pokud UX projde, pokračovat klinickým review mappingů v pořadí `Knee extension → Wall isometric → Split squat`; PR #29 ponechat open a unmerged do výslovného schválení a neměnit `main` ani produkci.
 
 ## Audit Client / Knee / Training a pilot — 2026-09-29
 
