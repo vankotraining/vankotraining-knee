@@ -7,6 +7,8 @@ import {
   CLINICAL_EXERCISE_CARDS,
   CLINICAL_EXERCISE_MAP_SNAPSHOT,
   CLINICAL_FAMILIES,
+  CLINICAL_GOALS,
+  getClinicalGoal,
   getMappingConfidenceLabel,
   type ClinicalExerciseCard,
 } from "@/lib/clinical-exercise-map-v1";
@@ -147,6 +149,11 @@ export default function ClinicalExerciseMap() {
   const selectedTrainingLink = selectedCard
     ? trainingLinkStatus(selectedCard, libraryState, selectedTraining)
     : null;
+  const activeGoal = CLINICAL_GOALS[0] ?? null;
+  const selectedGoalLinks =
+    selectedCard?.clinicalGoalLinks
+      ?.map((link) => ({ link, goal: getClinicalGoal(link.goalId) }))
+      .filter((item) => item.goal) ?? [];
 
   if (!isConfigured || state === "unconfigured") {
     return (
@@ -203,8 +210,8 @@ export default function ClinicalExerciseMap() {
           <p className={styles.eyebrow}>knee.vankotraining.cz · read-only</p>
           <h1>Clinical Map</h1>
           <p className={styles.intro}>
-            Exercise-first mapa propojující doložené klinické použití, canonical Training library a
-            evidence guardrails. Kapacity nejsou rigidní lineární fáze.
+            Clinical-goal + exercise mapa propojující klinický cíl a limitery s doloženým použitím cviků,
+            canonical Training library a evidence guardrails. Kapacity nejsou rigidní lineární fáze.
           </p>
         </div>
         <div className={styles.snapshot}>
@@ -253,6 +260,51 @@ export default function ClinicalExerciseMap() {
           <p>Samostatný runtime stav exercise_id; nemění clinical confidence.</p>
         </div>
       </section>
+
+      {activeGoal ? (
+        <section className={styles.goalLayer} aria-labelledby="clinical-goal-title">
+          <div className={styles.goalLayerHeader}>
+            <div>
+              <p className={styles.eyebrow}>Clinical goal layer · reviewed pilot</p>
+              <h2 id="clinical-goal-title">{activeGoal.label}</h2>
+              <p>{activeGoal.description}</p>
+            </div>
+            <span className={styles.goalStatus}>Goal lens active</span>
+          </div>
+
+          <p className={styles.goalScope}>{activeGoal.scope}</p>
+
+          <div className={styles.goalColumns}>
+            <div className={styles.goalBlock}>
+              <strong>Co chceme obnovit</strong>
+              <div className={styles.goalComponentGrid}>
+                {activeGoal.components.map((component) => (
+                  <article key={component.id}>
+                    <strong>{component.label}</strong>
+                    <p>{component.description}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+            <div className={styles.goalBlock}>
+              <strong>Typické limitery</strong>
+              <div className={styles.goalChips}>
+                {activeGoal.limiters.map((limiter) => (
+                  <span key={limiter.id}>{limiter.label}</span>
+                ))}
+              </div>
+              <strong className={styles.goalEvidenceLabel}>CSB authority</strong>
+              <div className={styles.goalEvidence}>
+                {activeGoal.evidence.map((item) => (
+                  <span key={item.claimId}>{item.claimId}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <p className={styles.goalReviewNote}>{activeGoal.reviewNote}</p>
+        </section>
+      ) : null}
 
       <div className={styles.workspace}>
         <section className={styles.matrixPanel} aria-labelledby="capacity-title">
@@ -317,6 +369,9 @@ export default function ClinicalExerciseMap() {
                           ? trainingById.get(card.trainingExerciseId)
                           : null;
                         const isSelected = card.id === selectedId;
+                        const activeGoalLink = activeGoal
+                          ? card.clinicalGoalLinks?.find((link) => link.goalId === activeGoal.id)
+                          : null;
                         const linkStatus = trainingLinkStatus(
                           card,
                           libraryState,
@@ -326,7 +381,11 @@ export default function ClinicalExerciseMap() {
                         return (
                           <button
                             aria-pressed={isSelected}
-                            className={isSelected ? `${styles.exerciseCard} ${styles.selected}` : styles.exerciseCard}
+                            className={[
+                              styles.exerciseCard,
+                              isSelected ? styles.selected : "",
+                              activeGoalLink ? styles.goalLinked : "",
+                            ].filter(Boolean).join(" ")}
                             key={card.id}
                             onClick={() => setSelectedId(card.id)}
                             type="button"
@@ -341,6 +400,9 @@ export default function ClinicalExerciseMap() {
                             </span>
                             <strong>{card.canonicalName}</strong>
                             <span className={styles.variant}>{card.variant}</span>
+                            {activeGoalLink ? (
+                              <span className={styles.goalTag}>↳ Clinical goal</span>
+                            ) : null}
                           </button>
                         );
                       })}
@@ -384,6 +446,45 @@ export default function ClinicalExerciseMap() {
                   </dd>
                 </div>
               </dl>
+
+              {selectedGoalLinks.length > 0 ? (
+                <section className={styles.inspectorSection}>
+                  <h3>Clinical goal links</h3>
+                  <div className={styles.stack}>
+                    {selectedGoalLinks.map(({ link, goal }) => (
+                      <article className={styles.goalLinkCard} key={link.goalId}>
+                        <div className={styles.goalLinkMeta}>
+                          <strong>{goal?.label}</strong>
+                          <span>{link.role}</span>
+                        </div>
+                        <p>{link.note}</p>
+                        <div className={styles.goalLinkGroups}>
+                          <div>
+                            <span className={styles.goalLinkLabel}>Components</span>
+                            <div className={styles.goalChips}>
+                              {link.componentIds.map((componentId) => (
+                                <span key={componentId}>
+                                  {goal?.components.find((item) => item.id === componentId)?.label ?? componentId}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <span className={styles.goalLinkLabel}>Limiter targets</span>
+                            <div className={styles.goalChips}>
+                              {link.limiterIds.map((limiterId) => (
+                                <span key={limiterId}>
+                                  {goal?.limiters.find((item) => item.id === limiterId)?.label ?? limiterId}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
               <section className={styles.inspectorSection}>
                 <h3>Proč je cvik v mapě</h3>

@@ -55,6 +55,45 @@ export type EvidenceGuardrail = {
   guardrail: string;
 };
 
+export type ClinicalGoalId = "restore_extension_quadriceps_control";
+export type ClinicalGoalComponentId =
+  | "extension_rom"
+  | "quadriceps_activation"
+  | "terminal_extension_control"
+  | "early_load_acceptance";
+export type ClinicalLimiterId =
+  | "extension_loss"
+  | "effusion_pain_limited_activation"
+  | "poor_quad_activation"
+  | "quadriceps_force_deficit"
+  | "poor_terminal_control";
+
+export type ClinicalGoalLink = {
+  goalId: ClinicalGoalId;
+  role: "primary" | "supporting" | "progression";
+  componentIds: readonly ClinicalGoalComponentId[];
+  limiterIds: readonly ClinicalLimiterId[];
+  note: string;
+};
+
+export type ClinicalGoal = {
+  id: ClinicalGoalId;
+  label: string;
+  scope: string;
+  description: string;
+  components: readonly {
+    id: ClinicalGoalComponentId;
+    label: string;
+    description: string;
+  }[];
+  limiters: readonly {
+    id: ClinicalLimiterId;
+    label: string;
+  }[];
+  evidence: readonly EvidenceGuardrail[];
+  reviewNote: string;
+};
+
 export type ClinicalExerciseCard = {
   id: string;
   canonicalName: string;
@@ -66,6 +105,7 @@ export type ClinicalExerciseCard = {
   mappingConfidence: MappingConfidence;
   mappingState: MappingState;
   clinicalContexts: string[];
+  clinicalGoalLinks?: readonly ClinicalGoalLink[];
   loadSignature: LoadSignature;
   provenance: ClinicalProvenance[];
   evidence: EvidenceGuardrail[];
@@ -114,6 +154,24 @@ const ACL: EvidenceGuardrail = {
   guardrail: "Treatment and progression are trajectory-specific; do not convert sport ambition, laxity or a single exercise result into an automatic treatment or RTS verdict.",
 };
 
+const ACL_REHAB: EvidenceGuardrail = {
+  claimId: "ACL-CLM-008",
+  context: "ACL reconstruction rehabilitation",
+  guardrail: "Use exercise-based, progressive and criteria-driven rehabilitation; early active ROM, controlled weight bearing and quadriceps restoration are priorities when surgical and concomitant-procedure constraints allow. Exact timing and cut-points are not universal.",
+};
+
+const AMI_PATTERN: EvidenceGuardrail = {
+  claimId: "AMI-CLM-001",
+  context: "Quadriceps activation after knee injury",
+  guardrail: "Quadriceps activation failure can occur after knee injury/ACLR and may be bilateral; do not assume the contralateral limb is a normal reference or diagnose AMI from weakness alone.",
+};
+
+const AMI_MANAGEMENT: EvidenceGuardrail = {
+  claimId: "AMI-CLM-002",
+  context: "AMI / quadriceps activation management",
+  guardrail: "Progressive exercise is the foundation; early NMES may be an adjunct when voluntary activation is limited. Passive modalities should not replace progressive quadriceps loading.",
+};
+
 export const CLINICAL_EXERCISE_MAP_SNAPSHOT = {
   snapshotDate: "2026-10-02",
   canonicalVisits: 201,
@@ -123,6 +181,49 @@ export const CLINICAL_EXERCISE_MAP_SNAPSHOT = {
   authorityNote:
     "CLIENTS supplies documented clinical use, Training supplies canonical exercise IDs, and Clinical Second Brain supplies evidence guardrails. This file is a read-only projection manifest, not a new clinical authority.",
 } as const;
+
+export const CLINICAL_GOALS: readonly ClinicalGoal[] = [
+  {
+    id: "restore_extension_quadriceps_control",
+    label: "Restore knee extension & quadriceps control",
+    scope:
+      "Early knee rehabilitation when extension or quadriceps control is a relevant limiter. Current CSB evidence is strongest for ACL/ACLR; procedure-specific restrictions override the generic goal.",
+    description:
+      "Restore available knee extension, voluntary quadriceps activation and active terminal extension control, then transfer that control into early weight bearing and basic movement.",
+    components: [
+      {
+        id: "extension_rom",
+        label: "Extension ROM",
+        description: "Restore the available extension range rather than accepting a persistent extension deficit as a normal endpoint.",
+      },
+      {
+        id: "quadriceps_activation",
+        label: "Quadriceps activation",
+        description: "Restore purposeful voluntary quadriceps recruitment and identify activation-limited loading when present.",
+      },
+      {
+        id: "terminal_extension_control",
+        label: "Active terminal extension control",
+        description: "Convert passive or assisted extension into active control near terminal knee extension.",
+      },
+      {
+        id: "early_load_acceptance",
+        label: "Early load acceptance / movement control",
+        description: "Transfer extension and quadriceps control into gait, weight bearing and basic movement as constraints allow.",
+      },
+    ],
+    limiters: [
+      { id: "extension_loss", label: "Extension loss" },
+      { id: "effusion_pain_limited_activation", label: "Effusion / pain-limited activation" },
+      { id: "poor_quad_activation", label: "Poor voluntary quadriceps activation / AMI" },
+      { id: "quadriceps_force_deficit", label: "Quadriceps force deficit" },
+      { id: "poor_terminal_control", label: "Poor active terminal extension control" },
+    ],
+    evidence: [ACL_REHAB, AMI_PATTERN, AMI_MANAGEMENT],
+    reviewNote:
+      "This is a clinical goal layer, not a rigid postoperative phase or a prescription for one specific exercise. Exercise links are added only after clinical review.",
+  },
+];
 
 export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
   {
@@ -192,6 +293,58 @@ export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
     unresolvedQuestions: [],
   },
   {
+    id: "terminal-knee-extension-quad-activation",
+    canonicalName: "Terminal extension / quadriceps activation",
+    family: "knee_extension",
+    variant: "Towel press / heel-supported active terminal extension",
+    capacity: "force_activation",
+    trainingExerciseId: null,
+    expectedTrainingName: null,
+    mappingConfidence: "A",
+    mappingState: "unresolved",
+    clinicalContexts: [
+      "early knee rehabilitation",
+      "terminal extension control",
+      "quadriceps activation",
+      "postoperative / post-traumatic knee",
+    ],
+    clinicalGoalLinks: [
+      {
+        goalId: "restore_extension_quadriceps_control",
+        role: "primary",
+        componentIds: ["extension_rom", "quadriceps_activation", "terminal_extension_control"],
+        limiterIds: [
+          "extension_loss",
+          "effusion_pain_limited_activation",
+          "poor_quad_activation",
+          "poor_terminal_control",
+        ],
+        note: "Directly observed clinical option for extension/activation work; it is not a universal postoperative protocol or fixed phase.",
+      },
+    ],
+    loadSignature: {
+      ...unknownLoad,
+      contraction: "isometric / active terminal extension",
+      laterality: "unilateral",
+      romKneeFlexionDemand: "terminal extension / near 0°",
+      assistance: "towel or heel support depending on variant",
+      externalLoad: "low / clinician-selected",
+    },
+    provenance: [
+      {
+        kind: "visit",
+        label: "Direct clinical use",
+        visitId: "7d26481e-3e88-46ab-9b7c-9f0fcf93d862",
+        visitDate: "2026-09-29",
+        note: "Visit documents difficult quadriceps activation in terminal extension, then full-extension work using a towel press under the knee and active terminal extension with the heel elevated.",
+      },
+    ],
+    evidence: [ACL_REHAB, AMI_MANAGEMENT],
+    unresolvedQuestions: [
+      "Training has no reviewed exact canonical variant for this clinical option; keep exercise_id empty until clinician/library review.",
+    ],
+  },
+  {
     id: "isometric-knee-extension",
     canonicalName: "Isometric knee extension",
     family: "knee_extension",
@@ -202,6 +355,15 @@ export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
     mappingConfidence: "B",
     mappingState: "probable",
     clinicalContexts: ["quadriceps deficit", "load-related knee pain", "postoperative capacity"],
+    clinicalGoalLinks: [
+      {
+        goalId: "restore_extension_quadriceps_control",
+        role: "supporting",
+        componentIds: ["quadriceps_activation"],
+        limiterIds: ["poor_quad_activation", "quadriceps_force_deficit"],
+        note: "A reviewed activation/loading option within this goal; the exact Training setup remains a probable mapping rather than a Visit-stored exercise_id.",
+      },
+    ],
     loadSignature: {
       ...unknownLoad,
       contraction: "isometric",
@@ -650,6 +812,10 @@ export function getCardsForCell(family: ClinicalFamilyId, capacity: CapacityStag
 
 export function getClinicalExerciseCard(id: string) {
   return CLINICAL_EXERCISE_CARDS.find((card) => card.id === id) ?? null;
+}
+
+export function getClinicalGoal(id: ClinicalGoalId) {
+  return CLINICAL_GOALS.find((goal) => goal.id === id) ?? null;
 }
 
 export function getMappingConfidenceLabel(confidence: MappingConfidence) {

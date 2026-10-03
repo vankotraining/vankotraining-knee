@@ -5,6 +5,7 @@ import {
   CLINICAL_EXERCISE_CARDS,
   CLINICAL_EXERCISE_MAP_SNAPSHOT,
   CLINICAL_FAMILIES,
+  CLINICAL_GOALS,
   getCardsForCell,
 } from "./clinical-exercise-map-v1.js";
 
@@ -15,6 +16,43 @@ test("V1 keeps the approved six-capacity axis and all canonical families", () =>
   );
   assert.equal(CLINICAL_FAMILIES.length, 13);
   assert.equal(new Set(CLINICAL_FAMILIES.map((family) => family.id)).size, 13);
+});
+
+test("V1.2 clinical goal layer separates early goals and limiters from exercise identity", () => {
+  const goal = CLINICAL_GOALS.find((item) => item.id === "restore_extension_quadriceps_control");
+  assert.ok(goal);
+  assert.deepEqual(
+    goal.components.map((item) => item.id),
+    ["extension_rom", "quadriceps_activation", "terminal_extension_control", "early_load_acceptance"],
+  );
+  assert.ok(goal.limiters.some((item) => item.id === "poor_quad_activation"));
+  assert.ok(goal.evidence.some((item) => item.claimId === "ACL-CLM-008"));
+  assert.ok(goal.evidence.some((item) => item.claimId === "AMI-CLM-001"));
+  assert.ok(goal.evidence.some((item) => item.claimId === "AMI-CLM-002"));
+});
+
+test("terminal extension is a reviewed exercise option under the goal, not the goal itself", () => {
+  const card = CLINICAL_EXERCISE_CARDS.find(
+    (item) => item.id === "terminal-knee-extension-quad-activation",
+  );
+  assert.ok(card);
+  assert.equal(card.capacity, "force_activation");
+  assert.equal(card.mappingConfidence, "A");
+  assert.equal(card.trainingExerciseId, null);
+  assert.ok(
+    card.provenance.some(
+      (item) => item.kind === "visit" && item.visitId === "7d26481e-3e88-46ab-9b7c-9f0fcf93d862",
+    ),
+  );
+  assert.ok(
+    card.clinicalGoalLinks?.some(
+      (link) =>
+        link.goalId === "restore_extension_quadriceps_control" &&
+        link.componentIds.includes("terminal_extension_control"),
+    ),
+  );
+  assert.ok(card.evidence.some((item) => item.claimId === "ACL-CLM-008"));
+  assert.ok(card.evidence.some((item) => item.claimId === "AMI-CLM-002"));
 });
 
 test("projection snapshot records fresh provenance counts", () => {
@@ -67,6 +105,21 @@ test("known unresolved queue is explicit rather than silently canonicalized", ()
     "wall-supported-split-squat",
   ]) {
     assert.ok(unresolvedIds.has(id), `${id} should remain unresolved`);
+  }
+});
+
+test("all reviewed clinical-goal links reference declared goals/components/limiters", () => {
+  const goals = new Map(CLINICAL_GOALS.map((goal) => [goal.id, goal]));
+
+  for (const card of CLINICAL_EXERCISE_CARDS) {
+    for (const link of card.clinicalGoalLinks ?? []) {
+      const goal = goals.get(link.goalId);
+      assert.ok(goal, `${card.id} links to an unknown clinical goal`);
+      const components = new Set(goal.components.map((item) => item.id));
+      const limiters = new Set(goal.limiters.map((item) => item.id));
+      assert.ok(link.componentIds.every((id) => components.has(id)));
+      assert.ok(link.limiterIds.every((id) => limiters.has(id)));
+    }
   }
 });
 

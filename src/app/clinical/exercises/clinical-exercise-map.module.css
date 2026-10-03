@@ -720,3 +720,195 @@
     margin: 16px 0;
   }
 }
+
+
+/* Clinical goal layer — V1.2 pilot */
+.goalLayer {
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid #d9e0e8;
+  border-radius: 16px;
+  background: #fbfcfe;
+}
+
+.goalLayerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.goalLayerHeader h2 {
+  margin: 2px 0 6px;
+}
+
+.goalLayerHeader p {
+  max-width: 860px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.goalStatus {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid #b8c6d8;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.goalScope {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-left: 3px solid #9aa9bb;
+  background: #fff;
+  line-height: 1.45;
+}
+
+.goalColumns {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.goalBlock {
+  padding: 12px;
+  border: 1px solid #e2e7ee;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.goalComponentGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 9px;
+}
+
+.goalComponentGrid article {
+  padding: 10px;
+  border: 1px solid #e5e9ef;
+  border-radius: 10px;
+}
+
+.goalComponentGrid p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.goalChips,
+.goalEvidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.goalChips span,
+.goalEvidence span {
+  display: inline-flex;
+  padding: 4px 7px;
+  border: 1px solid #d7dee8;
+  border-radius: 999px;
+  background: #f7f9fc;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.goalEvidenceLabel {
+  display: block;
+  margin-top: 14px;
+}
+
+.goalEvidence span {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
+}
+
+.goalReviewNote {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.goalLinked {
+  outline: 2px solid #aab8c8;
+  outline-offset: -2px;
+}
+
+.goalTag {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 5px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #eef2f7;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.goalLinkCard {
+  padding: 11px;
+  border: 1px solid #dde4ec;
+  border-radius: 11px;
+  background: #fbfcfe;
+}
+
+.goalLinkCard p {
+  margin: 7px 0 0;
+  line-height: 1.45;
+}
+
+.goalLinkMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.goalLinkMeta span {
+  padding: 3px 6px;
+  border: 1px solid #d6dde6;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.goalLinkGroups {
+  display: grid;
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.goalLinkLabel {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .goalLayer {
+    margin-right: -10px;
+    margin-left: -10px;
+    padding: 14px;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .goalLayerHeader {
+    display: grid;
+  }
+
+  .goalStatus {
+    justify-self: start;
+  }
+
+  .goalColumns,
+  .goalComponentGrid {
+    grid-template-columns: 1fr;
+  }
+}

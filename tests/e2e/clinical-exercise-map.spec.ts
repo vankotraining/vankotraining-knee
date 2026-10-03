@@ -127,6 +127,20 @@ test("signed-in Clinical Map renders live Training overlay, provenance and A/B/C
   await expect(page.getByRole("heading", { name: "Clinical Map" })).toBeVisible();
   await expect(page.getByText("Training live: 3 active exercises")).toBeVisible();
   await expect(page.getByRole("grid", { name: "Clinical Exercise Capacity Map" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Restore knee extension & quadriceps control" }),
+  ).toBeVisible();
+  await expect(page.getByText("ACL-CLM-008", { exact: true })).toBeVisible();
+  await expect(page.getByText("AMI-CLM-002", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: /Terminal extension \/ quadriceps activation/ }).click();
+  await expect(page.getByRole("heading", { name: "Clinical goal links" })).toBeVisible();
+  await expect(
+    page.getByRole("complementary").getByText("Restore knee extension & quadriceps control", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("A · direct clinical use", { exact: true }).last()).toBeVisible();
+  await expect(page.getByText("Visit 2026-09-29", { exact: false })).toBeVisible();
+  await expect(page.getByText("none", { exact: true }).last()).toBeVisible();
 
   await page.getByRole("button", { name: /Single-leg wall sit/ }).click();
   await expect(page.getByText("A · direct clinical use", { exact: true }).last()).toBeVisible();
