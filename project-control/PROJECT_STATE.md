@@ -293,3 +293,22 @@ Clinical Map tyto vrstvy projektuje, ale nesmí vytvořit novou konkurenční kl
 Route `/clinical/exercises`, top-level navigace, capacity matrix, provenance/confidence projection a read-only exercise inspector jsou implementovány ve větvi `feature/clinical-exercise-map-v1` / PR #29. Nejsou v `main` ani produkčně nasazeny. Persistence, automatický plan generator, dosing engine, automatická diagnóza a RTS decision support implementovány nejsou.
 
 Podrobnosti: `project-control/clinical-exercise-map-v1-2026-10-02.md`, `project-control/clinical-exercise-map-v1-implementation-2026-10-02.md` a `project-control/decisions/0002-clinical-exercise-map.md`.
+
+
+## Clinical goal layer V1.2 — 2026-10-03
+
+Po klinickém review časné rehabilitace kolene a po zpracování relevantní evidence v Clinical Second Brain byl Clinical Map model rozšířen o explicitní vrstvu **clinical goal → limiter**.
+
+Schválený řetězec je nyní:
+
+`diagnosis/operation → guardrails → clinical goal → limiter → capacity → exercise family → variant → future dose → response`.
+
+První canonical goal je `Restore knee extension & quadriceps control` se čtyřmi komponentami: extension ROM, quadriceps activation, active terminal extension control a early load acceptance / movement control. Goal není rigidní časová fáze ani univerzální pooperační protokol.
+
+Evidence authority pro tento pilot tvoří ACTIVE CSB claims `ACL-CLM-008`, `AMI-CLM-001` a `AMI-CLM-002`. Current evidence anchor je nejsilnější pro ACL/ACLR; procedure-specific restrictions mají přednost.
+
+Do Knee extension rodiny byla přidána direct clinical-use option `Terminal extension / quadriceps activation` s provenance z Visit `7d26481e-3e88-46ab-9b7c-9f0fcf93d862` (2026-09-29). Clinical confidence je A, ale Training link zůstává `none`, protože exact canonical Training variant nebyla reviewována. Existující `Isometric knee extension` je supporting goal option a její B probable Training mapping zůstává beze změny. Machine knee extension nebyla v tomto kroku přehodnocena.
+
+Runtime/test commit `45d7fbea195a4906889da9fa6c91cb723a775f5a` prošel workflow `37108795338` a `37108795533`; Vercel Preview `dpl_9uFSvX1XL4Nec78LW2wHjx2rizcf` je READY na `https://vankotraining-knee-6cl626jmd-vankotrainings-projects.vercel.app`.
+
+PR #29 zůstává open/unmerged. Main, production deployment a production/dev databáze nebyly změněny.
