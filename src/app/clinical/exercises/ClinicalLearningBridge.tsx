@@ -14,7 +14,7 @@ function parseNodes(value: unknown): LearningNode[] {
     if (!node || typeof node !== "object") return false;
     if (typeof node.nodeId !== "string" || typeof node.label !== "string" || typeof node.href !== "string") return false;
     if (!Array.isArray(node.sourceIds) || !node.sourceIds.every((id: unknown) => typeof id === "string")) return false;
-    const expected = `${libraryOrigin}/learn/knee/${encodeURIComponent(node.nodeId)}`;
+    const expected = `${libraryOrigin}/learn/knee/${encodeURIComponent(node.nodeId.replace(":", "--"))}`;
     return node.href === expected;
   });
 }
