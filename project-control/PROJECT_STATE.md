@@ -2,17 +2,17 @@
 
 ## Release checkpoint — 2026-10-03 (Europe/Prague)
 
-Status: **DEPLOYED — final production acceptance pending; not CLOSED / VERIFIED.**
+Status: **CLOSED / VERIFIED — KNEE LEARNING HUB V1; runtime remains in production.**
 
 - Clinician approved V1.3 reasoning lens and coordinated release. Knee PR #29 and #30 and Library PR #10 are merged.
-- Knee runtime release commit: `5cb052ce47000f6fa05f3c477f96e7f2b7617f32`; production deployment `dpl_79w5zK6DffT537wi88aQhdAw1EAQ` READY at https://knee.vankotraining.cz.
-- Library runtime release commit: `1595e497aa911da61a3f16402e02abe728f21332`; production deployment `dpl_2YriU6sTECurd4zvs8PszLZpJNns` READY at https://library.vankotraining.cz.
-- Authenticated production Knee loads 158 active Training exercises and V1.3 reasoning lens. Knee-extension inspector distinguishes B mapping confidence from verified Training identity.
-- Live production Map → Knee-extension topic → PFP-004 Deep Read → corresponding family Map PASS. Return selects the family; it does not promise restoration of the exact previous exercise variant.
-- Public learning-map manifest HTTP 200; two canonical nodes, PFP-004/PFP-002. Production PFP-004 ČJ→EN UI switch retains topic and renders English reader.
-- Knee without a session is auth gated. Library shows local-only Reading; local progress is not shared between domains. Production error/fatal runtime-log query found no entries in the checked window.
-- Production Auth fix approved and saved: exact redirect URL `https://library.vankotraining.cz/auth/callback` added to Supabase project `zxvndqicslyulrinbpyn`; dashboard confirms 7 allowed URLs and success. Site URL and six existing entries preserved. Default magic-link template uses ConfirmationURL. The post-fix OTP request failed at 2026-10-03 19:08:16Z with HTTP 429 / `over_email_send_rate_limit`; successful OTP requests were 18:24:01Z and 18:38:01Z. No new email was sent. Library cloud persistence/synchronization and live authenticated RLS behavior remain unverified; wait for provider quota before the next normal sign-in request.
-- Existing bounded exact-build desktop/mobile/axe checks remain evidence; final live production mobile/accessibility checks remain pending. No production migration or clinical-data write was performed by this release.
+- Runtime release commits remain Knee `5cb052ce47000f6fa05f3c477f96e7f2b7617f32` and Library `1595e497aa911da61a3f16402e02abe728f21332`; subsequent docs-only main commits do not change released runtime behavior.
+- Production learning-map manifest returns HTTP 200 with the two canonical nodes and PFP-004/PFP-002. Live Map → topic → Deep Read → corresponding Map navigation PASS.
+- Authenticated Library production sign-in and cloud persistence PASS. Canonical `library_progress` contains PFP-004 / shared / reading-v1 with state `reading`; authenticated own-row RLS read-back PASS.
+- Authenticated production Knee browser read-back PASS: Knee extension shows `Cloud: 0 přečteno · 1 rozpracováno · 0 nepřečteno · další stav neznámý` and links to the canonical Library topic.
+- Final live responsive/accessibility smoke PASS: Library topic 390/320 px has no horizontal overflow and 0 axe violations scoped to main; PFP-004 bilingual/backlink smoke at 390 px has no overflow and 0 axe violations scoped to main; authenticated Knee learning panel at 390 px has no overflow, 0 axe violations and no page errors.
+- Final Vercel runtime-error scans found no runtime errors for Library or Knee in the inspected window.
+- No production migration, clinical-data write, new evidence authority, new Deep Read or new feature scope was introduced by this closeout.
+- Next operating mode: USE / OBSERVE. Open another feature workstream only from recurring decision-relevant friction/value; existing Deep Read publication gate remains unchanged.
 
 ## Historical checkpoints — superseded current status
 
@@ -356,8 +356,8 @@ Relevantní CSB update: `ACL-014`, `AMI-003`, `AMI-004` jsou APPRAISED; `AMI-CLM
 Runtime/test commit `0b019c31b146a8f7c84f06fe352d0c6abb1025d7`; následná docs whitespace correction `74472741b3c30b901a3b0e4b2a6c458bea9c05e7`. Exact-head verification a browser workflow prošly, Preview `dpl_8qXfYoqLmssz7bwyEhEBPyZjB5sP` je READY na `https://vankotraining-knee-2g27lrz65-vankotrainings-projects.vercel.app`.
 
 PR #29 zůstává open/unmerged. `main`, production deployment a databáze jsou beze změny.
-# Library learning bridge V1 — dependent preview work
+# Library learning bridge V1 — CLOSED / VERIFIED
 
-Implemented from Clinical Map head aed392b33b35ece5a458fca297c4e10c1627c8b3 on feature/library-learning-bridge-v1. Scope: Learn / Evidence inspector, canonical node query backlink, public Library manifest and read-only current-user cloud counts. Relation is owned by Library; clinical structure is owned by Knee; evidence authority remains CSB. Contract: decisions/0005-library-learning-bridge.md.
+The Learn / Evidence bridge is merged and production-verified. Clinical Map owns clinical structure, Library owns reading/learning, and CSB remains evidence authority. The released bridge uses the existing PFP-004/PFP-002 sources and existing family:knee_extension / capacity:strength_capacity nodes; no parallel taxonomy, evidence store or clinical-write path was added.
 
-Build/TypeScript, 138 unit tests, changed-file lint and project-control passed locally. Production unchanged; PR #29 remains open/unmerged under its existing explicit approval gate. Bridge production acceptance is pending.
+Final production acceptance on 2026-10-03 includes authenticated Library cloud persistence, authenticated own-row RLS read-back, authenticated Knee Cloud progress projection, bidirectional Map ↔ Library navigation, live 320/390 px responsive smoke, zero scoped axe violations on the new learning surfaces, and clean final runtime-error scans. Workstream state: CLOSED / VERIFIED → USE / OBSERVE.
