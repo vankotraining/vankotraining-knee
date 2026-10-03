@@ -2,116 +2,216 @@
 
 ## Datum poslední kontroly
 
-`2026-09-29` (Europe/Prague): read-only audit Client / Knee / Training a pilot časové osy. Historický rollout a uživatelský acceptance PR #25 ze dne 2026-09-17 zůstávají platné v uvedeném rozsahu.
+`2026-10-02` (Europe/Prague): Clinical Exercise Map V1.1 UX/readability pass je implementován a automatizovaně ověřen ve feature větvi. Produkční runtime ani produkční databáze nebyly měněny a Clinical Map není produkčně ověřena.
 
 ## Aktuální `main` commit
 
-Při auditu 2026-09-29 načtený main: `33b065456c8d348018438298187d340605919c2c` (merged docs-only PR #26). Následný dokumentační zápis auditu nemění runtime kód.
+`16fac80d02768476a835d448471243fa0e341dcc` – merge PR #27 `docs: record Client/Knee/Training audit and timeline pilot`.
 
-Poslední runtime-changing commit:
-
-`59d23c4e18550675b8f5d7401e233ab60cc51d87` – `Merge PR #25: Fix knee asymmetry percentage-point contract`.
+Poslední runtime-changing commit zůstává `59d23c4e18550675b8f5d7401e233ab60cc51d87` – merge PR #25.
 
 ## Aktivní větev a PR
 
-PR #25 je **merged a closed**.
+Clinical Map implementace:
 
-- final exact head: `4b383d342516fc64c92852483e430a0b16ede2c9`;
-- merge commit: `59d23c4e18550675b8f5d7401e233ab60cc51d87`;
-- exact-head `Project control` run `35217601098`: success;
-- exact-head `Verify Tindeq client view` run `35217600919`: success;
-- exact-head Vercel Preview: `dpl_2FbJSmqW12hBtt7BRBUFFca4twEX`, `READY`.
+- větev: `feature/clinical-exercise-map-v1`;
+- PR #29: **open, unmerged, mergeable**;
+- base: `main`;
+- latest runtime/test-changing head: `738a4145c0f47d636f1c8433d7de1811182167df`;
+- route: `/clinical/exercises`;
+- production databázová migrace: žádná;
+- dev-only migration applied on dev: `20261002181856_align_clinical_map_dev_training_library`;
+- isolated audit artifact: `supabase/dev-migrations/20261002181856_align_clinical_map_dev_training_library.sql`;
+- production data write: žádný.
 
-PR #26 je rovněž merged a closed (ověřeno 2026-09-29), merge commit `33b065456c8d348018438298187d340605919c2c`. Audit a jeho dokumentační zápis neotevírají implementační WIP.
+PR #28 `docs: record Clinical Exercise Map V1 direction` zůstává otevřený. Feature větev PR #29 byla vytvořena z jeho směru a obsahuje i dosud nesloučené project-control změny. PR #28 se nepovažuje za implementaci.
 
 ## Produkční runtime commit
 
-Snapshot produkce při auditu 2026-09-29: deployment `dpl_Bq9gQ5ZSxeYtzUTi2cNmNDQUxNmM`, READY, alias `knee.vankotraining.cz`, commit `33b065456c8d348018438298187d340605919c2c`. Jde o technické ověření deploymentu, nikoli nový UI acceptance. Pozdější docs-only zápis není nový runtime release.
+Fresh Vercel kontrola 2026-10-02:
 
-Historický rollout runtime změny PR #25 dne 2026-09-17:
-
-- runtime commit: `59d23c4e18550675b8f5d7401e233ab60cc51d87`;
-- deployment: `dpl_GCreoikFbSWN7MZa8RiSNBDW3dCT`;
+- deployment: `dpl_AxYSQ8avnvgytBm6x6oQLQPERYhw`;
 - state: `READY`;
 - target: `production`;
-- alias: `knee.vankotraining.cz`;
-- produkční root: HTTP 200;
-- post-deploy kontrola `warning/error/fatal`: 0 nalezených logů v kontrolovaném okně.
+- branch: `main`;
+- commit: `16fac80d02768476a835d448471243fa0e341dcc`.
+
+Tento redeploy používá stejný `main` commit. Clinical Map v produkci není. Poslední runtime-changing commit v `main` zůstává PR #25.
 
 ## Stav databázových migrací
 
 Produkční Supabase project ref: `zxvndqicslyulrinbpyn`.
 
-Migrace PR #25 je produkčně aplikována:
+Clinical Map V1 nevyžaduje žádnou production migraci. Do development projektu `twndqnmrvefhwuwuglju` byla aplikována pouze dev-only migration version `20261002181856` (`align_clinical_map_dev_training_library`); produkční migration history ji neobsahuje. SQL artefakt je po repo-hygiene gate izolovaný v `supabase/dev-migrations/20261002181856_align_clinical_map_dev_training_library.sql`, mimo production-capable `supabase/migrations/`. Přesun neprovedl žádný DB write, migration repair ani změnu dev/production migration history. `knee_extension_tests.asymmetry_pct` nadále používá procentní body.
 
-- version: `20260917114606`;
-- name: `knee_asymmetry_percent_points`;
-- repo file: `supabase/migrations/20260917_knee_asymmetry_percent_points.sql`.
+Stav gate:
 
-Fresh precheck před zápisem:
+- dev schema aligned: ano;
+- dev Training data synced: ano;
+- migration artifact isolated: ano;
+- Preview env configured: ano, branch-specific pouze pro `feature/clinical-exercise-map-v1` a dev Supabase;
+- Preview visually reviewed: V1 baseline ano; V1.1 authenticated visual acceptance pending;
+- merged do `main`: ne;
+- production deployed: ne;
+- production verified: ne.
 
-- `google_sheet_import`: 100 legacy kandidátů, 0 ambiguous;
-- `manual`: 32 již kanonických řádků, 0 invalid, 0 ambiguous;
-- backup/export surface `public.knee_data_export` pokrýval všech 132 měření;
-- candidate snapshot MD5: `141511a89181810b8ba07f409bd12035`.
+Fresh read-only snapshot relevantních tabulek 2026-10-02:
 
-Post-check:
-
-- `google_sheet_import`: 100/100 canonical, 0 noncanonical, rozsah `0.18–81.50`;
-- `manual`: 32/32 canonical, 0 noncanonical, rozsah `0.96–51.62`;
-- 5 archivovaných manuálních měření zachováno;
-- `weaker_side` mismatches: 0;
-- audit log: 100 UPDATE záznamů migrace;
-- případ `72.4 / 73.1 kg`: `asymmetry_pct = 0.96`, `weaker_side = right`, přímý výpočet `0.9576 %`.
-
-Kanonický kontrakt:
-
-`knee_extension_tests.asymmetry_pct = procentní body`.
+- athletes: 75 / 74 active;
+- athlete_profiles: 74;
+- knee_extension_tests: 135 / 130 non-deleted;
+- tindeq_sessions: 67 / 52 non-deleted;
+- exercises: 161 / 158 active;
+- plans: 4;
+- workouts: 30;
+- workout_items: 36;
+- feedback: 0.
 
 ## Aktuální fáze
 
-PR #25 má dokončený datový i aplikační rollout. Heuristika `value <= 1 ? value * 100 : value` byla odstraněna z UI i exportních SQL. Tabulka, detail, mobilní karty, klientský souhrn, graf a barevná klasifikace používají jedinou jednotku – procentní body.
+Clinical Exercise Map V1 je **implementována ve větvi**, ne v `main`.
 
-Hlášená produkční regrese je uzavřena i manuálním acceptance: uživatel po nasazení potvrdil v přihlášeném Knee UI zobrazení kontrolního měření `72.4 / 73.1 kg` jako `1 %`, nikoli `96 %`.
+Model:
+
+`diagnóza/operace → guardrails → limiter/capacity → load requirement → exercise family → varianta → budoucí dávka → response`.
+
+V1 implementuje pouze read-only mapu po úroveň exercise varianty/provenance/guardrails. Dávkování, plan generation, automatická diagnóza a RTS verdict nejsou součástí V1.
+
+Fresh canonical CLIENTS snapshot:
+
+- 47 Clients;
+- 70 Episodes;
+- **201 unikátních Visits**;
+- 15 primary knee-context Episodes;
+- 55 Visits napojených na tyto primary knee-context Episodes;
+- 15 Clients s explicitním `Tindeq_Athlete_ID`.
+
+Dřívější předběžný údaj 202 Visits je nahrazen fresh kontrolou 201 unikátních `Visit_ID`.
 
 ## Implementováno v `main`
 
-Ano:
+Clinical Map: **ne**.
 
-- `getAsymmetryValue(0.96) -> 0.96`;
-- sdílené formátování asymetrie na jedno desetinné místo;
-- prahy `<10 / 10–20 / >20 %` pracují přímo s procentními body;
-- regrese `72.4 / 73.1 -> 0.957592... % -> 1.0 %`;
-- odstranění magnitude heuristiky z repository exportů;
-- verzovaná fail-closed/idempotentní historická migrace a checks.
+Dříve nasazené Knee/Tindeq/Fmax funkce a oprava asymmetry percentage-point contract zůstávají v `main` beze změny.
 
 ## Rozpracováno mimo `main`
 
-Pro PR #25 nezůstává žádná runtime ani databázová změna mimo `main`. Docs-only synchronizační PR #26 byl následně merged; není již otevřený.
+PR #29 obsahuje:
+
+- sdílenou top-level navigaci Klienti / Clinical Map / Tindeq / Reporty;
+- auth-gated read-only `/clinical/exercises`;
+- capacity matrix 6 × 13 canonical axes/families;
+- live GET overlay aktivních Training `exercises`;
+- verzovaný source-derived projection manifest z CLIENTS/CSB auditu;
+- A/B/C clinical mapping confidence;
+- samostatný Training library link status;
+- V1.1 kompaktnější matrix density;
+- sticky capacity header + sticky family column;
+- clinician-first inspector hierarchy;
+- explicitní `Clinical family` vs `Training library family`;
+- `Context guardrails` oddělené od exercise-specific efficacy;
+- technická metadata pod rozbalitelným `Data / provenance`;
+- mobile readability pass a lokální horizontal scroll;
+- explicitní unknown/unresolved stavy;
+- unit + Playwright coverage včetně 320/390 px;
+- project-control aktualizaci.
+
+V1.1 nemění clinical capacity placement, A/B/C hodnoty, canonical families, Training exercise IDs, CSB claims, Visit provenance ani unresolved mapping queue.
+
+Žádný runtime zápis do CLIENTS, Training nebo canonical Exercise DB nebyl přidán.
+
+## Automatizovaně otestováno
+
+Ověřený V1.1 runtime/test head: `738a4145c0f47d636f1c8433d7de1811182167df`.
+
+- Project control workflow `37063052302`: success;
+- verification workflow `37063052373`: success;
+- unit tests: success;
+- lint comparison proti aktuálnímu `main`: success;
+- production build: success;
+- TypeScript: success;
+- project-control check: success;
+- patch whitespace gate: success;
+- Chromium/Playwright install: success;
+- browser E2E: **17/17 passed**;
+- auth-gated Clinical Map: success;
+- A/B/C inspector + Training link separation: success;
+- clinician-first inspector / Data-provenance disclosure: success;
+- desktop sticky axes/density assertions: success;
+- mobile 320 px a 390 px: success;
+- page-level horizontal overflow: žádný;
+- matrix horizontal scroll: zůstává lokální.
+
+Předchozí V1.1 head `13c3c93b9ec87b197d9c3b1c5dcf92096f93c727` měl jediný test-selector failure kvůli dvěma legitimním labelům `Laterality`. Test-only commit `738a414...` selector scoped na `Live Training metadata`; runtime se tím nezměnil.
+
+Exact-head Vercel Preview:
+
+- deployment: `dpl_AKpbZ6Ao5pyKUdaTUv8dwYnAGrPo`;
+- commit: `738a4145c0f47d636f1c8433d7de1811182167df`;
+- URL: `https://vankotraining-knee-23pn447xw-vankotrainings-projects.vercel.app`;
+- state: `READY`;
+- `/clinical/exercises`: Clinical Map route načtena, bez fail-closed hlášky „Chybí Supabase konfigurace“.
 
 ## Nasazeno
 
-- aplikace PR #25: **ano**, `dpl_GCreoikFbSWN7MZa8RiSNBDW3dCT`, `READY`;
-- DB migrace: **ano**, `20260917114606 knee_asymmetry_percent_points`;
-- při auditu 2026-09-29 alias ukazoval na výše uvedený deployment docs-only merge PR #26, obsahující runtime opravu PR #25.
+Clinical Map V1 je nasazena pouze jako **Vercel Preview mimo produkci**. Není implementována v `main`, není produkčně nasazena a nebyla produkčně ověřena.
+
+## Preview nasazeno
+
+Exact-head Preview pro V1.1 runtime/test head `738a4145c0f47d636f1c8433d7de1811182167df`:
+
+- deployment: `dpl_AKpbZ6Ao5pyKUdaTUv8dwYnAGrPo`;
+- URL: `https://vankotraining-knee-23pn447xw-vankotrainings-projects.vercel.app`;
+- state: `READY`;
+- branch-specific Preview env: nakonfigurován na dev Supabase `twndqnmrvefhwuwuglju`;
+- Production env nebyl pro Clinical Map použit ani změněn;
+- route už nepadá do stavu „Chybí Supabase konfigurace“.
+
+Authenticated uživatelská akceptace konkrétního V1.1 layoutu je ještě pending.
+
+## Produkčně nasazeno
+
+Clinical Map V1: **ne**.
 
 ## Produkčně ověřeno
 
-- databázová integrita po migraci: **ano, read-only/automatizovaně ověřena**;
-- produkční deployment a dostupnost: **ano, technicky ověřeno**;
-- hlášená UI regrese `72.4 / 73.1 -> 1 %` místo `96 %`: **ano, výslovně potvrzeno uživatelem v přihlášené produkci dne 2026-09-17**.
+Clinical Map V1: **ne**.
 
-PR #25 je tím ve smyslu projektové terminologie **produkčně ověřen**. Uživatel samostatně nepotvrzoval každou jednotlivou UI reprezentaci; jejich konzistence se stejnou procentní jednotkou je kryta implementací a regresními testy.
+Vercel `READY` ani CI nejsou uživatelské produkční ověření.
+
+## Development Supabase pro Preview — alignment 2026-10-02
+
+Development projekt `twndqnmrvefhwuwuglju` / `vankotraining-knee-dev` je `ACTIVE_HEALTHY`.
+
+Dokončený úzký dev-only alignment:
+
+- vytvořeny pouze `public.exercise_families` a `public.exercises`;
+- production-compatible columns, defaults, constraints a indexy;
+- 32 exercise families;
+- 161 exercises / 158 active / 3 inactive;
+- full-row digest parity production ↔ dev pro obě tabulky;
+- žádné orphan family links;
+- všech 9 Training UUID z aktuálního Clinical Map manifestu je v dev přítomných a kompatibilních názvem, active stavem i family linkage;
+- RLS enabled;
+- `anon` bez SELECT i write přístupu;
+- `authenticated` pouze SELECT: 32 families a 158 active exercises;
+- production coach/owner write policy nebyla kopírována;
+- production `zxvndqicslyulrinbpyn` byla pouze read-only source.
+
+Verdikt backendu: **READY FOR CLINICAL MAP PREVIEW ENV**.
+
+Git integrace pro alignment head `dd0f4df5a37aa202ced81313ce6d31924424e718` automaticky vytvořila Preview `dpl_D8UKxYDckmS3WxZrNKjxM65fqPLm` (`READY`, `https://vankotraining-knee-n8s6xcmbf-vankotrainings-projects.vercel.app`). Vercel env nebyl změněn ani připojen k dev Supabase a Preview nebyl vizuálně reviewován. `main`, production deployment i production databáze zůstaly beze změny.
 
 ## Známé problémy
 
-- pro opravenou chybu asymetrie není po acceptance známý otevřený produkční problém;
-- full-repo lint baseline obsahuje dříve evidované problémy; PR #25 nepřidal nový relevantní lint problém;
-- Supabase security/performance advisors obsahují existující problémy mimo scope PR #25; tato datová migrace neměnila RLS, grants ani indexy.
+- V1.1 potřebuje ještě uživatelskou authenticated vizuální akceptaci na desktopu/mobilu; automatické responsive testy jsou zelené.
+- Full-repo lint baseline na současném `main` obsahuje existující problémy; PR gate porovnává branch vůči baseline a aktuální V1.1 gate prošel.
+- Unresolved exact mappings zůstávají: step-down, SL squat/stepper, TRX sit-to-heel, medicine-ball drop to split squat, assisted full-ROM split squat, wall-supported split squat a band-resisted hamstring curl.
+- CLIENTS Visit neukládá explicitní `exercise_id`; probable mapping proto zůstává oddělený od direct clinical-use provenance.
 
 ## Další krok
 
-- Navrženo: u jednoho pilotního klienta ručně ověřit přesné existující Training cviky proti intervencím ve Visits; bez změny schématu nebo nového plánu. Implementaci případných vazeb otevřít až samostatným zadáním.
+- Provést authenticated vizuální akceptaci V1.1 na desktopu a mobilu; pokud UX projde, pokračovat klinickým review mappingů v pořadí `Knee extension → Wall isometric → Split squat`; PR #29 ponechat open a unmerged do výslovného schválení a neměnit `main` ani produkci.
 
 ## Audit Client / Knee / Training a pilot — 2026-09-29
 
@@ -147,3 +247,96 @@ App má 161 cviků (158 aktivních), existující dávkování a vazbu `athlete 
 
 ### Mezery a navržené pokračování
 Chybí přímá vazba měření na návštěvu/epizodu, konzistentní reakce po zátěži a ověřené propojení textových intervencí s exercise UUID. Existující model umožňuje nejprve malý ruční pilot bez nové databáze. Další implementace, nové fáze rehabilitace, plošné tagování cviků ani clinical decision support nejsou tímto auditem schváleny.
+
+
+## Clinical Exercise Map decision — 2026-10-02
+
+### Co bylo čerstvě ověřeno
+
+Deep read-only inventura nevycházela pouze z klientů C004/C009. Canonical `Visits` byly načteny v plném rozsahu a spojeny přes `Episode_ID` s klinickým kontextem. Audit pracoval také s Training `exercises`, historickými KneeRehab / BV_knee_aid / !!!Exercise_Database zdroji a s appraised Clinical Second Brain vrstvou.
+
+Snapshot použité inventury:
+
+- 201 unikátních canonical `Visit_ID`;
+- 15 epizod s explicitním knee/meniscus/ACL/quadriceps kontextem;
+- opakovaně doložené exercise families zahrnují knee extension/Tindeq, wall isometrics, split squat, squat/deep flexion, step-down/SL squat, hip hinge/deadlift, bridge, hamstring curl, calf a jump/hop/drop;
+- Training knihovna má řadu exact/near canonical variant, ale část klinických variant zůstává unresolved a nesmí se mapovat násilně.
+
+Počty použití jsou clinical-use provenance, nikoli účinnost nebo evidence rank.
+
+### Schválený front-end koncept
+
+Nový workspace:
+
+`/clinical/exercises` — **Clinical Map**
+
+V1 je read-only. Výchozí vizuální forma je matice exercise family × capacity stage s přepínatelnými pohledy podle kapacity, problému/diagnózy, cviku a klienta.
+
+Hlavní capacity osa:
+
+`Tolerance → Force/activation → Strength/capacity → Deep ROM/knee-forward → Dynamic → Sport`.
+
+Jde o mapu kapacit, nikoli rigidní lineární protokol.
+
+### Authority boundaries
+
+- CLIENTS = skutečný průběh péče a doložené intervence;
+- Knee/Tindeq/Fmax = objektivní měření a response/capacity kontext;
+- Training = canonical exercise library a digitální exercise identity;
+- historické plány = sekundární zdroj variant a programovací zkušenosti;
+- Clinical Second Brain = evidence authority a klinické guardrails.
+
+Clinical Map tyto vrstvy projektuje, ale nesmí vytvořit novou konkurenční klinickou nebo evidence autoritu.
+
+### Implementační stav
+
+Route `/clinical/exercises`, top-level navigace, capacity matrix, provenance/confidence projection a read-only exercise inspector jsou implementovány ve větvi `feature/clinical-exercise-map-v1` / PR #29. Nejsou v `main` ani produkčně nasazeny. Persistence, automatický plan generator, dosing engine, automatická diagnóza a RTS decision support implementovány nejsou.
+
+Podrobnosti: `project-control/clinical-exercise-map-v1-2026-10-02.md`, `project-control/clinical-exercise-map-v1-implementation-2026-10-02.md` a `project-control/decisions/0002-clinical-exercise-map.md`.
+
+
+## Clinical goal layer V1.2 — 2026-10-03
+
+Po klinickém review časné rehabilitace kolene a po zpracování relevantní evidence v Clinical Second Brain byl Clinical Map model rozšířen o explicitní vrstvu **clinical goal → limiter**.
+
+Schválený řetězec je nyní:
+
+`diagnosis/operation → guardrails → clinical goal → limiter → capacity → exercise family → variant → future dose → response`.
+
+První canonical goal je `Restore knee extension & quadriceps control` se čtyřmi komponentami: extension ROM, quadriceps activation, active terminal extension control a early load acceptance / movement control. Goal není rigidní časová fáze ani univerzální pooperační protokol.
+
+Evidence authority pro tento pilot tvoří ACTIVE CSB claims `ACL-CLM-008`, `AMI-CLM-001` a `AMI-CLM-002`. Current evidence anchor je nejsilnější pro ACL/ACLR; procedure-specific restrictions mají přednost.
+
+Do Knee extension rodiny byla přidána direct clinical-use option `Terminal extension / quadriceps activation` s provenance z Visit `7d26481e-3e88-46ab-9b7c-9f0fcf93d862` (2026-09-29). Clinical confidence je A, ale Training link zůstává `none`, protože exact canonical Training variant nebyla reviewována. Existující `Isometric knee extension` je supporting goal option a její B probable Training mapping zůstává beze změny. Machine knee extension nebyla v tomto kroku přehodnocena.
+
+Runtime/test commit `45d7fbea195a4906889da9fa6c91cb723a775f5a` prošel workflow `37108795338` a `37108795533`; Vercel Preview `dpl_9uFSvX1XL4Nec78LW2wHjx2rizcf` je READY na `https://vankotraining-knee-6cl626jmd-vankotrainings-projects.vercel.app`.
+
+PR #29 zůstává open/unmerged. Main, production deployment a production/dev databáze nebyly změněny.
+
+
+### Clinician acceptance V1.2 — 2026-10-03
+
+Po desktop review uživatel výslovně potvrdil, že early-phase goal model `Restore knee extension & quadriceps control`, jeho komponenty a limitery i napojení `Terminal extension / quadriceps activation` odpovídají jeho reálnému klinickému postupu v této fázi.
+
+Toto je clinical/model acceptance pro pokračování review v PR #29. Není to souhlas s merge, production deploymentem, automatickým generováním plánu ani decision supportem. Další klinický gate je `Knee extension - machine`, následně `Wall isometric → Split squat`.
+
+
+## Clinical reasoning lens V1.3 — 2026-10-03
+
+Clinician review zpřesnil produktový účel Clinical Map: mapa má poskytovat **dobrou rozvahu proměnných a možností jejich modifikace**, nikoli šablonovitý rehabilitační protokol.
+
+Horní read-only UI bylo proto změněno z dominantní goal/phase prezentace na:
+
+`State → Limiter → Modifiers → Options → Response`.
+
+State obsahuje přehled pain/reactivity, effusion, ROM, quadriceps activation, force/capacity a load acceptance/confidence. Limiter vrstva zahrnuje mimo jiné extension loss, high reactivity/effusion, pain-limited loading, AMI/poor activation, force deficit, poor terminal control, gait/load acceptance, apprehension a procedure/tissue restriction. Modifiers shrnují load, ROM, contraction, assistance, laterality, tempo/velocity, exposure/frequency a exercise/environment.
+
+Options jsou záměrně přehledové a rozdělené na management, použité exercise options a adjuncts. Nejsou prezentovány jako povinná progrese.
+
+`Quiet knee` je nově popsáno pouze jako working readiness description, nikoli jako pass/fail gate. Nový ACTIVE claim `AMI-CLM-003` zpřesňuje guardrail: quadriceps dysfunction je multifaktoriální a effusion nemá být používán jako proxy pro neuromuscular recovery.
+
+Relevantní CSB update: `ACL-014`, `AMI-003`, `AMI-004` jsou APPRAISED; `AMI-CLM-003` ACTIVE.
+
+Runtime/test commit `0b019c31b146a8f7c84f06fe352d0c6abb1025d7`; následná docs whitespace correction `74472741b3c30b901a3b0e4b2a6c458bea9c05e7`. Exact-head verification a browser workflow prošly, Preview `dpl_8qXfYoqLmssz7bwyEhEBPyZjB5sP` je READY na `https://vankotraining-knee-2g27lrz65-vankotrainings-projects.vercel.app`.
+
+PR #29 zůstává open/unmerged. `main`, production deployment a databáze jsou beze změny.

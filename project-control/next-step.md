@@ -2,30 +2,113 @@
 
 ## Aktuální fáze
 
-Knee asymmetry PR #25 je mergovaný, databázově canonicalizovaný, produkčně nasazený a uživatelem produkčně ověřený pro hlášenou regresi.
+Clinical Exercise Map V1.3 je **implementována, automatizovaně ověřena a nasazena jako branch-specific Preview**, ale není v `main` ani v produkci.
 
-- runtime merge commit: `59d23c4e18550675b8f5d7401e233ab60cc51d87`;
-- production deployment: `dpl_GCreoikFbSWN7MZa8RiSNBDW3dCT`;
-- deployment state: `READY`;
-- production alias: `knee.vankotraining.cz`;
-- produkční root: HTTP 200;
-- DB migration: `20260917114606 knee_asymmetry_percent_points`;
-- všech 132 Knee measurement rows používá `asymmetry_pct` jako procentní body;
-- final exact-head CI i Preview PR #25: success / READY;
-- uživatel dne `2026-09-17` v přihlášené produkci potvrdil, že kontrolní měření `72.4 / 73.1 kg` se zobrazuje jako `1 %`, nikoli `96 %`.
+- větev: `feature/clinical-exercise-map-v1`;
+- PR: #29 `feat: add read-only Clinical Exercise Map V1`;
+- latest runtime/test-changing head: `0b019c31b146a8f7c84f06fe352d0c6abb1025d7`;
+- current verified branch head before this docs checkpoint: `74472741b3c30b901a3b0e4b2a6c458bea9c05e7`;
+- route: `/clinical/exercises`;
+- režim: read-only;
+- Preview env: branch-specific dev Supabase `twndqnmrvefhwuwuglju`;
+- production Supabase/env: beze změny;
+- merge: neproveden.
 
-## Produkční data
+## V1.3 — clinical reasoning lens
 
-- 100 historických `google_sheet_import` řádků bylo canonicalizováno z legacy fraction konvence na force-derived procentní body;
-- 32 `manual` řádků nebylo jednotkově změněno, včetně 5 archivovaných;
-- ambiguous rows: 0;
-- `weaker_side` mismatches: 0;
-- kontrolní případ `72.4 / 73.1 kg` zůstává uložen jako `0.96 %`, slabší pravá strana.
+Na základě clinician review byl horní model zjednodušen. Clinical Map nemá fungovat jako rehab protocol nebo checklist, ale jako **vizuální rozvaha proměnných a možností jejich modifikace**.
 
-## Další krok
+Hlavní reasoning lens:
 
-Dokončit pouze docs-only synchronizaci PR #26 po zelených kontrolách. Pro opravu Knee asymmetry není potřeba další runtime ani databázový zásah. Další funkční projektový úkol zvolí uživatel.
+`State → Limiter → Modifiers → Options → Response`
 
-## Důležitý invariant
+### State
+- pain / reactivity;
+- effusion / swelling;
+- ROM;
+- quadriceps activation;
+- force / capacity;
+- load acceptance / confidence.
 
-`knee_extension_tests.asymmetry_pct` znamená výhradně procentní body. Aplikační ani exportní kód nesmí jednotku odvozovat z velikosti hodnoty.
+### Limiter
+- extension loss;
+- high reactivity / effusion;
+- pain-limited loading;
+- poor quadriceps activation / AMI;
+- quadriceps force deficit;
+- poor terminal extension control;
+- poor load acceptance / gait;
+- apprehension / low confidence;
+- procedure / tissue restriction.
+
+### Modifiers
+- load;
+- ROM;
+- contraction type;
+- assistance / support;
+- laterality;
+- tempo / velocity;
+- exposure / frequency;
+- exercise / environment.
+
+### Options
+Management, použité exercise options a adjuncts jsou zobrazené jako možnosti, nikoli jako povinná posloupnost. Současně může běžet více cílů a intervencí.
+
+### Response
+- same-day tolerance;
+- delayed response;
+- swelling / reactivity;
+- ROM;
+- activation / control;
+- force / performance.
+
+`Quiet knee` je prezentováno pouze jako pracovní readiness description — koleno dostatečně klidné pro zamýšlenou progresi — nikoli jako binární pass/fail gate.
+
+## Evidence update
+
+Nově zpracované CSB zdroje:
+
+- `ACL-014` — APPRAISED;
+- `AMI-003` — APPRAISED;
+- `AMI-004` — APPRAISED;
+- `AMI-CLM-003` — ACTIVE.
+
+V1.3 používá guardrails `ACL-CLM-008`, `AMI-CLM-002` a `AMI-CLM-003`. Effusion zůstává důležitý marker joint response, ale nesmí být používán jako proxy pro AMI nebo quadriceps strength.
+
+## Co zůstává zachováno
+
+- capacity matrix;
+- exercise family / Training identity;
+- A/B/C clinical mapping confidence;
+- provenance;
+- reviewed goal `Restore knee extension & quadriceps control` jako jeden cíl uvnitř širší rozvahy;
+- `Terminal extension / quadriceps activation` jako reviewed direct clinical-use option;
+- unresolved mapping queue beze změny.
+
+## Automatizovaná evidence
+
+Runtime/test head `0b019c31b146a8f7c84f06fe352d0c6abb1025d7`:
+
+- unit tests: success;
+- lint-vs-main: success;
+- build: success;
+- TypeScript: success;
+- project-control: success;
+- browser verification: success po následné whitespace correction na branch head;
+- Vercel Preview runtime: READY.
+
+Whitespace issue v dřívějším decision dokumentu byl opraven commitem `74472741b3c30b901a3b0e4b2a6c458bea9c05e7`; následný exact-head verification workflow prošel.
+
+Exact-head Preview před tímto docs-only checkpointem:
+
+- deployment: `dpl_8qXfYoqLmssz7bwyEhEBPyZjB5sP`;
+- URL: `https://vankotraining-knee-2g27lrz65-vankotrainings-projects.vercel.app`;
+- state: `READY`.
+
+## Nejbližší gate
+
+1. clinician visual review V1.3 reasoning lens na desktopu;
+2. neupravovat další exercise family, dokud nebude jasné, že tato úroveň přehledu je prakticky užitečná;
+3. PR #29 ponechat open a unmerged do výslovného schválení.
+
+Clinical Map V1.3 není v `main`, není produkčně nasazena a není produkčně ověřena.
