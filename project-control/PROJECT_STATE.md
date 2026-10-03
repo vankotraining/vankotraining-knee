@@ -312,3 +312,10 @@ Do Knee extension rodiny byla přidána direct clinical-use option `Terminal ext
 Runtime/test commit `45d7fbea195a4906889da9fa6c91cb723a775f5a` prošel workflow `37108795338` a `37108795533`; Vercel Preview `dpl_9uFSvX1XL4Nec78LW2wHjx2rizcf` je READY na `https://vankotraining-knee-6cl626jmd-vankotrainings-projects.vercel.app`.
 
 PR #29 zůstává open/unmerged. Main, production deployment a production/dev databáze nebyly změněny.
+
+
+### Clinician acceptance V1.2 — 2026-10-03
+
+Po desktop review uživatel výslovně potvrdil, že early-phase goal model `Restore knee extension & quadriceps control`, jeho komponenty a limitery i napojení `Terminal extension / quadriceps activation` odpovídají jeho reálnému klinickému postupu v této fázi.
+
+Toto je clinical/model acceptance pro pokračování review v PR #29. Není to souhlas s merge, production deploymentem, automatickým generováním plánu ani decision supportem. Další klinický gate je `Knee extension - machine`, následně `Wall isometric → Split squat`.

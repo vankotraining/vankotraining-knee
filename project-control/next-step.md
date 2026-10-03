@@ -96,11 +96,16 @@ Beze změny:
 - wall-supported split squat;
 - band-resisted hamstring curl.
 
+## Clinician acceptance — 2026-10-03
+
+Uživatel po desktop review výslovně potvrdil, že zobrazené early-phase cíle, limitery a jejich vazba na terminal extension / quadriceps activation odpovídají jeho reálným klinickým postupům v této fázi.
+
+Tím je V1.2 goal layer přijata jako pracovní klinický model pro pokračující review. Nejde o schválení merge do `main`, produkčního deploymentu ani automatického decision supportu.
+
 ## Nejbližší gate
 
-1. authenticated vizuální review V1.2 na desktopu;
-2. dokončit clinical review rodiny Knee extension — zejména oddělit clinical-use confidence od Training exact mapping u machine knee extension;
-3. pokračovat `Wall isometric → Split squat`;
-4. PR #29 ponechat open a unmerged do výslovného schválení.
+1. dokončit clinical review rodiny Knee extension — samostatně posoudit `Knee extension - machine`, zejména clinical-use confidence vs přesnost Training mappingu;
+2. pokračovat `Wall isometric → Split squat`;
+3. PR #29 ponechat open a unmerged do výslovného schválení.
 
 Clinical Map V1.2 není v `main`, není produkčně nasazena a není produkčně ověřena.
