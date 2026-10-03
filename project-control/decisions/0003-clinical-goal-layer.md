@@ -1,6 +1,6 @@
 # Decision 0003 — Clinical goal / limiter layer
 
-Date: 2026-10-03  
+Date: 2026-10-03
 Status: Accepted for Clinical Map read-only review
 
 ## Context
