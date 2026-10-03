@@ -111,3 +111,6 @@ Tindeq PR #21–#24 a schválený duplicate cleanup zůstávají beze změny. PR
 - pro opravenou chybu asymetrie není po uživatelském acceptance známý otevřený produkční problém;
 - full-repo lint má existující baseline problémy, PR #25 proti `main` nepřidal nový relevantní problém;
 - Supabase advisors obsahují existující security/performance baseline mimo scope této opravy.
+# Library bridge — production dependency
+
+Library learning bridge V1 is implemented only in a dependent preview branch. It is not merged or production-verified. Existing production commit, Supabase and aliases are unchanged. Map PR #29 remains the prerequisite release with its explicit approval gate.
