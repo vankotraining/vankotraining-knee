@@ -2,110 +2,113 @@
 
 ## Aktuální fáze
 
-Clinical Exercise Map V1.2 je **implementována, automatizovaně ověřena a nasazena jako branch-specific Preview**, ale není v `main` ani v produkci.
+Clinical Exercise Map V1.3 je **implementována, automatizovaně ověřena a nasazena jako branch-specific Preview**, ale není v `main` ani v produkci.
 
 - větev: `feature/clinical-exercise-map-v1`;
 - PR: #29 `feat: add read-only Clinical Exercise Map V1`;
-- latest runtime/test-changing head: `45d7fbea195a4906889da9fa6c91cb723a775f5a`;
+- latest runtime/test-changing head: `0b019c31b146a8f7c84f06fe352d0c6abb1025d7`;
+- current verified branch head before this docs checkpoint: `74472741b3c30b901a3b0e4b2a6c458bea9c05e7`;
 - route: `/clinical/exercises`;
 - režim: read-only;
 - Preview env: branch-specific dev Supabase `twndqnmrvefhwuwuglju`;
 - production Supabase/env: beze změny;
-- merge: neproveden;
-- production deployment/acceptance Clinical Map: neproveden.
+- merge: neproveden.
 
-## V1.2 dokončeno
+## V1.3 — clinical reasoning lens
 
-V1.1 UX zůstává zachována a nad exercise matrix je přidána první explicitní **clinical goal / limiter layer**.
+Na základě clinician review byl horní model zjednodušen. Clinical Map nemá fungovat jako rehab protocol nebo checklist, ale jako **vizuální rozvaha proměnných a možností jejich modifikace**.
 
-Canonical pilot goal:
+Hlavní reasoning lens:
 
-`Restore knee extension & quadriceps control`
+`State → Limiter → Modifiers → Options → Response`
 
-Komponenty cíle:
+### State
+- pain / reactivity;
+- effusion / swelling;
+- ROM;
+- quadriceps activation;
+- force / capacity;
+- load acceptance / confidence.
 
-- Extension ROM;
-- Quadriceps activation;
-- Active terminal extension control;
-- Early load acceptance / movement control.
-
-Typické limitery:
-
+### Limiter
 - extension loss;
-- effusion / pain-limited activation;
-- poor voluntary quadriceps activation / AMI;
+- high reactivity / effusion;
+- pain-limited loading;
+- poor quadriceps activation / AMI;
 - quadriceps force deficit;
-- poor active terminal extension control.
+- poor terminal extension control;
+- poor load acceptance / gait;
+- apprehension / low confidence;
+- procedure / tissue restriction.
 
-CSB authority:
+### Modifiers
+- load;
+- ROM;
+- contraction type;
+- assistance / support;
+- laterality;
+- tempo / velocity;
+- exposure / frequency;
+- exercise / environment.
 
-- `ACL-CLM-008` — criteria-driven ACLR rehabilitation;
-- `AMI-CLM-001` — bilateral quadriceps activation deficits / interpretation;
-- `AMI-CLM-002` — AMI / quadriceps activation management.
+### Options
+Management, použité exercise options a adjuncts jsou zobrazené jako možnosti, nikoli jako povinná posloupnost. Současně může běžet více cílů a intervencí.
 
-Clinical Map výslovně uvádí, že goal není rigidní pooperační fáze ani univerzální protokol a že současná evidence authority je nejsilnější pro ACL/ACLR; procedure-specific restrictions mají přednost.
+### Response
+- same-day tolerance;
+- delayed response;
+- swelling / reactivity;
+- ROM;
+- activation / control;
+- force / performance.
 
-## Knee extension review — zapsaná změna
+`Quiet knee` je prezentováno pouze jako pracovní readiness description — koleno dostatečně klidné pro zamýšlenou progresi — nikoli jako binární pass/fail gate.
 
-Přidána reviewed clinical option:
+## Evidence update
 
-`Terminal extension / quadriceps activation`
+Nově zpracované CSB zdroje:
 
-- family: `knee_extension`;
-- primary capacity: `force_activation`;
-- Clinical mapping confidence: **A · direct clinical use**;
-- Training library link: **none** — žádný exact canonical Training exercise_id nebyl schválen;
-- direct CLIENTS provenance: Visit `7d26481e-3e88-46ab-9b7c-9f0fcf93d862`, 2026-09-29;
-- Visit dokumentuje obtížnější quadriceps activation v terminal extension, towel press a heel-supported active terminal extension;
-- napojení na goal: extension ROM + quadriceps activation + active terminal extension control;
-- evidence guardrails: `ACL-CLM-008`, `AMI-CLM-002`.
+- `ACL-014` — APPRAISED;
+- `AMI-003` — APPRAISED;
+- `AMI-004` — APPRAISED;
+- `AMI-CLM-003` — ACTIVE.
 
-Existující `Isometric knee extension` je označena jako **supporting option** pro quadriceps activation / force deficit. Její B probable Training mapping se nemění.
+V1.3 používá guardrails `ACL-CLM-008`, `AMI-CLM-002` a `AMI-CLM-003`. Effusion zůstává důležitý marker joint response, ale nesmí být používán jako proxy pro AMI nebo quadriceps strength.
 
-`Knee extension - machine` se v tomto kroku **nemění**; zejména se bez samostatného klinického gate nemění B → A.
+## Co zůstává zachováno
+
+- capacity matrix;
+- exercise family / Training identity;
+- A/B/C clinical mapping confidence;
+- provenance;
+- reviewed goal `Restore knee extension & quadriceps control` jako jeden cíl uvnitř širší rozvahy;
+- `Terminal extension / quadriceps activation` jako reviewed direct clinical-use option;
+- unresolved mapping queue beze změny.
 
 ## Automatizovaná evidence
 
-Runtime/test head `45d7fbea195a4906889da9fa6c91cb723a775f5a`:
+Runtime/test head `0b019c31b146a8f7c84f06fe352d0c6abb1025d7`:
 
-- Project control workflow `37108795338`: success;
-- verification workflow `37108795533`: success;
 - unit tests: success;
-- lint-vs-main gate: success;
-- production build: success;
+- lint-vs-main: success;
+- build: success;
 - TypeScript: success;
-- project-control / whitespace checks: success;
-- browser verification: success.
+- project-control: success;
+- browser verification: success po následné whitespace correction na branch head;
+- Vercel Preview runtime: READY.
 
-Exact runtime-head Preview:
+Whitespace issue v dřívějším decision dokumentu byl opraven commitem `74472741b3c30b901a3b0e4b2a6c458bea9c05e7`; následný exact-head verification workflow prošel.
 
-- deployment: `dpl_9uFSvX1XL4Nec78LW2wHjx2rizcf`;
-- URL: `https://vankotraining-knee-6cl626jmd-vankotrainings-projects.vercel.app`;
-- state: `READY`;
-- branch/SHA: `feature/clinical-exercise-map-v1` / `45d7fbea195a4906889da9fa6c91cb723a775f5a`.
+Exact-head Preview před tímto docs-only checkpointem:
 
-## Unresolved mapping queue
-
-Beze změny:
-
-- SL squat / podřep on stepper;
-- step-down;
-- TRX-assisted sit-to-heel;
-- medicine-ball drop into split squat;
-- assisted full-ROM split squat;
-- wall-supported split squat;
-- band-resisted hamstring curl.
-
-## Clinician acceptance — 2026-10-03
-
-Uživatel po desktop review výslovně potvrdil, že zobrazené early-phase cíle, limitery a jejich vazba na terminal extension / quadriceps activation odpovídají jeho reálným klinickým postupům v této fázi.
-
-Tím je V1.2 goal layer přijata jako pracovní klinický model pro pokračující review. Nejde o schválení merge do `main`, produkčního deploymentu ani automatického decision supportu.
+- deployment: `dpl_8qXfYoqLmssz7bwyEhEBPyZjB5sP`;
+- URL: `https://vankotraining-knee-2g27lrz65-vankotrainings-projects.vercel.app`;
+- state: `READY`.
 
 ## Nejbližší gate
 
-1. dokončit clinical review rodiny Knee extension — samostatně posoudit `Knee extension - machine`, zejména clinical-use confidence vs přesnost Training mappingu;
-2. pokračovat `Wall isometric → Split squat`;
+1. clinician visual review V1.3 reasoning lens na desktopu;
+2. neupravovat další exercise family, dokud nebude jasné, že tato úroveň přehledu je prakticky užitečná;
 3. PR #29 ponechat open a unmerged do výslovného schválení.
 
-Clinical Map V1.2 není v `main`, není produkčně nasazena a není produkčně ověřena.
+Clinical Map V1.3 není v `main`, není produkčně nasazena a není produkčně ověřena.

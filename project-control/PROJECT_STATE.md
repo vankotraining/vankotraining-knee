@@ -319,3 +319,24 @@ PR #29 zůstává open/unmerged. Main, production deployment a production/dev da
 Po desktop review uživatel výslovně potvrdil, že early-phase goal model `Restore knee extension & quadriceps control`, jeho komponenty a limitery i napojení `Terminal extension / quadriceps activation` odpovídají jeho reálnému klinickému postupu v této fázi.
 
 Toto je clinical/model acceptance pro pokračování review v PR #29. Není to souhlas s merge, production deploymentem, automatickým generováním plánu ani decision supportem. Další klinický gate je `Knee extension - machine`, následně `Wall isometric → Split squat`.
+
+
+## Clinical reasoning lens V1.3 — 2026-10-03
+
+Clinician review zpřesnil produktový účel Clinical Map: mapa má poskytovat **dobrou rozvahu proměnných a možností jejich modifikace**, nikoli šablonovitý rehabilitační protokol.
+
+Horní read-only UI bylo proto změněno z dominantní goal/phase prezentace na:
+
+`State → Limiter → Modifiers → Options → Response`.
+
+State obsahuje přehled pain/reactivity, effusion, ROM, quadriceps activation, force/capacity a load acceptance/confidence. Limiter vrstva zahrnuje mimo jiné extension loss, high reactivity/effusion, pain-limited loading, AMI/poor activation, force deficit, poor terminal control, gait/load acceptance, apprehension a procedure/tissue restriction. Modifiers shrnují load, ROM, contraction, assistance, laterality, tempo/velocity, exposure/frequency a exercise/environment.
+
+Options jsou záměrně přehledové a rozdělené na management, použité exercise options a adjuncts. Nejsou prezentovány jako povinná progrese.
+
+`Quiet knee` je nově popsáno pouze jako working readiness description, nikoli jako pass/fail gate. Nový ACTIVE claim `AMI-CLM-003` zpřesňuje guardrail: quadriceps dysfunction je multifaktoriální a effusion nemá být používán jako proxy pro neuromuscular recovery.
+
+Relevantní CSB update: `ACL-014`, `AMI-003`, `AMI-004` jsou APPRAISED; `AMI-CLM-003` ACTIVE.
+
+Runtime/test commit `0b019c31b146a8f7c84f06fe352d0c6abb1025d7`; následná docs whitespace correction `74472741b3c30b901a3b0e4b2a6c458bea9c05e7`. Exact-head verification a browser workflow prošly, Preview `dpl_8qXfYoqLmssz7bwyEhEBPyZjB5sP` je READY na `https://vankotraining-knee-2g27lrz65-vankotrainings-projects.vercel.app`.
+
+PR #29 zůstává open/unmerged. `main`, production deployment a databáze jsou beze změny.
