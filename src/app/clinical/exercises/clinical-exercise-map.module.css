@@ -912,3 +912,175 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Clinical reasoning lens — V1.3 */
+.reasoningLens {
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid #d9e0e8;
+  border-radius: 16px;
+  background: #fbfcfe;
+}
+
+.reasoningHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.reasoningHeader h2 {
+  margin: 2px 0 6px;
+}
+
+.reasoningHeader p {
+  max-width: 900px;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.reasoningStatus {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid #b8c6d8;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.quietKneeNote {
+  margin: 12px 0;
+  padding: 9px 11px;
+  border-left: 3px solid #9aa9bb;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.reasoningGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.reasoningCard {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #e1e6ed;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.reasoningCard > strong {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 12px;
+}
+
+.reasoningChips,
+.reasoningEvidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.reasoningChips span,
+.reasoningEvidence span {
+  display: inline-flex;
+  padding: 4px 6px;
+  border: 1px solid #d7dee8;
+  border-radius: 999px;
+  background: #f7f9fc;
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.reasoningEvidence span {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
+}
+
+.optionGroup + .optionGroup {
+  margin-top: 8px;
+}
+
+.optionGroupLabel {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.reasoningFooter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 1.2fr);
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e7ee;
+}
+
+.reasoningFooter > div > strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+
+.reviewedGoal {
+  padding: 9px 10px;
+  border: 1px solid #dde4ec;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.reviewedGoal > span {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.reviewedGoal > strong {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 12px;
+}
+
+.reasoningNote {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+@media (max-width: 1180px) {
+  .reasoningGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .reasoningLens {
+    margin-right: -10px;
+    margin-left: -10px;
+    padding: 14px;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .reasoningHeader,
+  .reasoningFooter {
+    display: grid;
+  }
+
+  .reasoningStatus {
+    justify-self: start;
+  }
+
+  .reasoningGrid {
+    grid-template-columns: 1fr;
+  }
+}

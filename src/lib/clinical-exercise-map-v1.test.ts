@@ -6,6 +6,7 @@ import {
   CLINICAL_EXERCISE_MAP_SNAPSHOT,
   CLINICAL_FAMILIES,
   CLINICAL_GOALS,
+  EARLY_KNEE_REASONING_LENS,
   getCardsForCell,
 } from "./clinical-exercise-map-v1.js";
 
@@ -16,6 +17,20 @@ test("V1 keeps the approved six-capacity axis and all canonical families", () =>
   );
   assert.equal(CLINICAL_FAMILIES.length, 13);
   assert.equal(new Set(CLINICAL_FAMILIES.map((family) => family.id)).size, 13);
+});
+
+test("V1.3 early-knee lens is a compact reasoning map rather than a protocol", () => {
+  assert.equal(EARLY_KNEE_REASONING_LENS.label, "Early knee function");
+  assert.ok(EARLY_KNEE_REASONING_LENS.stateVariables.includes("Effusion / swelling"));
+  assert.ok(EARLY_KNEE_REASONING_LENS.limiters.includes("Apprehension / low confidence"));
+  assert.ok(EARLY_KNEE_REASONING_LENS.modifiers.includes("ROM"));
+  assert.ok(
+    EARLY_KNEE_REASONING_LENS.optionGroups.some(
+      (group) => group.label === "Used exercise options" && group.items.includes("Machine knee extension"),
+    ),
+  );
+  assert.ok(EARLY_KNEE_REASONING_LENS.responseVariables.includes("Delayed response"));
+  assert.ok(EARLY_KNEE_REASONING_LENS.evidence.some((item) => item.claimId === "AMI-CLM-003"));
 });
 
 test("V1.2 clinical goal layer separates early goals and limiters from exercise identity", () => {

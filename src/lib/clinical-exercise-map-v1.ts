@@ -172,6 +172,12 @@ const AMI_MANAGEMENT: EvidenceGuardrail = {
   guardrail: "Progressive exercise is the foundation; early NMES may be an adjunct when voluntary activation is limited. Passive modalities should not replace progressive quadriceps loading.",
 };
 
+const AMI_MULTIFACTORIAL: EvidenceGuardrail = {
+  claimId: "AMI-CLM-003",
+  context: "Multifactorial quadriceps dysfunction after ACLR",
+  guardrail: "Do not reduce quadriceps dysfunction to swelling alone. Effusion remains a useful response marker, but activation and strength should be assessed and progressed directly.",
+};
+
 export const CLINICAL_EXERCISE_MAP_SNAPSHOT = {
   snapshotDate: "2026-10-02",
   canonicalVisits: 201,
@@ -182,12 +188,80 @@ export const CLINICAL_EXERCISE_MAP_SNAPSHOT = {
     "CLIENTS supplies documented clinical use, Training supplies canonical exercise IDs, and Clinical Second Brain supplies evidence guardrails. This file is a read-only projection manifest, not a new clinical authority.",
 } as const;
 
+export const EARLY_KNEE_REASONING_LENS = {
+  id: "early_knee_function",
+  label: "Early knee function",
+  description:
+    "A compact reasoning map for choosing what matters now. It is not a protocol, phase checklist or automatic progression rule.",
+  quietKneeNote:
+    "Quiet knee is a working readiness description: sufficiently settled for the intended progression, not a binary pass/fail gate.",
+  stateVariables: [
+    "Pain / reactivity",
+    "Effusion / swelling",
+    "ROM",
+    "Quadriceps activation",
+    "Force / capacity",
+    "Load acceptance / confidence",
+  ],
+  limiters: [
+    "Extension loss",
+    "High reactivity / effusion",
+    "Pain-limited loading",
+    "Poor quadriceps activation / AMI",
+    "Quadriceps force deficit",
+    "Poor terminal extension control",
+    "Poor load acceptance / gait",
+    "Apprehension / low confidence",
+    "Procedure / tissue restriction",
+  ],
+  modifiers: [
+    "Load",
+    "ROM",
+    "Contraction type",
+    "Assistance / support",
+    "Laterality",
+    "Tempo / velocity",
+    "Exposure / frequency",
+    "Exercise / environment",
+  ],
+  optionGroups: [
+    {
+      label: "Management",
+      items: ["Load modification", "Symptom management", "ROM work", "Gait / weight acceptance"],
+    },
+    {
+      label: "Used exercise options",
+      items: [
+        "Terminal extension / quad set",
+        "Isometric knee extension / Tindeq",
+        "Machine knee extension",
+        "Squat / assisted split squat",
+      ],
+    },
+    {
+      label: "Adjuncts when useful",
+      items: ["NMES", "BFR", "Cryotherapy"],
+    },
+  ],
+  responseVariables: [
+    "Same-day tolerance",
+    "Delayed response",
+    "Swelling / reactivity",
+    "ROM",
+    "Activation / control",
+    "Force / performance",
+  ],
+  evidence: [ACL_REHAB, AMI_MANAGEMENT, AMI_MULTIFACTORIAL],
+  note:
+    "Clinical judgment selects which variables matter. Several goals and options can run in parallel; the map does not prescribe a required sequence.",
+} as const;
+
 export const CLINICAL_GOALS: readonly ClinicalGoal[] = [
   {
     id: "restore_extension_quadriceps_control",
     label: "Restore knee extension & quadriceps control",
     scope:
-      "Early knee rehabilitation when extension or quadriceps control is a relevant limiter. Current CSB evidence is strongest for ACL/ACLR; procedure-specific restrictions override the generic goal.",
+      "A reviewed goal option within Early knee function when extension or quadriceps control is relevant. It is not the name of the whole phase; procedure-specific restrictions override the generic goal.",
     description:
       "Restore available knee extension, voluntary quadriceps activation and active terminal extension control, then transfer that control into early weight bearing and basic movement.",
     components: [
@@ -221,7 +295,7 @@ export const CLINICAL_GOALS: readonly ClinicalGoal[] = [
     ],
     evidence: [ACL_REHAB, AMI_PATTERN, AMI_MANAGEMENT],
     reviewNote:
-      "This is a clinical goal layer, not a rigid postoperative phase or a prescription for one specific exercise. Exercise links are added only after clinical review.",
+      "This is one reviewed goal inside the broader reasoning lens, not a rigid phase or a prescription for one specific exercise. Exercise links are added only after clinical review.",
   },
 ];
 

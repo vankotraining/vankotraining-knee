@@ -8,6 +8,7 @@ import {
   CLINICAL_EXERCISE_MAP_SNAPSHOT,
   CLINICAL_FAMILIES,
   CLINICAL_GOALS,
+  EARLY_KNEE_REASONING_LENS,
   getClinicalGoal,
   getMappingConfidenceLabel,
   type ClinicalExerciseCard,
@@ -210,8 +211,8 @@ export default function ClinicalExerciseMap() {
           <p className={styles.eyebrow}>knee.vankotraining.cz · read-only</p>
           <h1>Clinical Map</h1>
           <p className={styles.intro}>
-            Clinical-goal + exercise mapa propojující klinický cíl a limitery s doloženým použitím cviků,
-            canonical Training library a evidence guardrails. Kapacity nejsou rigidní lineární fáze.
+            Vizuální mapa proměnných pro klinickou rozvahu: stav kolene, limitery, modifikátory,
+            možnosti intervence a response. Nejde o protokol ani automatickou progresi.
           </p>
         </div>
         <div className={styles.snapshot}>
@@ -261,50 +262,84 @@ export default function ClinicalExerciseMap() {
         </div>
       </section>
 
-      {activeGoal ? (
-        <section className={styles.goalLayer} aria-labelledby="clinical-goal-title">
-          <div className={styles.goalLayerHeader}>
-            <div>
-              <p className={styles.eyebrow}>Clinical goal layer · reviewed pilot</p>
-              <h2 id="clinical-goal-title">{activeGoal.label}</h2>
-              <p>{activeGoal.description}</p>
-            </div>
-            <span className={styles.goalStatus}>Goal lens active</span>
+      <section className={styles.reasoningLens} aria-labelledby="early-knee-title">
+        <div className={styles.reasoningHeader}>
+          <div>
+            <p className={styles.eyebrow}>Clinical reasoning lens · not a protocol</p>
+            <h2 id="early-knee-title">{EARLY_KNEE_REASONING_LENS.label}</h2>
+            <p>{EARLY_KNEE_REASONING_LENS.description}</p>
           </div>
+          <span className={styles.reasoningStatus}>Overview only</span>
+        </div>
 
-          <p className={styles.goalScope}>{activeGoal.scope}</p>
+        <p className={styles.quietKneeNote}>{EARLY_KNEE_REASONING_LENS.quietKneeNote}</p>
 
-          <div className={styles.goalColumns}>
-            <div className={styles.goalBlock}>
-              <strong>Co chceme obnovit</strong>
-              <div className={styles.goalComponentGrid}>
+        <div className={styles.reasoningGrid}>
+          <article className={styles.reasoningCard}>
+            <strong>State</strong>
+            <div className={styles.reasoningChips}>
+              {EARLY_KNEE_REASONING_LENS.stateVariables.map((item) => <span key={item}>{item}</span>)}
+            </div>
+          </article>
+
+          <article className={styles.reasoningCard}>
+            <strong>Limiter</strong>
+            <div className={styles.reasoningChips}>
+              {EARLY_KNEE_REASONING_LENS.limiters.map((item) => <span key={item}>{item}</span>)}
+            </div>
+          </article>
+
+          <article className={styles.reasoningCard}>
+            <strong>Modifiers</strong>
+            <div className={styles.reasoningChips}>
+              {EARLY_KNEE_REASONING_LENS.modifiers.map((item) => <span key={item}>{item}</span>)}
+            </div>
+          </article>
+
+          <article className={styles.reasoningCard}>
+            <strong>Options</strong>
+            {EARLY_KNEE_REASONING_LENS.optionGroups.map((group) => (
+              <div className={styles.optionGroup} key={group.label}>
+                <span className={styles.optionGroupLabel}>{group.label}</span>
+                <div className={styles.reasoningChips}>
+                  {group.items.map((item) => <span key={item}>{item}</span>)}
+                </div>
+              </div>
+            ))}
+          </article>
+
+          <article className={styles.reasoningCard}>
+            <strong>Response</strong>
+            <div className={styles.reasoningChips}>
+              {EARLY_KNEE_REASONING_LENS.responseVariables.map((item) => <span key={item}>{item}</span>)}
+            </div>
+          </article>
+        </div>
+
+        <div className={styles.reasoningFooter}>
+          <div>
+            <strong>CSB guardrails</strong>
+            <div className={styles.reasoningEvidence}>
+              {EARLY_KNEE_REASONING_LENS.evidence.map((item) => (
+                <span key={item.claimId}>{item.claimId}</span>
+              ))}
+            </div>
+          </div>
+          {activeGoal ? (
+            <div className={styles.reviewedGoal}>
+              <span>Reviewed goal</span>
+              <strong>{activeGoal.label}</strong>
+              <div className={styles.reasoningChips}>
                 {activeGoal.components.map((component) => (
-                  <article key={component.id}>
-                    <strong>{component.label}</strong>
-                    <p>{component.description}</p>
-                  </article>
+                  <span key={component.id}>{component.label}</span>
                 ))}
               </div>
             </div>
-            <div className={styles.goalBlock}>
-              <strong>Typické limitery</strong>
-              <div className={styles.goalChips}>
-                {activeGoal.limiters.map((limiter) => (
-                  <span key={limiter.id}>{limiter.label}</span>
-                ))}
-              </div>
-              <strong className={styles.goalEvidenceLabel}>CSB authority</strong>
-              <div className={styles.goalEvidence}>
-                {activeGoal.evidence.map((item) => (
-                  <span key={item.claimId}>{item.claimId}</span>
-                ))}
-              </div>
-            </div>
-          </div>
+          ) : null}
+        </div>
 
-          <p className={styles.goalReviewNote}>{activeGoal.reviewNote}</p>
-        </section>
-      ) : null}
+        <p className={styles.reasoningNote}>{EARLY_KNEE_REASONING_LENS.note}</p>
+      </section>
 
       <div className={styles.workspace}>
         <section className={styles.matrixPanel} aria-labelledby="capacity-title">
@@ -401,7 +436,7 @@ export default function ClinicalExerciseMap() {
                             <strong>{card.canonicalName}</strong>
                             <span className={styles.variant}>{card.variant}</span>
                             {activeGoalLink ? (
-                              <span className={styles.goalTag}>↳ Clinical goal</span>
+                              <span className={styles.goalTag}>↳ Reviewed goal</span>
                             ) : null}
                           </button>
                         );

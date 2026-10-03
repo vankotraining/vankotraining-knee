@@ -127,11 +127,18 @@ test("signed-in Clinical Map renders live Training overlay, provenance and A/B/C
   await expect(page.getByRole("heading", { name: "Clinical Map" })).toBeVisible();
   await expect(page.getByText("Training live: 3 active exercises")).toBeVisible();
   await expect(page.getByRole("grid", { name: "Clinical Exercise Capacity Map" })).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Restore knee extension & quadriceps control" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Early knee function" })).toBeVisible();
+  await expect(page.getByText("State", { exact: true })).toBeVisible();
+  await expect(page.getByText("Limiter", { exact: true })).toBeVisible();
+  await expect(page.getByText("Modifiers", { exact: true })).toBeVisible();
+  await expect(page.getByText("Options", { exact: true })).toBeVisible();
+  await expect(page.getByText("Response", { exact: true })).toBeVisible();
+  await expect(page.getByText("Quiet knee is a working readiness description", { exact: false })).toBeVisible();
   await expect(page.getByText("ACL-CLM-008", { exact: true })).toBeVisible();
-  await expect(page.getByText("AMI-CLM-002", { exact: true })).toBeVisible();
+  await expect(page.getByText("AMI-CLM-003", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Restore knee extension & quadriceps control", { exact: true }).first(),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: /Terminal extension \/ quadriceps activation/ }).click();
   await expect(page.getByRole("heading", { name: "Clinical goal links" })).toBeVisible();
