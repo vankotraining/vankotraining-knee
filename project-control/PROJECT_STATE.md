@@ -1,5 +1,21 @@
 # Project state
 
+## Release checkpoint — 2026-10-03 (Europe/Prague)
+
+Status: **DEPLOYED — final production acceptance pending; not CLOSED / VERIFIED.**
+
+- Clinician approved V1.3 reasoning lens and coordinated release. Knee PR #29 and #30 and Library PR #10 are merged.
+- Knee runtime release commit: `5cb052ce47000f6fa05f3c477f96e7f2b7617f32`; production deployment `dpl_79w5zK6DffT537wi88aQhdAw1EAQ` READY at https://knee.vankotraining.cz.
+- Library runtime release commit: `1595e497aa911da61a3f16402e02abe728f21332`; production deployment `dpl_2YriU6sTECurd4zvs8PszLZpJNns` READY at https://library.vankotraining.cz.
+- Authenticated production Knee loads 158 active Training exercises and V1.3 reasoning lens. Knee-extension inspector distinguishes B mapping confidence from verified Training identity.
+- Live production Map → Knee-extension topic → PFP-004 Deep Read → corresponding family Map PASS. Return selects the family; it does not promise restoration of the exact previous exercise variant.
+- Public learning-map manifest HTTP 200; two canonical nodes, PFP-004/PFP-002. Production PFP-004 ČJ→EN UI switch retains topic and renders English reader.
+- Knee without a session is auth gated. Library shows local-only Reading; local progress is not shared between domains. Production error/fatal runtime-log query found no entries in the checked window.
+- Production Library login remains absent. Its new secure credential request was blocked by automatic approval review after an earlier declined production login; no credentials or magic-link email were submitted. Live cloud persistence/synchronization and authenticated current-user RLS behavior are unverified.
+- Existing bounded exact-build desktop/mobile/axe checks remain evidence; final live production mobile/accessibility checks remain pending. No production migration or clinical-data write was performed by this release.
+
+## Historical checkpoints — superseded current status
+
 ## Datum poslední kontroly
 
 `2026-10-02` (Europe/Prague): Clinical Exercise Map V1.1 UX/readability pass je implementován a automatizovaně ověřen ve feature větvi. Produkční runtime ani produkční databáze nebyly měněny a Clinical Map není produkčně ověřena.
