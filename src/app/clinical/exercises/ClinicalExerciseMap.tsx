@@ -15,6 +15,7 @@ import {
 } from "@/lib/clinical-exercise-map-v1";
 import { useSupabaseSession } from "@/lib/use-supabase-session";
 import styles from "./clinical-exercise-map.module.css";
+import ClinicalLearningBridge from "./ClinicalLearningBridge";
 
 type TrainingExercise = {
   id: string;
@@ -81,14 +82,17 @@ function renderArray(value: string[] | null) {
   return value && value.length > 0 ? value.join(", ") : "unknown";
 }
 
-export default function ClinicalExerciseMap() {
+export default function ClinicalExerciseMap({ initialNode }: { initialNode?: string }) {
   const { supabase, session, state, error: authError, isConfigured } = useSupabaseSession();
   const [libraryResult, setLibraryResult] = useState<{
     sessionUserId: string;
     exercises: TrainingExercise[];
     error: string | null;
   } | null>(null);
-  const [selectedId, setSelectedId] = useState(CLINICAL_EXERCISE_CARDS[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(() => {
+    const match = CLINICAL_EXERCISE_CARDS.find((card) => initialNode === `family:${card.family}` || initialNode === `capacity:${card.capacity}`);
+    return match?.id ?? CLINICAL_EXERCISE_CARDS[0]?.id ?? "";
+  });
 
   useEffect(() => {
     if (!supabase || !session) return;
@@ -525,6 +529,7 @@ export default function ClinicalExerciseMap() {
                 <h3>Proč je cvik v mapě</h3>
                 <p className={styles.mappingReason}>{mappingReason(selectedCard.mappingState)}</p>
               </section>
+              <ClinicalLearningBridge nodeIds={[`family:${selectedCard.family}`, `capacity:${selectedCard.capacity}`]} supabase={supabase} session={session} />
 
               <section className={styles.inspectorSection}>
                 <h3>Relevant clinical contexts</h3>

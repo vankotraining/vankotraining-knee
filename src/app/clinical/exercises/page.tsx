@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description: "Read-only mapa klinicky používaných exercise families, kapacit a evidence guardrails.",
 };
 
-export default function ClinicalExercisesPage() {
-  return <ClinicalExerciseMap />;
+export default async function ClinicalExercisesPage({ searchParams }: { searchParams: Promise<{ node?: string }> }) {
+  const { node } = await searchParams;
+  return <ClinicalExerciseMap initialNode={typeof node === "string" ? node : undefined} />;
 }

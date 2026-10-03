@@ -1084,3 +1084,5 @@
     grid-template-columns: 1fr;
   }
 }
+.learningTopic { margin-top: 12px; }
+.learningTopic a { overflow-wrap: anywhere; }

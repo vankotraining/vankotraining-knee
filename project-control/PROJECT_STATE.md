@@ -340,3 +340,8 @@ Relevantní CSB update: `ACL-014`, `AMI-003`, `AMI-004` jsou APPRAISED; `AMI-CLM
 Runtime/test commit `0b019c31b146a8f7c84f06fe352d0c6abb1025d7`; následná docs whitespace correction `74472741b3c30b901a3b0e4b2a6c458bea9c05e7`. Exact-head verification a browser workflow prošly, Preview `dpl_8qXfYoqLmssz7bwyEhEBPyZjB5sP` je READY na `https://vankotraining-knee-2g27lrz65-vankotrainings-projects.vercel.app`.
 
 PR #29 zůstává open/unmerged. `main`, production deployment a databáze jsou beze změny.
+# Library learning bridge V1 — dependent preview work
+
+Implemented from Clinical Map head aed392b33b35ece5a458fca297c4e10c1627c8b3 on feature/library-learning-bridge-v1. Scope: Learn / Evidence inspector, canonical node query backlink, public Library manifest and read-only current-user cloud counts. Relation is owned by Library; clinical structure is owned by Knee; evidence authority remains CSB. Contract: decisions/0005-library-learning-bridge.md.
+
+Build/TypeScript, 138 unit tests, changed-file lint and project-control passed locally. Production unchanged; PR #29 remains open/unmerged under its existing explicit approval gate. Bridge production acceptance is pending.
