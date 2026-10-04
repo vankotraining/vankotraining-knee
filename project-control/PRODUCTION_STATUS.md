@@ -5,14 +5,20 @@
 Status: **CLOSED / VERIFIED — KNEE LEARNING HUB V1; runtime remains in production.**
 
 - Clinician approved V1.3 reasoning lens and coordinated release. Knee PR #29 and #30 and Library PR #10 are merged.
-- Runtime release commits remain Knee `5cb052ce47000f6fa05f3c477f96e7f2b7617f32` and Library `1595e497aa911da61a3f16402e02abe728f21332`; subsequent docs-only main commits do not change released runtime behavior.
-- Production learning-map manifest returns HTTP 200 with the two canonical nodes and PFP-004/PFP-002. Live Map → topic → Deep Read → corresponding Map navigation PASS.
+- Original bridge V1 runtime release commits were Knee `5cb052ce47000f6fa05f3c477f96e7f2b7617f32` and Library `1595e497aa911da61a3f16402e02abe728f21332`; these identify the original bridge release. Later Library content publication is recorded separately below; docs-only commits do not change runtime behavior.
+- At bridge V1 acceptance, the production learning-map manifest returned HTTP 200 with the two canonical nodes and PFP-004/PFP-002. Live Map → topic → Deep Read → corresponding Map navigation PASS.
 - Authenticated Library production sign-in and cloud persistence PASS. Canonical `library_progress` contains PFP-004 / shared / reading-v1 with state `reading`; authenticated own-row RLS read-back PASS.
 - Authenticated production Knee browser read-back PASS: Knee extension shows `Cloud: 0 přečteno · 1 rozpracováno · 0 nepřečteno · další stav neznámý` and links to the canonical Library topic.
 - Final live responsive/accessibility smoke PASS: Library topic 390/320 px has no horizontal overflow and 0 axe violations scoped to main; PFP-004 bilingual/backlink smoke at 390 px has no overflow and 0 axe violations scoped to main; authenticated Knee learning panel at 390 px has no overflow, 0 axe violations and no page errors.
 - Final Vercel runtime-error scans found no runtime errors for Library or Knee in the inspected window.
 - No production migration, clinical-data write, new evidence authority, new Deep Read or new feature scope was introduced by this closeout.
 - Next operating mode: USE / OBSERVE. Open another feature workstream only from recurring decision-relevant friction/value; existing Deep Read publication gate remains unchanged.
+
+### Subsequent Library content publication — verified current projection
+
+Library PR #12 published AMI-001, AMI-002, AMI-003, ACL-012 and ACL-014 in CZ/EN at runtime commit `140f16e1561a52fd53dedcb5fb8fdb7ef9c051ae`; final documentation commit `f68678940d35c833691711ac483dd86536a24088` is production READY as `dpl_56GHFUWMS3Q41kTwry1kZobVX4eD`. Library now has 11 published Deep Reads. Each of the two existing Knee topics exposes 7 unique sources across Start here / Core / Deep dive / Context / Update. This content expansion is CLOSED / VERIFIED under its explicit one-off publication override; default future publication governance is restored. No new clinical taxonomy or evidence authority was created.
+
+Knee final acceptance documentation commit `07dc0b940b3caecfe7e2842d890caae64b890c44` is production READY as `dpl_FV8J4qqnEHLvjRYxhwYkUKxnjmox`. Current deployment IDs are verification snapshots, not immutable aliases.
 
 ## Historical checkpoints — superseded current status
 
