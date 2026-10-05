@@ -415,7 +415,7 @@ export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
     ],
     evidence: [ACL_REHAB, AMI_MANAGEMENT],
     unresolvedQuestions: [
-      "Training has no reviewed exact canonical variant for this clinical option; keep exercise_id empty until clinician/library review.",
+      "Training now has separate canonical towel-press and heel-supported terminal-extension variants; this combined clinical card intentionally stays without one Training exercise_id.",
     ],
   },
   {
@@ -612,14 +612,14 @@ export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
   },
   {
     id: "step-down",
-    canonicalName: "Step-down",
+    canonicalName: "Step-down from step",
     family: "step",
     variant: "Step-down from medium step",
     capacity: "deep_rom",
-    trainingExerciseId: null,
-    expectedTrainingName: null,
-    mappingConfidence: "C",
-    mappingState: "unresolved",
+    trainingExerciseId: "8afce6cb-db60-4b74-ac86-828e790cc52f",
+    expectedTrainingName: "Step-down from step",
+    mappingConfidence: "A",
+    mappingState: "exact",
     clinicalContexts: ["meniscus postoperative context", "eccentric / single-leg control"],
     loadSignature: {
       ...unknownLoad,
@@ -629,25 +629,25 @@ export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
     provenance: [
       {
         kind: "visit",
-        label: "Direct clinical use; Training unresolved",
+        label: "Direct clinical use",
         visitId: "5466820a-570d-46c4-9923-974daed84aef",
         visitDate: "2026-08-14",
-        note: "Visit explicitly records step-down from a medium step. No safe exact Training exercise mapping was found.",
+        note: "Visit explicitly records step-down from a medium step; Training now contains the reviewed canonical step-down variant.",
       },
     ],
     evidence: [MENISCUS, MENISCUS_RTS],
-    unresolvedQuestions: ["Create or map an exact canonical Training step-down variant only after clinician/library review."],
+    unresolvedQuestions: [],
   },
   {
     id: "sl-squat-stepper",
-    canonicalName: "Single-leg squat on stepper",
+    canonicalName: "Single-leg squat on step",
     family: "single_leg_squat",
     variant: "SL squat / podřep on step",
     capacity: "deep_rom",
-    trainingExerciseId: null,
-    expectedTrainingName: null,
-    mappingConfidence: "C",
-    mappingState: "unresolved",
+    trainingExerciseId: "11b49897-c658-4171-a480-b51093f424c7",
+    expectedTrainingName: "Single-leg squat on step",
+    mappingConfidence: "A",
+    mappingState: "exact",
     clinicalContexts: ["deep-flexion capacity", "single-leg control"],
     loadSignature: {
       ...unknownLoad,
@@ -657,7 +657,7 @@ export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
     provenance: [
       {
         kind: "visit",
-        label: "Direct clinical use; Training unresolved",
+        label: "Direct clinical use",
         visitId: "3752a4dd-108d-4509-8c0d-e3522f87c3d3",
         visitDate: "2026-09-08",
         note: "Visit explicitly records an SL squat/podřep on a step.",
@@ -671,7 +671,7 @@ export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
       },
     ],
     evidence: [PFP, MENISCUS_RTS],
-    unresolvedQuestions: ["No dedicated Training single-leg-squat/step family provides a safe exact mapping."],
+    unresolvedQuestions: [],
   },
   {
     id: "trx-sit-to-heel",
@@ -751,10 +751,10 @@ export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
     family: "split_squat",
     variant: "Upper-limb assisted full/deep ROM",
     capacity: "deep_rom",
-    trainingExerciseId: null,
-    expectedTrainingName: null,
-    mappingConfidence: "C",
-    mappingState: "unresolved",
+    trainingExerciseId: "91d3d034-bc09-49df-9eda-e7e4eb57e87f",
+    expectedTrainingName: "Assisted full-ROM split squat",
+    mappingConfidence: "A",
+    mappingState: "exact",
     clinicalContexts: ["meniscus postoperative context", "deep-flexion capacity"],
     loadSignature: {
       ...unknownLoad,
@@ -765,7 +765,7 @@ export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
     provenance: [
       {
         kind: "visit",
-        label: "Direct clinical use; exact Training variant unresolved",
+        label: "Direct clinical use",
         visitId: "fd1a5574-979d-422c-9748-6e49cf2c8182",
         visitDate: "2026-08-05",
         note: "Visit explicitly records assisted split squat through full ROM.",
@@ -779,7 +779,7 @@ export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
       },
     ],
     evidence: [MENISCUS, MENISCUS_RTS],
-    unresolvedQuestions: ["Generic Training split squat exists, but assistance and full-ROM variant are not encoded as an exact canonical exercise."],
+    unresolvedQuestions: [],
   },
   {
     id: "wall-supported-split-squat",
@@ -787,10 +787,10 @@ export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
     family: "split_squat",
     variant: "Wall-supported / wall-contact split squat",
     capacity: "force_activation",
-    trainingExerciseId: null,
-    expectedTrainingName: null,
-    mappingConfidence: "C",
-    mappingState: "unresolved",
+    trainingExerciseId: "919629f2-c34a-4514-ae65-4b55ab4bb88e",
+    expectedTrainingName: "Wall-supported split squat",
+    mappingConfidence: "A",
+    mappingState: "exact",
     clinicalContexts: ["quadriceps capacity", "graded knee loading"],
     loadSignature: {
       ...unknownLoad,
@@ -800,7 +800,7 @@ export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
     provenance: [
       {
         kind: "visit",
-        label: "Direct clinical use; Training unresolved",
+        label: "Direct clinical use",
         visitId: "2f51df34-6fd8-469c-85a8-b70f35667a8d",
         visitDate: "2026-07-14",
         note: "Visit records an isometric split-squat hold at the wall.",
@@ -814,7 +814,7 @@ export const CLINICAL_EXERCISE_CARDS: readonly ClinicalExerciseCard[] = [
       },
     ],
     evidence: [PFP, PATELLAR_TENDON],
-    unresolvedQuestions: ["Training has generic/isometric split-squat variants, but no exact wall-supported identity was confirmed."],
+    unresolvedQuestions: [],
   },
   {
     id: "band-hamstring-curl",
