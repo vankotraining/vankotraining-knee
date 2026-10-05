@@ -112,14 +112,28 @@ test("known unresolved queue is explicit rather than silently canonicalized", ()
   );
 
   for (const id of [
-    "step-down",
-    "sl-squat-stepper",
     "trx-sit-to-heel",
     "medball-drop-split-squat",
-    "assisted-full-rom-split-squat",
-    "wall-supported-split-squat",
   ]) {
     assert.ok(unresolvedIds.has(id), `${id} should remain unresolved`);
+  }
+});
+
+test("visit-reviewed variants now resolve to exact canonical Training exercises", () => {
+  const expected = new Map([
+    ["step-down", "8afce6cb-db60-4b74-ac86-828e790cc52f"],
+    ["sl-squat-stepper", "11b49897-c658-4171-a480-b51093f424c7"],
+    ["assisted-full-rom-split-squat", "91d3d034-bc09-49df-9eda-e7e4eb57e87f"],
+    ["wall-supported-split-squat", "919629f2-c34a-4514-ae65-4b55ab4bb88e"],
+  ]);
+
+  for (const [id, trainingExerciseId] of expected) {
+    const card = CLINICAL_EXERCISE_CARDS.find((item) => item.id === id);
+    assert.ok(card);
+    assert.equal(card.mappingState, "exact");
+    assert.equal(card.mappingConfidence, "A");
+    assert.equal(card.trainingExerciseId, trainingExerciseId);
+    assert.deepEqual(card.unresolvedQuestions, []);
   }
 });
 
