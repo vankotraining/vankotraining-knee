@@ -90,6 +90,32 @@ async function setupSignedInClinicalMap(page: Page) {
             source_row: 2,
             is_active: true,
           },
+          {
+            id: "8afce6cb-db60-4b74-ac86-828e790cc52f",
+            name: "Step-down from step",
+            family_slug: "squat",
+            category: "knee dominant",
+            training_type: "Strength",
+            laterality: "unilateral",
+            equipment: [],
+            segments: ["hip", "knee", "ankle"],
+            source: "knee_product_v0_1_visit_review",
+            source_row: null,
+            is_active: true,
+          },
+          {
+            id: "11b49897-c658-4171-a480-b51093f424c7",
+            name: "Single-leg squat on step",
+            family_slug: "squat",
+            category: "knee dominant",
+            training_type: "Strength",
+            laterality: "unilateral",
+            equipment: [],
+            segments: ["hip", "knee", "ankle"],
+            source: "knee_product_v0_1_visit_review",
+            source_row: null,
+            is_active: true,
+          },
         ]),
       });
       return;
@@ -125,7 +151,7 @@ test("signed-in Clinical Map renders live Training overlay, provenance and A/B/C
   await page.goto("/clinical/exercises");
 
   await expect(page.getByRole("heading", { name: "Clinical Map" })).toBeVisible();
-  await expect(page.getByText("Training live: 3 active exercises")).toBeVisible();
+  await expect(page.getByText("Training live: 5 active exercises")).toBeVisible();
   await expect(page.getByRole("grid", { name: "Clinical Exercise Capacity Map" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Early knee function" })).toBeVisible();
   await expect(page.getByText("State", { exact: true })).toBeVisible();
@@ -179,13 +205,13 @@ test("signed-in Clinical Map renders live Training overlay, provenance and A/B/C
   await expect(page.getByText("B · probable canonical mapping", { exact: true }).last()).toBeVisible();
   await expect(page.getByText("verified", { exact: true }).last()).toBeVisible();
 
-  await page.getByRole("button", { name: /Step-down/ }).click();
-  await expect(page.getByText("C · unresolved / clinician decision", { exact: true })).toBeVisible();
-  await expect(page.getByText("none", { exact: true }).last()).toBeVisible();
-  await expect(page.getByText("No safe exact Training exercise mapping was found.", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: /Step-down from step/ }).click();
+  await expect(page.getByText("A · direct clinical use", { exact: true }).last()).toBeVisible();
+  await expect(page.getByText("verified", { exact: true }).last()).toBeVisible();
 
   await openDataProvenance(page);
-  await expect(page.getByText("unresolved", { exact: true }).last()).toBeVisible();
+  await expect(page.getByText("8afce6cb-db60-4b74-ac86-828e790cc52f", { exact: true })).toBeVisible();
+  await expect(page.getByText("Step-down from step", { exact: true }).last()).toBeVisible();
 
   expect(methods.length).toBeGreaterThan(0);
   expect(methods.every((method) => method === "GET")).toBe(true);
