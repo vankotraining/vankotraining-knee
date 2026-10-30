@@ -1,5 +1,16 @@
 # Project state
 
+## Tindeq save UX — 2026-10-30 (Europe/Prague)
+
+- Stav: **implementováno a automatizovaně otestováno ve větvi** `ux/tindeq-save-review`, base `main` `18b26fcbbbfdc5a7c216f6ed7cf2eb875476fffd`; není merged ani produkčně nasazeno.
+- `/tindeq`: výběr databázového klienta, kontrolní seznam importovaných měření a jediné ukládací tlačítko jsou společně pod analyzovaným výsledkem. Odkaz nad výsledkem umožňuje přeskočit dlouhý detail.
+- Před uložením je nutné označit konkrétní měření pro ručně vybraného klienta. ZIP s více klienty lze uložit po vybraných položkách postupně různým klientům, bez automatického přiřazení podle tagu. Každá položka ukazuje přiřazení a kompaktní stav (neuloženo / ukládání / uloženo / duplicita / chyba).
+- Výsledky ukládání se uchovávají pro kombinaci klient + měření i po přepnutí klienta. Během ukládání je výběr klienta, kontrola položek a nový import uzamčen; opakování vynechává úspěšné položky. Existující persistence a její duplicate protection jsou beze změn.
+- Beze změn: ZIP parser, analýza, klinické metriky, Supabase schéma, migrace a produkční konfigurace.
+- Validace v cloudovém prostředí: `npm test` PASS (13 testových souborů dle runneru), produkční build PASS, TypeScript PASS, lint změněných TS/TSX souborů PASS, E2E **18/18 PASS** včetně dvou klientů, nevybraných položek, uzamčení během ukládání, úspěchu, chyby, partial retry a duplicate reimport. Snímky sekce zkontrolovány při 320/1440 px; testy kontrolují přetékání také při 390 px a existující single-client scénář při 360/390/720/1024/1440 px.
+- Celorepozitářový lint: existující baseline **3 errors / 1 warning** v `ArchivedClients.tsx`, `AuthGate.tsx`, `KneeDashboard.tsx`; změna nepřidává nové nálezy.
+- Git fetch ověřil aktuální `main`. GitHub API a produkční HTTP kontrolu blokuje síťová politika (Forbidden); otevřené PR ani aktuální Vercel deployment/Preview nebylo možné nezávisle ověřit. Historické deployment záznamy níže nejsou novou runtime kontrolou. Produkční ověření zůstává samostatným krokem po výslovném schválení uživatele.
+
 ## Release checkpoint — 2026-10-03 (Europe/Prague)
 
 Status: **CLOSED / VERIFIED — KNEE LEARNING HUB V1; runtime remains in production.**

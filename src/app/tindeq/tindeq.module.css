@@ -1404,3 +1404,98 @@
     max-height: 250px;
   }
 }
+
+/* Keep the reviewed measurements and their save action beside the client picker. */
+.assignmentControls {
+  min-width: 0;
+  margin: 8px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.assignmentLegend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.assignmentControls .athletePicker {
+  padding: 0 0 16px;
+  border: 0;
+  background: transparent;
+}
+
+.assignmentList {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.assignmentList li {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border, #dfe4d8);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  overflow-wrap: anywhere;
+}
+
+.assignmentList label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.assignmentList input {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--accent, #23604a);
+}
+
+.assignmentList label > span {
+  min-width: 0;
+}
+
+.assignmentList small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.assignmentList [role="status"] {
+  margin-left: 32px;
+}
+
+.assignmentPending {
+  color: var(--muted, #687063);
+}
+
+.reviewLink {
+  margin: 14px 0;
+}
+
+.reviewLink a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--accent-strong, #173f31);
+  font-weight: 700;
+}
+
+.savePanel {
+  scroll-margin-top: 120px;
+}
+
+.assignmentList input:focus-visible,
+.reviewLink a:focus-visible {
+  outline: 3px solid var(--focus-ring, rgba(35, 96, 74, 0.42));
+  outline-offset: 3px;
+}
