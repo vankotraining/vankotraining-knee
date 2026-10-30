@@ -3,6 +3,7 @@
 ## Tindeq save UX — 2026-10-30 (Europe/Prague)
 
 - Stav: **implementováno a automatizovaně otestováno ve větvi** `ux/tindeq-save-review`, base `main` `18b26fcbbbfdc5a7c216f6ed7cf2eb875476fffd`; není merged ani produkčně nasazeno.
+- PR: [#32](https://github.com/vankotraining/vankotraining-knee/pull/32), založený uživatelem. Git reference `refs/pull/32/head` při následné kontrole odpovídala otestovanému runtime/test commitu `403053d56c8a35fb25cd5a1967d3157d87c99439`. Tento navazující záznam mění pouze dokumentaci. Výsledek vzdáleného CI ani Vercel Preview zatím nebyl ověřen; GitHub API stále vrací `Forbidden`.
 - `/tindeq`: výběr databázového klienta, kontrolní seznam importovaných měření a jediné ukládací tlačítko jsou společně pod analyzovaným výsledkem. Odkaz nad výsledkem umožňuje přeskočit dlouhý detail.
 - Před uložením je nutné označit konkrétní měření pro ručně vybraného klienta. ZIP s více klienty lze uložit po vybraných položkách postupně různým klientům, bez automatického přiřazení podle tagu. Každá položka ukazuje přiřazení a kompaktní stav (neuloženo / ukládání / uloženo / duplicita / chyba).
 - Výsledky ukládání se uchovávají pro kombinaci klient + měření i po přepnutí klienta. Během ukládání je výběr klienta, kontrola položek a nový import uzamčen; opakování vynechává úspěšné položky. Existující persistence a její duplicate protection jsou beze změn.
