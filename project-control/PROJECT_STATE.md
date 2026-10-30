@@ -1,6 +1,15 @@
 # Project state
 
-## Tindeq save UX — 2026-10-30 (Europe/Prague)
+## Tindeq save UX PR #32 — release 2026-10-30
+
+- PR #32 merged to main: 97e07527af8e5110b076c2d93d1e20dd4fdc63ce. User explicitly approved deployment on 2026-10-30.
+- Production deployment dpl_AJCcnkN5BPkyHvM95bupXL5yj4h1 READY; knee.vankotraining.cz alias verified against it.
+- GitHub Actions: project control, Tindeq client-view verification (including mocked E2E), and Android share preview passed on head 62fc2425a32d45b5d79d4e634ddb5ec771828317.
+- /tindeq returned HTTP 200; unauthenticated Chrome 390/1440 px: sign-in gate, no horizontal overflow or page errors. No Vercel runtime errors detected in the checked one-hour window.
+- No database migration or manual production data write. Authenticated production save/read-back and real development Supabase write/read-back remain unverified, pending explicit user acceptance.
+- Later documentation-only deploys may move the production alias without changing runtime. Do not label this feature user-verified solely from READY or smoke tests.
+
+## Tindeq save UX — pre-release evidence (historical)
 
 - Stav: **implementováno a automatizovaně otestováno ve větvi** `ux/tindeq-save-review`, base `main` `18b26fcbbbfdc5a7c216f6ed7cf2eb875476fffd`; není merged ani produkčně nasazeno.
 - PR: [#32](https://github.com/vankotraining/vankotraining-knee/pull/32), otevřený, `mergeable: true`, base `main` `18b26fcbbbfdc5a7c216f6ed7cf2eb875476fffd`; HEAD před tímto dokumentačním upřesněním `9ef82e5d974c56282b5fdfad06e14d4d2ddd7c6f` (dokumentace navazuje na runtime/test commit `403053d56c8a35fb25cd5a1967d3157d87c99439`). GitHub API již funguje, konflikt s `main` nezjištěn; branch byla 2 commity ahead, 0 behind.
