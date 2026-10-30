@@ -208,50 +208,51 @@ export default function TindeqWorkspace() {
           <p>Podporovaný vstup je pouze ZIP exportovaný z Tindeq. Analýza probíhá lokálně; původní ZIP ani nezpracovaná časová řada se neukládají.</p>
         </div>
         <TindeqAnalyzer
+          athletePicker={
+            <section className={styles.athletePicker} aria-labelledby="athlete-picker-title">
+              <div className={styles.pickerHeading}>
+                <div>
+                  <p className={styles.eyebrow}>Přiřazení klienta</p>
+                  <h2 id="athlete-picker-title">Vyber klienta z databáze</h2>
+                </div>
+                <button className={styles.signOutButton} onClick={() => supabase?.auth.signOut()} type="button">Odhlásit</button>
+              </div>
+              <p>Klient se nikdy neurčuje podle názvu souboru ani tagu. Bez ručního výběru zůstává uložení zablokované.</p>
+              <label className={styles.athleteSearch}>Hledat podle jména<input onChange={(event) => setQuery(event.target.value)} placeholder="Začni psát jméno klienta" type="search" value={query} /></label>
+              {athletesState === "loading" ? <p role="status">Načítám klienty…</p> : null}
+              {athletesState === "error" ? <div className={styles.errorBox}>{athletesError}</div> : null}
+              {athletesState === "ready" && athletes.length === 0 ? <p>V databázi není žádný aktivní klient.</p> : null}
+              {athletesState === "ready" && athletes.length > 0 ? (
+                <div className={styles.athletePickerGrid}>
+                  <div className={styles.athleteList} role="listbox" aria-label="Aktivní klienti">
+                    {filteredAthletes.length > 0 ? filteredAthletes.map((athlete) => (
+                      <button
+                        aria-selected={athlete.id === selectedAthleteId}
+                        className={athlete.id === selectedAthleteId ? styles.selectedAthleteButton : ""}
+                        key={athlete.id}
+                        onClick={() => handleAthleteSelection(athlete.id)}
+                        role="option"
+                        type="button"
+                      >{athlete.display_name}</button>
+                    )) : <p>Žádný klient neodpovídá hledání.</p>}
+                  </div>
+                  <div className={styles.selectedAthleteCard} aria-live="polite">
+                    <span>Vybraný klient pro přiřazení</span>
+                    <strong>{selectedAthlete?.display_name || "Nikdo"}</strong>
+                    <small>Výběr je vždy ruční a lze jej před uložením změnit.</small>
+                  </div>
+                </div>
+              ) : null}
+            </section>
+          }
           onSaveSessions={handleSave}
           selectedAthlete={selectedAthlete ? { id: selectedAthlete.id, displayName: selectedAthlete.display_name } : null}
         />
       </section>
 
-      <section className={styles.athletePicker} aria-labelledby="athlete-picker-title">
-        <div className={styles.pickerHeading}>
-          <div>
-            <p className={styles.eyebrow}>2. Explicitní přiřazení klienta</p>
-            <h2 id="athlete-picker-title">Vyber klienta z databáze</h2>
-          </div>
-          <button className={styles.signOutButton} onClick={() => supabase?.auth.signOut()} type="button">Odhlásit</button>
-        </div>
-        <p>Klient se nikdy neurčuje podle názvu souboru ani tagu. Bez ručního výběru zůstává uložení zablokované.</p>
-        <label className={styles.athleteSearch}>Hledat podle jména<input onChange={(event) => setQuery(event.target.value)} placeholder="Začni psát jméno klienta" type="search" value={query} /></label>
-        {athletesState === "loading" ? <p role="status">Načítám klienty…</p> : null}
-        {athletesState === "error" ? <div className={styles.errorBox}>{athletesError}</div> : null}
-        {athletesState === "ready" && athletes.length === 0 ? <p>V databázi není žádný aktivní klient.</p> : null}
-        {athletesState === "ready" && athletes.length > 0 ? (
-          <div className={styles.athletePickerGrid}>
-            <div className={styles.athleteList} role="listbox" aria-label="Aktivní klienti">
-              {filteredAthletes.length > 0 ? filteredAthletes.map((athlete) => (
-                <button
-                  aria-selected={athlete.id === selectedAthleteId}
-                  className={athlete.id === selectedAthleteId ? styles.selectedAthleteButton : ""}
-                  key={athlete.id}
-                  onClick={() => handleAthleteSelection(athlete.id)}
-                  role="option"
-                  type="button"
-                >{athlete.display_name}</button>
-              )) : <p>Žádný klient neodpovídá hledání.</p>}
-            </div>
-            <div className={styles.selectedAthleteCard} aria-live="polite">
-              <span>Potvrzený klient pro uložení</span>
-              <strong>{selectedAthlete?.display_name || "Nikdo"}</strong>
-              <small>Výběr je vždy ruční a lze jej před uložením změnit.</small>
-            </div>
-          </div>
-        ) : null}
-      </section>
-
       <section className={styles.historySection} aria-labelledby="history-title">
         <div className={styles.sectionTitleBlock}>
-          <p className={styles.eyebrow}>3. Historie a report</p>
+          <p className={styles.eyebrow}>Historie a report</p>
           <h2 id="history-title">Uložená Tindeq měření</h2>
           <p>{selectedAthlete ? `Klient: ${selectedAthlete.display_name}` : "Nejprve ručně vyber klienta."}</p>
           <p><Link href="/tindeq/reports">Otevřít kanonické reporty</Link></p>

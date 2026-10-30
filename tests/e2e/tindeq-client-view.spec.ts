@@ -12,6 +12,7 @@ const secondAthleteId = "22222222-2222-4222-8222-222222222222";
 type MockOptions = {
   failFirstForTag?: string;
   failEverySave?: boolean;
+  saveDelayMs?: number;
 };
 
 function infoCsv(tag: string, protocol = "Repeaters") {
@@ -165,6 +166,7 @@ async function setupSignedInSupabaseMock(page: Page, options: MockOptions = {}) 
       const payload = request.postDataJSON() as Record<string, unknown>;
       const sourceTag = String(payload.source_tag ?? "");
       postTags.push(sourceTag);
+      if (options.saveDelayMs) await new Promise((resolve) => setTimeout(resolve, options.saveDelayMs));
       const shouldFailOnce = options.failFirstForTag === sourceTag && !failedTags.has(sourceTag);
       if (shouldFailOnce) failedTags.add(sourceTag);
       if (options.failEverySave || shouldFailOnce) {
@@ -212,9 +214,12 @@ test("ZIP se analyzuje před explicitním výběrem klienta a teprve potom lze u
   await expect(page.getByRole("button", { name: "Uložit měření ke klientovi" })).toBeDisabled();
 
   await page.getByRole("option", { name: "Klient Test" }).click();
+  await expect(page.getByRole("button", { name: "Uložit měření ke klientovi" })).toBeDisabled();
+  await page.getByRole("checkbox").check();
   await expect(page.getByRole("button", { name: "Uložit měření ke klientovi" })).toBeEnabled();
+  await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Uložit měření ke klientovi" }).click();
-  await expect(page.getByText("Všechna měření byla bezpečně uložena.")).toBeVisible();
+  await expect(page.getByText("Vybraná měření byla uložena.")).toBeVisible();
   await expect(page.getByText("Uloženo v historii", { exact: true })).toBeVisible();
   expect(mock.storedRecords).toHaveLength(1);
   expect(mock.storedRecords[0].athlete_id).toBe(athleteId);
@@ -267,10 +272,12 @@ test("opakovaný upload stejného ZIPu nevytvoří druhý záznam", async ({ pag
   await page.goto("/tindeq");
   await page.getByRole("option", { name: "Klient Test" }).click();
   await uploadArchive(page, "same.zip", archive);
+  await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Uložit měření ke klientovi" }).click();
-  await expect(page.getByText("Všechna měření byla bezpečně uložena.")).toBeVisible();
+  await expect(page.getByText("Vybraná měření byla uložena.")).toBeVisible();
 
   await uploadArchive(page, "same.zip", archive);
+  await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Uložit měření ke klientovi" }).click();
   await expect(
     page.getByText("Všechna měření už byla dříve uložena. Nevznikl žádný nový záznam."),
@@ -286,6 +293,7 @@ test("chyba uložení zachová výsledek a umožní opakování", async ({ page 
   await page.goto("/tindeq");
   await page.getByRole("option", { name: "Klient Test" }).click();
   await uploadArchive(page, "failed-save.zip", tindeqArchive("Klient Test"));
+  await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Uložit měření ke klientovi" }).click();
   await expect(page.getByText("Uložení selhalo. Analyzovaný výsledek zůstává na obrazovce.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Série splněna" })).toBeVisible();
@@ -297,10 +305,61 @@ test("částečné selhání opakuje pouze neúspěšnou session", async ({ page
   await page.goto("/tindeq");
   await page.getByRole("option", { name: "Jiný klient" }).click();
   await uploadArchive(page, "batch-tindeq.zip", tindeqBatchArchive());
+  await expect(page.getByRole("button", { name: "Uložit 0 měření ke klientovi" })).toBeDisabled();
+  for (const checkbox of await page.getByRole("checkbox").all()) await checkbox.check();
   await page.getByRole("button", { name: "Uložit 2 měření ke klientovi" }).click();
   await expect(page.getByText("Část měření byla uložena. Znovu se odešlou pouze neúspěšné položky.")).toBeVisible();
   await page.getByRole("button", { name: "Uložit 1 měření ke klientovi" }).click();
-  await expect(page.getByText("Všechna měření byla bezpečně uložena.")).toBeVisible();
+  await expect(page.getByText("Vybraná měření byla uložena.")).toBeVisible();
   expect(mock.postTags).toEqual(["Klient A", "Klient B", "Klient B"]);
   expect(mock.storedRecords).toHaveLength(2);
+});
+
+test("více klientů: ukládají se jen zkontrolované položky a stavy přežijí změnu klienta", async ({ page }, testInfo) => {
+  const mock = await setupSignedInSupabaseMock(page, { saveDelayMs: 600 });
+  await page.goto("/tindeq");
+  await uploadArchive(page, "two-clients.zip", tindeqBatchArchive());
+  const panel = page.locator("#save-tindeq");
+  const rows = panel.getByRole("list", { name: "Kontrola měření před uložením" }).getByRole("listitem");
+  await expect(rows).toHaveCount(2);
+  await page.getByRole("option", { name: "Klient Test" }).click();
+  await rows.nth(0).getByRole("checkbox").check();
+  await expect(rows.nth(0)).toContainText("Přiřazeno: Klient Test");
+  await expect(rows.nth(1)).toContainText("Nepřiřazeno");
+
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await panel.scrollIntoViewIfNeeded();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+    await panel.screenshot({ path: testInfo.outputPath(`save-review-${width}.png`) });
+  }
+  const order = await page.evaluate(() => {
+    const result = document.querySelector('[role="tablist"]');
+    const save = document.getElementById("save-tindeq");
+    return Boolean(result && save && (result.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING));
+  });
+  expect(order).toBe(true);
+  // The client picker and submit control are inside the same review section.
+  await expect(panel.getByRole("option", { name: "Klient Test" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Přejít na přiřazení a uložení měření ↓" })).toHaveAttribute("href", "#save-tindeq");
+  await page.getByRole("button", { name: "Uložit 1 měření ke klientovi" }).click();
+  await expect(page.getByRole("button", { name: "Ukládám…" })).toBeDisabled();
+  await expect(page.getByRole("option", { name: "Jiný klient" })).toBeDisabled();
+  await expect(page.locator('input[type="file"]').first()).toBeDisabled();
+  await expect(rows.nth(0)).toContainText("Klient Test: uloženo");
+  expect(mock.postTags).toEqual(["Klient A"]);
+  await page.getByRole("option", { name: "Jiný klient" }).click();
+  await expect(page.getByRole("button", { name: "Uložit 0 měření ke klientovi" })).toBeDisabled();
+  await expect(rows.nth(0)).toContainText("Klient Test: uloženo");
+  await rows.nth(1).getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Uložit 1 měření ke klientovi" }).click();
+  await expect(rows.nth(1)).toContainText("Jiný klient: uloženo");
+  expect(mock.storedRecords.map((row) => [row.source_tag, row.athlete_id])).toEqual([
+    ["Klient A", athleteId], ["Klient B", secondAthleteId],
+  ]);
+  await page.getByRole("option", { name: "Klient Test" }).click();
+  await expect(rows.nth(0).getByRole("checkbox")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Uložit 0 měření ke klientovi" })).toBeDisabled();
+  expect(mock.postTags).toEqual(["Klient A", "Klient B"]);
 });
